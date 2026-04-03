@@ -68,13 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      // Use redirect on production (avoids COOP popup issues on Vercel)
-      // Use popup locally for faster dev experience
-      if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-        await signInWithPopup(auth, googleProvider);
-      } else {
-        await signInWithRedirect(auth, googleProvider);
-      }
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error('Google sign-in error:', error);
       throw error;
