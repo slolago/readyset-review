@@ -70,7 +70,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.error('Session error:', msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const code = (error as any)?.code ?? 'none';
+    const keySnippet = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.slice(0, 40) ?? 'MISSING';
+    console.error('Session error:', msg, 'code:', code);
+    return NextResponse.json({ error: msg, code, keySnippet }, { status: 500 });
   }
 }
