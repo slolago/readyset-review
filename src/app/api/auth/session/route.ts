@@ -69,10 +69,7 @@ export async function POST(request: NextRequest) {
       user: { id: decoded.uid, ...userData },
     });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    const code = (error as any)?.code ?? 'none';
-    const keySnippet = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.slice(0, 40) ?? 'MISSING';
-    console.error('Session error:', msg, 'code:', code);
-    return NextResponse.json({ error: msg, code, keySnippet }, { status: 500 });
+    console.error('Session error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
