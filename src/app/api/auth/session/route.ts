@@ -3,18 +3,25 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 export async function POST(request: NextRequest) {
+  let step = 'start';
   try {
+    step = 'authHeader';
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    step = 'verifyToken';
     const token = authHeader.slice(7);
     const decoded = await getAdminAuth().verifyIdToken(token);
+
+    step = 'getDb';
     const db = getAdminDb();
 
+    step = 'parseBody';
     const { name, email, avatar } = await request.json();
 
+    step = 'firestoreRead';
     // Upsert user — first check by UID, then by email (invited users have a Firestore doc but no Auth UID yet)
     const userRef = db.collection('users').doc(decoded.uid);
     const userDoc = await userRef.get();
@@ -69,7 +76,8 @@ export async function POST(request: NextRequest) {
       user: { id: decoded.uid, ...userData },
     });
   } catch (error) {
-    console.error('Session error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`Session error at [${step}]:`, msg);
+    return NextResponse.json({ error: msg, step }, { status: 500 });
   }
 }
