@@ -36,7 +36,11 @@ Plans:
   1. Uploading a video generates a thumbnail captured client-side from the video
   2. Thumbnail is uploaded to GCS alongside the video
   3. Thumbnail is displayed in the asset grid/list view for all video assets
-**Plans**: TBD
+**Plans**: 2
+
+Plans:
+- [x] 02-01-PLAN.md — Fix captureThumbnail seek time (25% of duration, max 5s)
+- [ ] 02-02-PLAN.md — TBD
 
 ### Phase 3: multi-select-drag
 **Goal**: Allow rubber-band (click-and-drag) multi-selection of assets and folders in the file browser.
