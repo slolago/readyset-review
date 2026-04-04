@@ -71,6 +71,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
   const dropDragCounter = useRef(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // ── Folder fetching ──────────────────────────────────────────────────────
@@ -398,6 +399,65 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
     [projectId, folderId, uploadFile, refetchAssets]
   );
 
+  const handleFolderInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+
+    const token = await getIdToken();
+
+    const makeFolderViaApi = async (name: string, parentId: string | null): Promise<string | null> => {
+      try {
+        const res = await fetch('/api/folders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ name, projectId, parentId }),
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.folder?.id ?? null;
+      } catch { return null; }
+    };
+
+    // Build a path→folderId map. Root ('') → current folderId.
+    const folderMap = new Map<string, string | null>();
+    folderMap.set('', folderId);
+
+    // Collect unique directory paths and sort shallow-first
+    const allDirs = new Set<string>();
+    for (const file of files) {
+      const parts = ((file as any).webkitRelativePath as string | undefined)?.split('/') || [file.name];
+      for (let i = 1; i < parts.length - 1; i++) {
+        allDirs.add(parts.slice(0, i + 1).join('/'));
+      }
+    }
+    const sortedDirs = Array.from(allDirs).sort((a, b) => a.split('/').length - b.split('/').length);
+
+    // Create folders in order
+    for (const dirPath of sortedDirs) {
+      const parts = dirPath.split('/');
+      const name = parts[parts.length - 1];
+      const parentPath = parts.slice(0, -1).join('/');
+      const parentId = folderMap.get(parentPath) ?? folderId;
+      const newId = await makeFolderViaApi(name, parentId);
+      folderMap.set(dirPath, newId);
+    }
+
+    // Upload files into their respective folders
+    const uploadPromises = files
+      .filter((f) => f.type.startsWith('video/') || f.type.startsWith('image/'))
+      .map((file) => {
+        const parts = ((file as any).webkitRelativePath as string | undefined)?.split('/') || [file.name];
+        const dirPath = parts.slice(0, -1).join('/');
+        const targetFolderId = folderMap.get(dirPath) ?? folderId;
+        return uploadFile(file, projectId, targetFolderId);
+      });
+
+    const results = await Promise.all(uploadPromises);
+    fetchFolders();
+    if (results.some((r) => r !== null)) refetchAssets();
+  };
+
   const handleDeleteFolder = async (deleteFolderId: string) => {
     if (!confirm('Delete this folder?')) return;
     try {
@@ -485,14 +545,18 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
           <Button variant="secondary" size="sm" onClick={() => setShowCreateFolder(true)} icon={<Plus className="w-4 h-4" />}>
             Folder
           </Button>
+          <Button variant="secondary" size="sm" onClick={() => folderInputRef.current?.click()} icon={<FolderOpen className="w-4 h-4" />}>
+            Folder
+          </Button>
           <Button size="sm" onClick={() => fileInputRef.current?.click()} icon={<Upload className="w-4 h-4" />}>
-            Upload
+            Files
           </Button>
         </div>
       </div>
 
-      {/* Hidden file input */}
+      {/* Hidden file inputs */}
       <input ref={fileInputRef} type="file" className="hidden" multiple accept="video/*,image/*" onChange={handleFileInputChange} />
+      <input ref={folderInputRef} type="file" className="hidden" {...({ webkitdirectory: '' } as any)} onChange={handleFolderInputChange} />
 
       {/* Content */}
       <div

@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useCallback } from 'react';
 import { Play, Image as ImageIcon, Film, MoreHorizontal, Trash2, Clock, Upload, Layers, Check } from 'lucide-react';
 import { formatDuration, formatBytes } from '@/lib/utils';
 import type { Asset } from '@/types';
@@ -23,73 +23,18 @@ export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, isSele
   const { getIdToken } = useAuth();
   const { uploadFile } = useUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const versionCount = (asset as any)._versionCount || 1;
   const signedUrl = (asset as any).signedUrl as string | undefined;
   const thumbnailUrl = (asset as any).thumbnailSignedUrl as string | undefined;
 
-  // Live thumbnail capture for videos that have no stored thumbnail
-  const [liveThumb, setLiveThumb] = useState<string | null>(null);
-  useEffect(() => {
-    if (asset.type !== 'video' || thumbnailUrl || !signedUrl) return;
-    let cancelled = false;
-
-    const tryCapture = (withCors: boolean) => {
-      return new Promise<string | null>((resolve) => {
-        const video = document.createElement('video');
-        video.muted = true;
-        video.playsInline = true;
-        video.preload = 'metadata';
-        if (withCors) video.crossOrigin = 'anonymous';
-
-        const done = (result: string | null) => {
-          video.src = '';
-          resolve(result);
-        };
-
-        const capture = () => {
-          try {
-            const canvas = document.createElement('canvas');
-            const w = Math.min(video.videoWidth || 640, 640);
-            const h = Math.round(w * ((video.videoHeight || 360) / (video.videoWidth || 640)));
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(video, 0, 0, w, h);
-              done(canvas.toDataURL('image/jpeg', 0.8));
-            } else {
-              done(null);
-            }
-          } catch {
-            done(null); // canvas taint or decode error
-          }
-        };
-
-        // Attach all listeners BEFORE setting src
-        video.addEventListener('seeked', capture, { once: true });
-        video.addEventListener('loadedmetadata', () => {
-          video.currentTime = Math.min(video.duration * 0.1, 1) || 1;
-        }, { once: true });
-        video.addEventListener('error', () => done(null), { once: true });
-        setTimeout(() => done(null), 15000);
-
-        // Set src last
-        video.src = signedUrl;
-      });
-    };
-
-    (async () => {
-      // Try with CORS first (needed for canvas capture), fall back without if it fails to load
-      let dataUrl = await tryCapture(true);
-      if (!dataUrl && !cancelled) {
-        // CORS load failed (e.g., localhost without CORS config) — try without, canvas may still work
-        dataUrl = await tryCapture(false);
-      }
-      if (!cancelled && dataUrl) setLiveThumb(dataUrl);
-    })();
-
-    return () => { cancelled = true; };
-  }, [asset.type, signedUrl, thumbnailUrl]);
+  // When a video element loads its metadata, seek to a non-black frame
+  const handleVideoMetadata = useCallback(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    const seekTo = Math.min((vid.duration || 0) * 0.1, 2) || 1;
+    vid.currentTime = seekTo;
+  }, []);
 
   const handleUploadVersion = () => {
     fileInputRef.current?.click();
@@ -149,9 +94,21 @@ export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, isSele
             className="object-cover"
             unoptimized
           />
-        ) : asset.type === 'video' && (thumbnailUrl || liveThumb) ? (
+        ) : asset.type === 'video' && thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumbnailUrl || liveThumb!} alt={asset.name} className="w-full h-full object-cover" />
+          <img src={thumbnailUrl} alt={asset.name} className="w-full h-full object-cover" />
+        ) : asset.type === 'video' && signedUrl ? (
+          // No stored thumbnail — use a video element to show the first frame
+          // eslint-disable-next-line jsx-a11y/media-has-caption
+          <video
+            ref={videoRef}
+            src={signedUrl}
+            preload="metadata"
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+            onLoadedMetadata={handleVideoMetadata}
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-frame-bg">
             {asset.type === 'video' ? (

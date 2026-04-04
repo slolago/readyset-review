@@ -180,15 +180,21 @@ export function useUpload() {
         try {
           const thumbBlob = await captureThumbnail(file);
           if (thumbBlob) {
-            await fetch(thumbnailSignedUrl, {
+            const putRes = await fetch(thumbnailSignedUrl, {
               method: 'PUT',
               headers: { 'Content-Type': 'image/jpeg' },
               body: thumbBlob,
             });
-            resolvedThumbnailGcsPath = thumbnailGcsPath;
+            if (putRes.ok) {
+              resolvedThumbnailGcsPath = thumbnailGcsPath;
+            } else {
+              console.warn('[thumbnail] PUT to GCS failed:', putRes.status, putRes.statusText);
+            }
+          } else {
+            console.warn('[thumbnail] captureThumbnail returned null — no thumbnail will be stored');
           }
-        } catch {
-          // thumbnail capture failure is non-fatal
+        } catch (thumbErr) {
+          console.warn('[thumbnail] capture/upload error (non-fatal):', thumbErr);
         }
       }
 
