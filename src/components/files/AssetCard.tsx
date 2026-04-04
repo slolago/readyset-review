@@ -38,7 +38,7 @@ export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, isSele
         const video = document.createElement('video');
         video.muted = true;
         video.playsInline = true;
-        video.preload = 'auto';
+        video.preload = 'metadata';
         if (withCors) video.crossOrigin = 'anonymous';
 
         const done = (result: string | null) => {
@@ -65,19 +65,15 @@ export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, isSele
           }
         };
 
-        const onLoadedData = () => {
-          const p = video.play();
-          if (p) {
-            p.then(() => { video.pause(); capture(); }).catch(capture);
-          } else {
-            capture();
-          }
-        };
-
-        video.addEventListener('loadeddata', onLoadedData, { once: true });
+        // Attach all listeners BEFORE setting src
+        video.addEventListener('seeked', capture, { once: true });
+        video.addEventListener('loadedmetadata', () => {
+          video.currentTime = Math.min(video.duration * 0.1, 1) || 1;
+        }, { once: true });
         video.addEventListener('error', () => done(null), { once: true });
         setTimeout(() => done(null), 15000);
 
+        // Set src last
         video.src = signedUrl;
       });
     };

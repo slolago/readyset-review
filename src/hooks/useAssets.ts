@@ -11,8 +11,7 @@ function captureThumbnail(file: File): Promise<Blob | null> {
     const video = document.createElement('video');
     video.muted = true;
     video.playsInline = true;
-    video.preload = 'auto';
-    video.src = url;
+    video.preload = 'metadata';
 
     let settled = false;
     const done = (blob: Blob | null) => {
@@ -42,29 +41,17 @@ function captureThumbnail(file: File): Promise<Blob | null> {
       }
     };
 
-    // play then immediately pause to force the decoder to render a real frame
-    const onLoadedData = () => {
-      const playPromise = video.play();
-      if (playPromise) {
-        playPromise
-          .then(() => {
-            video.pause();
-            capture();
-          })
-          .catch(() => {
-            // fallback: try capturing without play
-            capture();
-          });
-      } else {
-        capture();
-      }
-    };
-
-    video.addEventListener('loadeddata', onLoadedData, { once: true });
+    // Add ALL listeners before setting src — blob URLs can fire events synchronously
+    video.addEventListener('seeked', capture, { once: true });
+    video.addEventListener('loadedmetadata', () => {
+      // Seek to 10% of duration or 1s, whichever is smaller — avoids black intro frames
+      video.currentTime = Math.min(video.duration * 0.1, 1) || 1;
+    }, { once: true });
     video.addEventListener('error', () => done(null), { once: true });
-
-    // Safety timeout
     setTimeout(() => done(null), 15000);
+
+    // Set src last so events don't fire before listeners are attached
+    video.src = url;
   });
 }
 
