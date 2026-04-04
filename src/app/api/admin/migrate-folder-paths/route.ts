@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, roleAtLeast } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 
 /**
  * POST /api/admin/migrate-folder-paths
  * One-time migration: fills in the `path` array for any folder that has
  * parentId set but is missing the `path` field (created before path was stored).
- * Requires admin role.
  */
 export async function POST(request: NextRequest) {
-  const user = await getAuthenticatedUser(request);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!roleAtLeast(user, 'admin')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   try {
     const db = getAdminDb();
