@@ -2,10 +2,12 @@
 
 import Image from 'next/image';
 import { useRef, useCallback, useState, useEffect } from 'react';
-import { Play, Image as ImageIcon, Film, MoreHorizontal, Trash2, Clock, Upload, Layers, Check, Pencil, Copy, CopyPlus, Home, Folder as FolderIcon, X } from 'lucide-react';
+import { Play, Image as ImageIcon, Film, MoreHorizontal, Trash2, Clock, Upload, Layers, Check, Pencil, Copy, CopyPlus, Home, Folder as FolderIcon, X, ExternalLink, Move as MoveIcon, Download, Link as LinkIcon } from 'lucide-react';
 import { formatDuration, formatBytes } from '@/lib/utils';
 import type { Asset, Folder } from '@/types';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { ContextMenu } from '@/components/ui/ContextMenu';
+import type { MenuItem } from '@/components/ui/ContextMenu';
 import { useAuth } from '@/hooks/useAuth';
 import { useUpload } from '@/hooks/useAssets';
 import toast from 'react-hot-toast';
@@ -17,12 +19,13 @@ interface AssetCardProps {
   onVersionUploaded?: () => void;
   onCopied?: () => void;
   onDuplicated?: () => void;
+  onRequestMove?: () => void;
   isSelected?: boolean;
   onToggleSelect?: (e: React.MouseEvent) => void;
   onDragStart?: (e: React.DragEvent) => void;
 }
 
-export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, onCopied, onDuplicated, isSelected, onToggleSelect, onDragStart }: AssetCardProps) {
+export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, onCopied, onDuplicated, onRequestMove, isSelected, onToggleSelect, onDragStart }: AssetCardProps) {
   const { getIdToken } = useAuth();
   const { uploadFile } = useUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36,6 +39,7 @@ export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, onCopi
   const [allFolders, setAllFolders] = useState<Folder[]>([]);
   const signedUrl = (asset as any).signedUrl as string | undefined;
   const thumbnailUrl = (asset as any).thumbnailSignedUrl as string | undefined;
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   // When a video element loads its metadata, seek to a non-black frame
   const handleVideoMetadata = useCallback(() => {
@@ -163,6 +167,24 @@ export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, onCopi
     }
   };
 
+  const handleDownload = () => {
+    if (!signedUrl) return;
+    const a = document.createElement('a');
+    a.href = signedUrl;
+    a.download = asset.name;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleGetLink = () => {
+    const url = `${window.location.origin}/projects/${asset.projectId}/assets/${asset.id}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Link copied');
+  };
+
   const isUploading = asset.status === 'uploading';
 
   return (
@@ -173,6 +195,12 @@ export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, onCopi
       draggable={!isUploading}
       onDragStart={isUploading ? undefined : onDragStart}
       onClick={isUploading ? undefined : onClick}
+      onContextMenu={(e) => {
+        if (isUploading) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenu({ x: e.clientX, y: e.clientY });
+      }}
       className={`group bg-frame-card border rounded-xl overflow-hidden transition-all ${
         isUploading
           ? 'opacity-60 border-frame-border'
@@ -368,6 +396,22 @@ export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, onCopi
           onClose={() => setShowVersionModal(false)}
           onDeleted={onDeleted}
           getIdToken={getIdToken}
+        />
+      )}
+      {contextMenu && (
+        <ContextMenu
+          position={contextMenu}
+          onClose={() => setContextMenu(null)}
+          items={[
+            { label: 'Open', icon: <ExternalLink className="w-4 h-4" />, onClick: () => onClick?.() },
+            { label: 'Rename', icon: <Pencil className="w-4 h-4" />, onClick: handleRename },
+            { label: 'Duplicate', icon: <CopyPlus className="w-4 h-4" />, onClick: handleDuplicate },
+            { label: 'Copy to', icon: <Copy className="w-4 h-4" />, onClick: openCopyTo },
+            { label: 'Move to', icon: <MoveIcon className="w-4 h-4" />, onClick: () => onRequestMove?.() },
+            { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: handleDownload },
+            { label: 'Get link', icon: <LinkIcon className="w-4 h-4" />, onClick: handleGetLink },
+            { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDelete, danger: true, dividerBefore: true },
+          ]}
         />
       )}
     </>
