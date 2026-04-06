@@ -16,7 +16,7 @@ v1.2 milestone — bug fixes + feature expansion based on Notion spec "In house 
 - [x] **Phase 8: project-sidebar** - Collapsible project tree sidebar (completed 2026-04-06)
 - [x] **Phase 9: review-link-enhancements** - Allow downloads, advanced settings, folder share links, links manager tab (completed 2026-04-06)
 - [x] **Phase 10: list-view** - List/grid toggle with date uploaded + uploaded by columns (completed 2026-04-06)
-- [ ] **Phase 11: nice-to-have** - Guest name prompt for external commenters + shorter review link URLs
+- [ ] **Phase 11: nice-to-have** - Guest name prompt + short review link tokens + right-click context menus on assets/folders and empty canvas
 
 ## Phase Details
 
@@ -148,11 +148,20 @@ Plans:
   4. Toggle state persists per folder (localStorage)
 
 ### Phase 11: nice-to-have
-**Goal**: (a) Prompt external guest reviewers for a display name the first time they open a review link — stored in localStorage so only asked once. (b) Shorten review link URLs to 6-8 char alphanumeric tokens.
+**Goal**: (a) Prompt external guest reviewers for a display name the first time they open a review link — stored in localStorage so only asked once. (b) Shorten review link URLs to 6-8 char alphanumeric tokens. (c) Right-click context menu on asset/folder cards with actions: Open, Rename, Duplicate, Copy to, Move to, Download, Get link, Delete. (d) Right-click context menu on empty canvas space with actions: New Folder, Upload files, Upload folder.
 **Depends on**: Phase 10
-**Requirements**: REQ-11A, REQ-11B
+**Requirements**: REQ-11A, REQ-11B, REQ-11C, REQ-11D
+**Plans:** 2 plans
+
+Plans:
+- [ ] 11-01-PLAN.md — Short review link tokens (nanoid) + guest name localStorage prompt
+- [ ] 11-02-PLAN.md — ContextMenu component + right-click on cards, list rows, and empty canvas
+
 **Success Criteria** (what must be TRUE):
   1. First-time visitor to a review link sees a name prompt before accessing content
   2. Name stored in localStorage — not prompted again on same browser
   3. Guest comments show the entered name instead of "Guest"
   4. Review link URLs use a short alphanumeric token (6-8 chars) instead of UUID
+  5. Right-clicking an asset or folder card shows a context menu with: Open, Rename, Duplicate, Copy to, Move to, Download, Get link, Delete
+  6. Right-clicking empty space in the file browser shows: New Folder, Upload files, Upload folder
+  7. Context menus dismiss on outside click or Escape key
