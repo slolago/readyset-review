@@ -94,3 +94,12 @@ None - no external service configuration required.
 ---
 *Phase: 06-asset-context-menu*
 *Completed: 2026-04-06*
+
+## Self-Check: PASSED
+
+- AssetCard.tsx: FOUND
+- FolderBrowser.tsx: FOUND
+- 06-01-SUMMARY.md: FOUND
+- Commit d95ff2cf (Task 1): FOUND
+- Commit 2b943357 (Task 2): FOUND
+- Commit ae953a94 (docs): FOUND

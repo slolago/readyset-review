@@ -11,7 +11,7 @@ v1.2 milestone — bug fixes + feature expansion based on Notion spec "In house 
 - [x] **Phase 3: drag-to-move** - Drag assets into folders
 - [x] **Phase 4: folder-drop-import** - OS folder drag-and-drop import
 - [x] **Phase 5: bug-fixes** - Fix review link broken + upload stuck (completed 2026-04-06)
-- [ ] **Phase 6: asset-context-menu** - Rename, Copy to, Duplicate in context menu
+- [x] **Phase 6: asset-context-menu** - Rename, Copy to, Duplicate in context menu (completed 2026-04-06)
 - [ ] **Phase 7: version-management** - Version badges, manage version stack UI
 - [ ] **Phase 8: project-sidebar** - Collapsible project tree sidebar
 - [ ] **Phase 9: review-link-enhancements** - Allow downloads, advanced settings, folder share links, links manager tab
@@ -84,7 +84,7 @@ Plans:
 **Goal**: Add Rename, Copy to, and Duplicate actions to the asset context menu (MoreHorizontal dropdown on asset cards and folder cards).
 **Depends on**: Phase 5
 **Requirements**: REQ-06A, REQ-06B, REQ-06C
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 06-01-PLAN.md — Rename action for asset and folder cards (inline editing, Enter/blur saves, Escape cancels)
