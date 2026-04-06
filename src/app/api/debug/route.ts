@@ -30,5 +30,10 @@ export async function GET() {
     result.firebaseInit = 'FAILED: ' + (e instanceof Error ? e.message : String(e));
   }
 
+  // 4. Add build info
+  result.gitCommit = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ?? 'local';
+  result.deploymentUrl = process.env.VERCEL_URL ?? 'local';
+  result.nodeEnv = process.env.NODE_ENV ?? 'unknown';
+
   return NextResponse.json(result);
 }
