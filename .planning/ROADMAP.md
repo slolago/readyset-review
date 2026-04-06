@@ -136,6 +136,11 @@ Plans:
 **Goal**: Add a list/grid view toggle to the file browser. List view shows columns: Name, Status, Comments, Size, Date uploaded, Uploaded by.
 **Depends on**: Phase 9
 **Requirements**: REQ-10A, REQ-10B
+**Plans:** 1 plan
+
+Plans:
+- [ ] 10-01-PLAN.md — AssetListView component + FolderBrowser toggle with localStorage persistence
+
 **Success Criteria** (what must be TRUE):
   1. A toggle button switches between grid view and list view
   2. List view shows rows with: thumbnail, name, status, comment count, file size, upload date, uploader name
