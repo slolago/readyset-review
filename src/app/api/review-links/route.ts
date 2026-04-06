@@ -58,10 +58,10 @@ export async function POST(request: NextRequest) {
     };
     if (password) data.password = password;
 
-    const ref = await db.collection('reviewLinks').add(data);
-    const doc = await ref.get();
+    await db.collection('reviewLinks').doc(token).set(data);
+    const doc = await db.collection('reviewLinks').doc(token).get();
 
-    return NextResponse.json({ link: { id: ref.id, ...doc.data() } }, { status: 201 });
+    return NextResponse.json({ link: { id: token, ...doc.data() } }, { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Failed to create review link' }, { status: 500 });
   }
