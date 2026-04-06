@@ -13,15 +13,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { searchParams } = new URL(request.url);
     const providedPassword = searchParams.get('password');
 
-    // Find the review link
-    const snap = await db.collection('reviewLinks')
-      .where('token', '==', params.token)
-      .limit(1)
-      .get();
+    // Find the review link — use direct doc lookup (token IS the doc ID)
+    const doc = await db.collection('reviewLinks').doc(params.token).get();
 
-    if (snap.empty) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const doc = snap.docs[0];
     const link = { id: doc.id, ...doc.data() } as any;
 
     // Check expiry
@@ -96,19 +92,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const decoded = await getAdminAuth().verifyIdToken(authHeader.slice(7));
 
     const db = getAdminDb();
-    const snap = await db.collection('reviewLinks')
-      .where('token', '==', params.token)
-      .limit(1)
-      .get();
+    const doc = await db.collection('reviewLinks').doc(params.token).get();
 
-    if (snap.empty) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const link = snap.docs[0].data() as any;
+    const link = doc.data() as any;
     if (link.createdBy !== decoded.uid) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await snap.docs[0].ref.delete();
+    await doc.ref.delete();
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: 'Failed to delete review link' }, { status: 500 });
