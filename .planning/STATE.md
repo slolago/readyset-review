@@ -1,9 +1,25 @@
+---
+gsd_state_version: 1.0
+milestone: v1.2
+milestone_name: milestone
+status: unknown
+stopped_at: Completed 05-01-PLAN.md (2026-04-06)
+last_updated: "2026-04-06T15:51:26.274Z"
+progress:
+  total_phases: 11
+  completed_phases: 3
+  total_plans: 7
+  completed_plans: 6
+---
+
 # State
 
 ## Current Phase
+
 3
 
 ## Current Plan
+
 <<<<<<< HEAD
 Plan 01 complete — Phase 3 plan 01 done
 =======
@@ -11,31 +27,42 @@ Plan 02 complete — Phase 3 plan 02 done
 >>>>>>> worktree-agent-a3158d67
 
 ## Status
+
 in_progress
 
 ## Last Session
+
 <<<<<<< HEAD
-Stopped at: Completed 03-01-PLAN.md (2026-04-04)
+Stopped at: Completed 05-01-PLAN.md (2026-04-06)
 =======
 Stopped at: Completed 03-02-PLAN.md (2026-04-06)
 >>>>>>> worktree-agent-a3158d67
 
 ## Decisions
+
 - Using Playwright MCP for visual verification before pushing
 - Push to both origin (readyset-review) and vercel (readyset-review-vercel) after each phase
 - Keep Home icon import in FolderBrowser.tsx because it is also used for Project root button in move dialog
 - Named export (not default) for Breadcrumb to match Button.tsx / Spinner.tsx convention
 - Upload thumbnail via server-side route to avoid GCS CORS issues
 - Thumbnail route updates Firestore directly; complete endpoint no longer needs thumbnailGcsPath
+
 <<<<<<< HEAD
+
 - Use application/x-frame-move MIME type (not text/plain) so container drag handlers can distinguish internal item drags from OS file/folder drops
 - Drag payload logic lives in FolderBrowser where selectedIds is in scope; card components just forward the event
+
 =======
+
 - Used application/x-frame-move MIME type for drag-to-move dataTransfer payload (disambiguates from OS file drops)
 - Self-drop prevention checks if targetFolderId is in dragged IDs before calling move API
+
 >>>>>>> worktree-agent-a3158d67
 
+- [Phase 05-bug-fixes]: Use token as Firestore document ID for review links so GET/DELETE use strongly-consistent direct doc lookup instead of query
+
 ## Blockers
+
 (none)
 
 ## Performance Metrics
@@ -49,3 +76,4 @@ Stopped at: Completed 03-02-PLAN.md (2026-04-06)
 =======
 | 03-drag-to-move | 02 | 8 min | 2/2 | 1 |
 >>>>>>> worktree-agent-a3158d67
+| Phase 05-bug-fixes P01 | 1 | 2 tasks | 2 files |
