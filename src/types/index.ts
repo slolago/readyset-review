@@ -93,6 +93,9 @@ export interface ReviewLink {
   createdBy: string;
   expiresAt: Timestamp | null;
   allowComments: boolean;
+  allowDownloads?: boolean;   // default false — viewers can download assets
+  allowApprovals?: boolean;   // default false — viewers can approve/reject
+  showAllVersions?: boolean;  // default false — show all asset versions
   password?: string;
   createdAt: Timestamp;
 }

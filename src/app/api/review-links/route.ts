@@ -35,7 +35,8 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { name, projectId, folderId, allowComments, password, expiresAt } = await request.json();
+    const { name, projectId, folderId, allowComments, password, expiresAt,
+            allowDownloads, allowApprovals, showAllVersions } = await request.json();
 
     if (!name || !projectId) return NextResponse.json({ error: 'name and projectId required' }, { status: 400 });
 
@@ -53,6 +54,9 @@ export async function POST(request: NextRequest) {
       folderId: folderId || null,
       createdBy: user.id,
       allowComments: allowComments !== false,
+      allowDownloads: allowDownloads === true,
+      allowApprovals: allowApprovals === true,
+      showAllVersions: showAllVersions === true,
       expiresAt: expiresAt ? Timestamp.fromDate(new Date(expiresAt)) : null,
       createdAt: Timestamp.now(),
     };
