@@ -2,29 +2,25 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 05-01-PLAN.md (2026-04-06)
-last_updated: "2026-04-06T15:59:00.755Z"
+status: Executing Phase 06
+stopped_at: Completed 06-01-PLAN.md (2026-04-06)
+last_updated: "2026-04-06T17:45:00.000Z"
 progress:
   total_phases: 11
   completed_phases: 4
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
 ---
 
 # State
 
 ## Current Phase
 
-3
+6
 
 ## Current Plan
 
-<<<<<<< HEAD
-Plan 01 complete — Phase 3 plan 01 done
-=======
-Plan 02 complete — Phase 3 plan 02 done
->>>>>>> worktree-agent-a3158d67
+Plan 01 complete — Phase 6 plan 01 done
 
 ## Status
 
@@ -32,11 +28,7 @@ in_progress
 
 ## Last Session
 
-<<<<<<< HEAD
-Stopped at: Completed 05-01-PLAN.md (2026-04-06)
-=======
-Stopped at: Completed 03-02-PLAN.md (2026-04-06)
->>>>>>> worktree-agent-a3158d67
+Stopped at: Completed 06-01-PLAN.md (2026-04-06)
 
 ## Decisions
 
@@ -46,20 +38,12 @@ Stopped at: Completed 03-02-PLAN.md (2026-04-06)
 - Named export (not default) for Breadcrumb to match Button.tsx / Spinner.tsx convention
 - Upload thumbnail via server-side route to avoid GCS CORS issues
 - Thumbnail route updates Firestore directly; complete endpoint no longer needs thumbnailGcsPath
-
-<<<<<<< HEAD
-
 - Use application/x-frame-move MIME type (not text/plain) so container drag handlers can distinguish internal item drags from OS file/folder drops
 - Drag payload logic lives in FolderBrowser where selectedIds is in scope; card components just forward the event
-
-=======
-
-- Used application/x-frame-move MIME type for drag-to-move dataTransfer payload (disambiguates from OS file drops)
 - Self-drop prevention checks if targetFolderId is in dragged IDs before calling move API
-
->>>>>>> worktree-agent-a3158d67
-
 - [Phase 05-bug-fixes]: Use token as Firestore document ID for review links so GET/DELETE use strongly-consistent direct doc lookup instead of query
+- [Phase 06-01]: Reuse onDeleted in AssetCard as post-rename refresh trigger; divider on Delete item, not Rename
+- [Phase 06-01]: FolderCard onRename threads fetchFolders from FolderBrowser for consistent refresh pattern
 
 ## Blockers
 
@@ -71,9 +55,7 @@ Stopped at: Completed 03-02-PLAN.md (2026-04-06)
 | ----- | ---- | -------- | ----- | ----- |
 | 01-breadcrumb-nav | 01 | 5 min | 2/2 | 2 |
 | 02-video-thumbnails-fix | 02 | 8 min | 3/3 | 4 |
-<<<<<<< HEAD
 | 03-drag-to-move | 01 | 8 min | 2/2 | 3 |
-=======
 | 03-drag-to-move | 02 | 8 min | 2/2 | 1 |
->>>>>>> worktree-agent-a3158d67
-| Phase 05-bug-fixes P01 | 1 | 2 tasks | 2 files |
+| 05-bug-fixes | 01 | 2 min | 2/2 | 2 |
+| 06-asset-context-menu | 01 | 10 min | 2/2 | 2 |

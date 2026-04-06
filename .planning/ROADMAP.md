@@ -84,6 +84,12 @@ Plans:
 **Goal**: Add Rename, Copy to, and Duplicate actions to the asset context menu (MoreHorizontal dropdown on asset cards and folder cards).
 **Depends on**: Phase 5
 **Requirements**: REQ-06A, REQ-06B, REQ-06C
+**Plans:** 2 plans
+
+Plans:
+- [x] 06-01-PLAN.md — Rename action for asset and folder cards (inline editing, Enter/blur saves, Escape cancels)
+- [ ] 06-02-PLAN.md — Copy to and Duplicate actions
+
 **Success Criteria** (what must be TRUE):
   1. Context menu has "Rename" — clicking it makes the filename inline-editable and saves on Enter/blur
   2. "Copy to" opens a folder picker and duplicates the asset to the selected folder
