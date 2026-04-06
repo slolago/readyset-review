@@ -69,6 +69,12 @@ Plans:
 **Goal**: Fix two production bugs: (1) review links show "Link not found or expired" immediately after creation; (2) video upload gets stuck at "Uploading..." and never completes for subsequent uploads.
 **Depends on**: Phase 4
 **Requirements**: REQ-B01, REQ-B02
+**Plans:** 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Fix review link "Link not found or expired" on fresh links
+- [x] 05-02-PLAN.md — Fix upload stuck at "Uploading..." for subsequent uploads
+
 **Success Criteria** (what must be TRUE):
   1. A newly created review link is accessible immediately at its URL
   2. Uploading a second video to the same folder completes successfully
