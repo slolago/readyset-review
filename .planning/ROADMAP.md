@@ -88,7 +88,7 @@ Plans:
 
 Plans:
 - [x] 06-01-PLAN.md — Rename action for asset and folder cards (inline editing, Enter/blur saves, Escape cancels)
-- [ ] 06-02-PLAN.md — Copy to and Duplicate actions
+- [x] 06-02-PLAN.md — Copy to and Duplicate actions
 
 **Success Criteria** (what must be TRUE):
   1. Context menu has "Rename" — clicking it makes the filename inline-editable and saves on Enter/blur
