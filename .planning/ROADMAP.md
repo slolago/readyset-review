@@ -10,7 +10,7 @@ v1.2 milestone — bug fixes + feature expansion based on Notion spec "In house 
 - [x] **Phase 2: video-thumbnails-fix** - Fix thumbnail frame + CORS in production
 - [x] **Phase 3: drag-to-move** - Drag assets into folders
 - [x] **Phase 4: folder-drop-import** - OS folder drag-and-drop import
-- [ ] **Phase 5: bug-fixes** - Fix review link broken + upload stuck
+- [x] **Phase 5: bug-fixes** - Fix review link broken + upload stuck (completed 2026-04-06)
 - [ ] **Phase 6: asset-context-menu** - Rename, Copy to, Duplicate in context menu
 - [ ] **Phase 7: version-management** - Version badges, manage version stack UI
 - [ ] **Phase 8: project-sidebar** - Collapsible project tree sidebar
@@ -69,7 +69,7 @@ Plans:
 **Goal**: Fix two production bugs: (1) review links show "Link not found or expired" immediately after creation; (2) video upload gets stuck at "Uploading..." and never completes for subsequent uploads.
 **Depends on**: Phase 4
 **Requirements**: REQ-B01, REQ-B02
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 05-01-PLAN.md — Fix review link "Link not found or expired" on fresh links
