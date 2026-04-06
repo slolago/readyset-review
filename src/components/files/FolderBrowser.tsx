@@ -641,14 +641,19 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
             Share
           </Button>
           <Button variant="secondary" size="sm" onClick={() => setShowCreateFolder(true)} icon={<Plus className="w-4 h-4" />}>
-            Folder
+            New Folder
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => folderInputRef.current?.click()} icon={<FolderOpen className="w-4 h-4" />}>
-            Folder
-          </Button>
-          <Button size="sm" onClick={() => fileInputRef.current?.click()} icon={<Upload className="w-4 h-4" />}>
-            Files
-          </Button>
+          <Dropdown
+            trigger={
+              <Button size="sm" icon={<Upload className="w-4 h-4" />}>
+                Upload
+              </Button>
+            }
+            items={[
+              { label: 'Upload files', icon: <Upload className="w-4 h-4" />, onClick: () => fileInputRef.current?.click() },
+              { label: 'Upload folder', icon: <FolderOpen className="w-4 h-4" />, onClick: () => folderInputRef.current?.click() },
+            ]}
+          />
         </div>
       </div>
 

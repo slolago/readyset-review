@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Film, Image as ImageIcon, ChevronUp, ChevronDown } from 'lucide-react';
 import { formatBytes, formatRelativeTime } from '@/lib/utils';
+import { useUserNames } from '@/hooks/useUserNames';
 import type { Asset } from '@/types';
 
 interface AssetListViewProps {
@@ -62,6 +63,9 @@ export function AssetListView({
       return sortDir === 'asc' ? cmp : -cmp;
     });
   }, [assets, sortKey, sortDir]);
+
+  const uploaderIds = useMemo(() => assets.map(a => a.uploadedBy).filter(Boolean), [assets]);
+  const uploaderNames = useUserNames(uploaderIds);
 
   if (assets.length === 0) return null;
 
@@ -142,6 +146,7 @@ export function AssetListView({
               selectedIds={selectedIds}
               onToggleSelect={onToggleSelect}
               onAssetDragStart={onAssetDragStart}
+              uploaderName={uploaderNames[asset.uploadedBy]}
             />
           ))}
         </tbody>
@@ -157,6 +162,7 @@ interface AssetListRowProps {
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string, e: React.MouseEvent) => void;
   onAssetDragStart?: (assetId: string, e: React.DragEvent) => void;
+  uploaderName?: string;
 }
 
 function AssetListRow({
@@ -166,6 +172,7 @@ function AssetListRow({
   selectedIds,
   onToggleSelect,
   onAssetDragStart,
+  uploaderName,
 }: AssetListRowProps) {
   const isSelected = selectedIds?.has(asset.id) ?? false;
   const isUploading = asset.status === 'uploading';
@@ -254,7 +261,9 @@ function AssetListRow({
 
       {/* Uploaded by */}
       <td className="px-3 py-2">
-        <span className="text-frame-textSecondary truncate max-w-[120px] block">{asset.uploadedBy}</span>
+        <span className="text-frame-textSecondary truncate max-w-[120px] block">
+          {uploaderName ?? asset.uploadedBy}
+        </span>
       </td>
     </tr>
   );
