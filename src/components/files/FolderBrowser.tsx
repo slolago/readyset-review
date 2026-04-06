@@ -57,6 +57,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [folderReviewTarget, setFolderReviewTarget] = useState<string | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [allFolders, setAllFolders] = useState<FolderType[]>([]);
 
@@ -705,6 +706,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
                   onDragOver={(e) => handleFolderDragOver(folder.id, e)}
                   onDragLeave={(e) => handleFolderDragLeave(folder.id, e)}
                   onDrop={(e) => handleFolderDrop(folder.id, e)}
+                  onCreateReviewLink={() => setFolderReviewTarget(folder.id)}
                 />
               ))}
             </div>
@@ -819,6 +821,14 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
         />
       )}
 
+      {folderReviewTarget !== null && (
+        <CreateReviewLinkModal
+          projectId={projectId}
+          folderId={folderReviewTarget}
+          onClose={() => setFolderReviewTarget(null)}
+        />
+      )}
+
       {showMoveModal && (
         <MoveModal
           folders={allFolders}
@@ -851,6 +861,7 @@ function FolderCard({
   onDragOver,
   onDragLeave,
   onDrop,
+  onCreateReviewLink,
 }: {
   folder: FolderType;
   projectId: string;
@@ -868,6 +879,7 @@ function FolderCard({
   onDragOver?: (e: React.DragEvent) => void;
   onDragLeave?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
+  onCreateReviewLink?: () => void;
 }) {
   const router = useRouter();
   const { getIdToken } = useAuth();
@@ -960,6 +972,7 @@ function FolderCard({
               { label: 'Rename', icon: <Pencil className="w-4 h-4" />, onClick: handleRenameFolder },
               { label: 'Copy to', icon: <Copy className="w-4 h-4" />, onClick: handleOpenCopyModal },
               { label: 'Duplicate', icon: <CopyPlus className="w-4 h-4" />, onClick: onDuplicate ?? (() => {}) },
+              { label: 'Create review link', icon: <LinkIcon className="w-4 h-4" />, onClick: onCreateReviewLink ?? (() => {}), divider: true },
               { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: onDelete, danger: true, divider: true },
             ]}
           />
