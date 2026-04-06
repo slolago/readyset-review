@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 07-01-PLAN.md (2026-04-06)
-last_updated: "2026-04-06T17:41:19.154Z"
+status: Executing Phase 08
+stopped_at: Completed 08-01-PLAN.md (2026-04-06)
+last_updated: "2026-04-06T00:08:00Z"
 progress:
   total_phases: 11
   completed_phases: 6
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 12
+  completed_plans: 11
 ---
 
 # State
 
 ## Current Phase
 
-7
+8
 
 ## Current Plan
 
-Plan 01 complete — Phase 7 plan 01 done
+Plan 01 complete — Phase 8 plan 01 done
 
 ## Status
 
@@ -28,7 +28,7 @@ in_progress
 
 ## Last Session
 
-Stopped at: Completed 07-01-PLAN.md (2026-04-06)
+Stopped at: Completed 08-01-PLAN.md (2026-04-06)
 
 ## Decisions
 
@@ -49,6 +49,8 @@ Stopped at: Completed 07-01-PLAN.md (2026-04-06)
 - [Phase 06-02]: ensureAllFolders lazy-loads folder tree for copy modal; skips if already populated
 - [Phase 07-01]: VersionStackModal co-located in AssetCard.tsx following AssetFolderPickerModal pattern
 - [Phase 07-01]: Delete button hidden (not disabled) when versions.length === 1 — unambiguous UX, no accidental last-version delete
+- [Phase 08-01]: Lazy folder loading on first expand to avoid N+1 fetches; error marks foldersLoaded=true to prevent infinite retries
+- [Phase 08-01]: treeNodes synced from useProjects() via Map lookup preserving expanded/foldersLoaded state across project list refreshes
 
 ## Blockers
 
@@ -66,3 +68,4 @@ Stopped at: Completed 07-01-PLAN.md (2026-04-06)
 | 06-asset-context-menu | 01 | 10 min | 2/2 | 2 |
 | 06-asset-context-menu | 02 | 18 min | 2/2 | 5 |
 | 07-version-management | 01 | 2 min | 2/2 | 1 |
+| 08-project-sidebar | 01 | 8 min | 2/2 | 2 |

@@ -110,6 +110,11 @@ Plans:
 **Goal**: Add a collapsible left sidebar showing a tree of all projects and their top-level folders. Clicking a project or folder navigates to it.
 **Depends on**: Phase 7
 **Requirements**: REQ-08A, REQ-08B
+**Plans:** 1/? plans complete
+
+Plans:
+- [x] 08-01-PLAN.md — useProjectTree hook + ProjectTreeNav collapsible tree component (2026-04-06)
+
 **Success Criteria** (what must be TRUE):
   1. A sidebar panel is visible on the left side of the app layout
   2. Projects are listed with a collapse/expand toggle showing their folders
