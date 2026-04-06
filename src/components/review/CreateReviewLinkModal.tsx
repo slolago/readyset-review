@@ -22,6 +22,9 @@ export function CreateReviewLinkModal({
   const { getIdToken } = useAuth();
   const [name, setName] = useState('Review Link');
   const [allowComments, setAllowComments] = useState(true);
+  const [allowDownloads, setAllowDownloads] = useState(false);
+  const [allowApprovals, setAllowApprovals] = useState(false);
+  const [showAllVersions, setShowAllVersions] = useState(false);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [createdLink, setCreatedLink] = useState<string | null>(null);
@@ -43,6 +46,9 @@ export function CreateReviewLinkModal({
           projectId,
           folderId: folderId || null,
           allowComments,
+          allowDownloads,
+          allowApprovals,
+          showAllVersions,
           password: password || undefined,
         }),
       });
@@ -109,26 +115,94 @@ export function CreateReviewLinkModal({
             onChange={(e) => setName(e.target.value)}
           />
 
-          <div className="flex items-center justify-between py-2">
-            <div>
-              <p className="text-sm font-medium text-white">Allow comments</p>
-              <p className="text-xs text-frame-textMuted mt-0.5">
-                Viewers can leave comments and annotations
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setAllowComments((v) => !v)}
-              className={`relative w-11 h-6 rounded-full transition-colors ${
-                allowComments ? 'bg-frame-accent' : 'bg-frame-border'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                  allowComments ? 'translate-x-5' : 'translate-x-0'
+          <div className="space-y-1 divide-y divide-frame-border/40">
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium text-white">Allow comments</p>
+                <p className="text-xs text-frame-textMuted mt-0.5">
+                  Viewers can leave comments and annotations
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAllowComments((v) => !v)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${
+                  allowComments ? 'bg-frame-accent' : 'bg-frame-border'
                 }`}
-              />
-            </button>
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                    allowComments ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium text-white">Allow downloads</p>
+                <p className="text-xs text-frame-textMuted mt-0.5">
+                  Viewers can download the original files
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAllowDownloads((v) => !v)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${
+                  allowDownloads ? 'bg-frame-accent' : 'bg-frame-border'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                    allowDownloads ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium text-white">Allow approvals</p>
+                <p className="text-xs text-frame-textMuted mt-0.5">
+                  Viewers can approve or request changes
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAllowApprovals((v) => !v)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${
+                  allowApprovals ? 'bg-frame-accent' : 'bg-frame-border'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                    allowApprovals ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium text-white">Show all versions</p>
+                <p className="text-xs text-frame-textMuted mt-0.5">
+                  Viewers see all asset versions, not just the latest
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllVersions((v) => !v)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${
+                  showAllVersions ? 'bg-frame-accent' : 'bg-frame-border'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                    showAllVersions ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
           <Input
