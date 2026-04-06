@@ -83,6 +83,36 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { getAdminAuth } = await import('@/lib/firebase-admin');
+    const decoded = await getAdminAuth().verifyIdToken(authHeader.slice(7));
+
+    const { name } = await request.json();
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return NextResponse.json({ error: 'name required' }, { status: 400 });
+    }
+
+    const db = getAdminDb();
+    const doc = await db.collection('reviewLinks').doc(params.token).get();
+
+    if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    const link = doc.data() as any;
+    if (link.createdBy !== decoded.uid) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    await doc.ref.update({ name: name.trim() });
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: 'Failed to update review link' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const authHeader = request.headers.get('Authorization');
