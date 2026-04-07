@@ -338,10 +338,16 @@ Plans:
 
 ### Phase 22: asset-download-button — Download button inside the asset viewer page
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Add a Download button to the asset viewer header that triggers a forced-to-disk download of the currently displayed asset (or active version). Wire downloadUrl generation into the single-asset API endpoint.
+**Requirements**: P22-01, P22-02, P22-03, P22-04
 **Depends on:** Phase 21
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 22 to break down)
+- [ ] 22-01-PLAN.md — Add downloadUrl to single-asset API + Download button in viewer header
+
+**Success Criteria** (what must be TRUE):
+  1. Download button visible in asset viewer header for ready assets
+  2. Clicking Download triggers file save to disk (not opens in browser tab)
+  3. Download works after switching versions
+  4. No download button for uploading/pending assets
