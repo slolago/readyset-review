@@ -12,6 +12,7 @@ import { CommentSidebar } from '@/components/viewer/CommentSidebar';
 import { VideoPlayer, VideoPlayerHandle } from '@/components/viewer/VideoPlayer';
 import { ImageViewer, ImageViewerHandle } from '@/components/viewer/ImageViewer';
 import { Spinner } from '@/components/ui/Spinner';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ReviewData {
   reviewLink: ReviewLink;
@@ -47,6 +48,8 @@ export default function ReviewPage() {
   const [displayShapes, setDisplayShapes] = useState<string | null>(null);
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
 
+  const { user, loading: authLoading } = useAuth();
+
   const fetchReview = async (pwd?: string) => {
     try {
       const qs = new URLSearchParams();
@@ -66,6 +69,12 @@ export default function ReviewPage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchReview(); }, [token]);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      setGuestInfo({ name: user.name, email: user.email });
+    }
+  }, [authLoading, user]);
 
   const fetchComments = useCallback(async (assetId: string) => {
     const res = await fetch(`/api/comments?assetId=${assetId}&reviewToken=${token}`);
@@ -242,7 +251,7 @@ export default function ReviewPage() {
 
   if (!data) return null;
 
-  if (!guestInfo && data.reviewLink.allowComments) {
+  if (!guestInfo && data.reviewLink.allowComments && !authLoading) {
     return (
       <div className="min-h-screen bg-frame-bg flex items-center justify-center">
         <ReviewGuestForm projectName={data.projectName} onSubmit={handleGuestSubmit} />
