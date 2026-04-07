@@ -3,24 +3,24 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
 status: Milestone complete
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-04-07T02:38:21.502Z"
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-04-07T12:04:22Z"
 progress:
   total_phases: 12
   completed_phases: 10
-  total_plans: 19
-  completed_plans: 18
+  total_plans: 20
+  completed_plans: 19
 ---
 
 # State
 
 ## Current Phase
 
-9
+13
 
 ## Current Plan
 
-Plan 01 complete — Phase 9 plan 01 done
+Plan 01 complete — Phase 13 plan 01 done
 
 ## Status
 
@@ -28,7 +28,7 @@ in_progress
 
 ## Last Session
 
-Stopped at: Completed 12-01-PLAN.md
+Stopped at: Completed 13-01-PLAN.md
 
 ## Decisions
 
@@ -62,10 +62,14 @@ Stopped at: Completed 12-01-PLAN.md
 - [Phase 11-nice-to-have]: Copy to excluded from AssetListView rows: AssetListRow does not own CopyModal state
 - [Phase 12-download-and-polish]: setTimeout(0) wraps addEventListener in ContextMenu to prevent opening mousedown from firing onClose
 - [Phase 12-download-and-polish]: List view checkboxes use div+Check pattern (not native input) to match AssetCard grid style; row variant uses pointer-events-none
+- [Phase 13-01]: Dual signed URL strategy — signedUrl (no disposition) for inline playback, downloadUrl (attachment disposition) for forced download; downloadUrl only generated when allowDownloads is true
 
 ## Roadmap Evolution
 
 - Phase 12 added: download-and-polish — bulk download, select-all toggle, right-click dismiss fix, checkbox styling, perf optimisations
+- Phase 13 added: review-polish-and-fixes — force-download to disk, three-dot menu fix on review page, guest read-only enforcement
+- Phase 14 added: review-link-folders — virtual folder structure per review link inside projects, navigable from sidebar
+- Phase 15 added: dashboard-and-storage — real dashboard stats (projects/assets/collaborators/storage) + folder size at each route
 
 ## Blockers
 
@@ -89,3 +93,4 @@ Stopped at: Completed 12-01-PLAN.md
 | Phase 09-review-link-enhancements P02 | 15min | 3 tasks | 3 files |
 | Phase 11-nice-to-have P02 | 15min | 4 tasks | 5 files |
 | Phase 12-download-and-polish P01 | 8min | 1 tasks | 2 files |
+| 13-review-polish-and-fixes | 01 | 10 min | 2/2 | 5 |
