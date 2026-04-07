@@ -28,7 +28,11 @@ export default function ReviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState(false);
-  const [guestInfo, setGuestInfo] = useState<{ name: string; email: string } | null>(null);
+  const [guestInfo, setGuestInfo] = useState<{ name: string; email: string } | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const saved = localStorage.getItem('frame_guest_name');
+    return saved ? { name: saved, email: '' } : null;
+  });
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [currentTime, setCurrentTime] = useState(0);
@@ -177,6 +181,11 @@ export default function ReviewPage() {
     return false;
   };
 
+  const handleGuestSubmit = (info: { name: string; email: string }) => {
+    localStorage.setItem('frame_guest_name', info.name);
+    setGuestInfo(info);
+  };
+
   // ── Loading / error / password / guest screens ──────────────────────────
 
   if (loading) {
@@ -234,7 +243,7 @@ export default function ReviewPage() {
   if (!guestInfo && data.reviewLink.allowComments) {
     return (
       <div className="min-h-screen bg-frame-bg flex items-center justify-center">
-        <ReviewGuestForm projectName={data.projectName} onSubmit={setGuestInfo} />
+        <ReviewGuestForm projectName={data.projectName} onSubmit={handleGuestSubmit} />
       </div>
     );
   }

@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, canAccessProject, roleAtLeast } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { generateToken } from '@/lib/utils';
+import { customAlphabet } from 'nanoid';
+
+const generateShortToken = customAlphabet(
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+  8
+);
 
 export async function GET(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -44,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     if (!roleAtLeast(user, 'manager')) return NextResponse.json({ error: 'Forbidden: manager role required to create review links' }, { status: 403 });
 
-    const token = generateToken();
+    const token = generateShortToken();
     const db = getAdminDb();
 
     const data: Record<string, unknown> = {
