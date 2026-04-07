@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
 status: Milestone complete
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-04-07T12:07:48Z"
+stopped_at: Completed 13-03-PLAN.md
+last_updated: "2026-04-07T12:12:01.347Z"
 progress:
-  total_phases: 12
-  completed_phases: 10
-  total_plans: 20
-  completed_plans: 20
+  total_phases: 15
+  completed_phases: 11
+  total_plans: 22
+  completed_plans: 21
 ---
 
 # State
@@ -28,7 +28,7 @@ in_progress
 
 ## Last Session
 
-Stopped at: Completed 13-02-PLAN.md
+Stopped at: Completed 13-03-PLAN.md
 
 ## Decisions
 
@@ -64,6 +64,7 @@ Stopped at: Completed 13-02-PLAN.md
 - [Phase 12-download-and-polish]: List view checkboxes use div+Check pattern (not native input) to match AssetCard grid style; row variant uses pointer-events-none
 - [Phase 13-01]: Dual signed URL strategy — signedUrl (no disposition) for inline playback, downloadUrl (attachment disposition) for forced download; downloadUrl only generated when allowDownloads is true
 - [Phase 13-02]: createPortal to document.body with position:fixed from getBoundingClientRect() — canonical escape from overflow-hidden ancestors; dual-ref outside-click checks triggerRef AND panelRef
+- [Phase 13]: hideActions prop on AssetCard to suppress Dropdown and ContextMenu for guests; review page always passes hideActions
 
 ## Roadmap Evolution
 

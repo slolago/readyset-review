@@ -192,12 +192,12 @@ Plans:
 **Goal:** (a) Fix file downloads to force-download to disk instead of opening in browser — add responseDisposition to GCS signed URLs; (b) Fix three-dot menu appearance on the review link page; (c) Enforce guest read-only — guests on review links can only leave comments and download assets, no editing actions.
 **Requirements**: REQ-13A, REQ-13B, REQ-13C
 **Depends on:** Phase 12
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 13-01-PLAN.md — Download fix: generateDownloadSignedUrl with responseDisposition, update review-link API + download consumers
-- [ ] 13-02-PLAN.md — Dropdown portal fix: rewrite Dropdown.tsx to use createPortal with fixed positioning
-- [ ] 13-03-PLAN.md — Guest read-only: add hideActions prop to AssetCard, pass from review page
+- [x] 13-01-PLAN.md — Download fix: generateDownloadSignedUrl with responseDisposition, update review-link API + download consumers
+- [x] 13-02-PLAN.md — Dropdown portal fix: rewrite Dropdown.tsx to use createPortal with fixed positioning
+- [x] 13-03-PLAN.md — Guest read-only: add hideActions prop to AssetCard, pass from review page
 
 **Success Criteria** (what must be TRUE):
   1. Clicking Download on any asset triggers a browser file download to disk (not opens in new tab)
