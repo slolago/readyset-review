@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Video Review Polish
-status: defining_requirements
+status: planned
 stopped_at: ""
 last_updated: "2026-04-07T00:00:00Z"
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
-  total_plans: 0
+  total_plans: 8
   completed_plans: 0
 ---
 
@@ -16,7 +16,7 @@ progress:
 
 ## Current Phase
 
-Not started (defining requirements)
+Phase 23: timecode-frame-fix (next to plan)
 
 ## Current Plan
 
@@ -24,11 +24,11 @@ Not started (defining requirements)
 
 ## Status
 
-Defining requirements — Milestone v1.3 started 2026-04-07
+Planned — Milestone v1.3 roadmap complete (phases 23–28). Ready to plan Phase 23.
 
 ## Last Session
 
-Stopped at: Completed 22-01-PLAN.md
+Stopped at: ROADMAP.md + REQUIREMENTS.md created for v1.3
 
 ## Decisions
 

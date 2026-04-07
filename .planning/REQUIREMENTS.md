@@ -1,0 +1,164 @@
+# Requirements: v1.3 — Video Review Polish
+
+**Milestone:** v1.3
+**Status:** Active
+**Phases:** 23–28
+**Created:** 2026-04-07
+
+---
+
+## Overview
+
+6 features improving the video review experience: timecode accuracy, safe zone control, visual metadata, file info, asset comparison, and version stacking via drag-and-drop.
+
+---
+
+## Phase 23: timecode-frame-fix
+
+**Goal:** Fix the SMPTE timecode display not updating when stepping frame-by-frame.
+
+**Root cause:** The rAF loop in `VideoPlayer.tsx` has a `TIME_THRESHOLD = 0.25s` gate. One frame at 30fps is ~0.033s — below the threshold — so `setCurrentTime` is never called after `stepFrame()`, leaving the timecode frozen.
+
+| ID | Requirement |
+|----|-------------|
+| P23-01 | Stepping forward one frame (button or Shift+ArrowRight) immediately updates the SMPTE frame number in the timecode display |
+| P23-02 | Stepping backward one frame (button or Shift+ArrowLeft) immediately updates the SMPTE frame number |
+| P23-03 | Normal playback and scrubbing behavior are unchanged |
+| P23-04 | Fix applies to both the button handler and the keyboard handler |
+
+**Files:** `src/components/viewer/VideoPlayer.tsx` only.
+**API changes:** None.
+
+---
+
+## Phase 24: safe-zones-opacity
+
+**Goal:** Add an opacity slider to the safe zones controls so users can adjust overlay transparency.
+
+| ID | Requirement |
+|----|-------------|
+| P24-01 | An opacity slider appears in the video player controls bar immediately to the right of the SafeZoneSelector dropdown |
+| P24-02 | The slider is visible only when a safe zone overlay is active (`activeSafeZone !== null`) |
+| P24-03 | The slider controls overlay opacity from 0% to 100% (value 0.0–1.0), default 100% |
+| P24-04 | Dragging the slider immediately updates the overlay opacity (no confirm required) |
+| P24-05 | Opacity resets to 100% when a different safe zone is selected or the overlay is toggled off |
+| P24-06 | `SafeZonesOverlay` accepts an `opacity` prop applied as `style={{ opacity }}` on the `<img>` |
+
+**Files:** `src/components/viewer/SafeZonesOverlay.tsx`, `src/components/viewer/VideoPlayer.tsx`.
+**API changes:** None.
+
+---
+
+## Phase 25: comment-count-badge
+
+**Goal:** Show the comment count on AssetCard in grid view, matching the existing list view badge.
+
+| ID | Requirement |
+|----|-------------|
+| P25-01 | AssetCard in grid view shows a comment count badge when `_commentCount > 0` |
+| P25-02 | Badge shows the count number; counts above 99 show "99+" |
+| P25-03 | No badge is shown when `_commentCount` is 0 or absent |
+| P25-04 | Badge uses a speech-bubble icon (Lucide `MessageSquare` or `MessageCircle`) + number |
+| P25-05 | No new API calls — reads `asset._commentCount` from the existing response field |
+
+**Files:** `src/components/files/AssetCard.tsx` only.
+**API changes:** None.
+
+---
+
+## Phase 26: file-info-tab
+
+**Goal:** Add an "Info" tab to the asset viewer sidebar showing technical file metadata.
+
+| ID | Requirement |
+|----|-------------|
+| P26-01 | The asset viewer sidebar has a tab bar with "Comments" and "Info" tabs |
+| P26-02 | "Comments" tab is the default; all existing comment functionality is unchanged |
+| P26-03 | "Info" tab shows: filename, MIME type, file size (human-readable via `formatBytes`), duration (via `formatDuration`), resolution (`width × height`), aspect ratio (computed), uploaded by, upload date, version number |
+| P26-04 | FPS field shows "—" when not stored (not in Firestore; `frameRate?: number` added as optional field on `Asset` type for future use) |
+| P26-05 | Info tab works for both video and image assets; video-specific fields (duration) are hidden for images |
+| P26-06 | No new API routes — all displayed data comes from the existing `GET /api/assets/[assetId]` response |
+
+**Files:** `src/app/(app)/projects/[projectId]/assets/[assetId]/page.tsx`, new `src/components/viewer/FileInfoPanel.tsx`, `src/types/index.ts`.
+**API changes:** None.
+
+---
+
+## Phase 27: asset-comparison
+
+**Goal:** Allow selecting 2 assets in the grid and opening a synchronized side-by-side comparison view.
+
+| ID | Requirement |
+|----|-------------|
+| P27-01 | When exactly 2 assets are selected, a "Compare" button appears in the multi-select action toolbar |
+| P27-02 | When more than 2 assets are selected, the Compare button is disabled with tooltip "Select exactly 2 assets to compare" |
+| P27-03 | Clicking Compare opens a full-screen modal showing both assets side by side |
+| P27-04 | Each panel displays the asset name above the player |
+| P27-05 | A shared Play/Pause button controls both videos simultaneously |
+| P27-06 | A shared scrubber/timeline seeks both players to the same time |
+| P27-07 | Audio plays from one side only; a toggle button switches which side has audio |
+| P27-08 | An "Exit comparison" (×) button closes the modal and returns to the grid |
+| P27-09 | The modal reuses existing `signedUrl` from the already-fetched asset objects — no additional API calls |
+| P27-10 | Keyboard Space bar toggles play/pause for both players from the modal |
+
+**Files:** new `src/components/files/AssetCompareModal.tsx`, `src/components/files/FolderBrowser.tsx`.
+**API changes:** None.
+
+---
+
+## Phase 28: version-stack-dnd
+
+**Goal:** Implement drag-and-drop version stacking — dragging one asset onto another merges it into the target's version stack.
+
+### API
+
+| ID | Requirement |
+|----|-------------|
+| P28-01 | `POST /api/assets/merge-version` accepts `{ sourceId, targetId }` |
+| P28-02 | The endpoint fetches all docs in the source's version group and reassigns their `versionGroupId` to the target's group ID |
+| P28-03 | Version numbers are renumbered: source group members receive `version = maxTargetVersion + 1`, `+ 2`, etc. — no collisions |
+| P28-04 | The merge is performed in a single Firestore batch write (atomic) |
+| P28-05 | Self-merge (source ID == target ID) returns 400 |
+| P28-06 | Same-group merge (already in same stack) returns 400 |
+| P28-07 | Route requires authentication |
+
+### UI
+
+| ID | Requirement |
+|----|-------------|
+| P28-08 | Asset cards have a new drag MIME type `application/x-frame-version-stack` added alongside the existing `application/x-frame-move` payload |
+| P28-09 | When dragging an asset over another asset card (not a folder), the target card highlights with `border-frame-accent` (accent border) |
+| P28-10 | An `isDropTarget` prop (same pattern as folder cards) is passed into `AssetCard` from parent state — `React.memo` does not block the highlight |
+| P28-11 | Dropping an asset onto itself or onto a card in the same version group is a no-op with no visible feedback |
+| P28-12 | On successful drop, a toast confirms "Added [name] to version stack" |
+| P28-13 | After merge, the source card disappears from the grid and the target's version count badge increments (via `refetchAssets`) |
+| P28-14 | Dropping onto an uploading/pending asset is blocked |
+| P28-15 | Existing folder-move drag behavior is unchanged — folder drop targets continue to work as before |
+
+**Files:** new `src/app/api/assets/merge-version/route.ts`, `src/components/files/AssetCard.tsx`, `src/components/files/AssetGrid.tsx`, `src/components/files/FolderBrowser.tsx`.
+**API changes:** 1 new route.
+
+---
+
+## Traceability Summary
+
+| Phase | Requirements | Count |
+|-------|-------------|-------|
+| 23 timecode-frame-fix | P23-01 → P23-04 | 4 |
+| 24 safe-zones-opacity | P24-01 → P24-06 | 6 |
+| 25 comment-count-badge | P25-01 → P25-05 | 5 |
+| 26 file-info-tab | P26-01 → P26-06 | 6 |
+| 27 asset-comparison | P27-01 → P27-10 | 10 |
+| 28 version-stack-dnd | P28-01 → P28-15 | 15 |
+| **Total** | | **46** |
+
+---
+
+## Key Technical Constraints
+
+- **No new npm packages** — all features use existing browser APIs and repo code
+- **No ffprobe in v1.3** — fps/codec deferred; show "—" in file info tab
+- **Separate DnD MIME types** — `application/x-frame-version-stack` alongside `application/x-frame-move` to prevent move/stack ambiguity
+- **Atomic merge** — version group merge must be a Firestore batch (not individual PUTs) to prevent version number collisions
+- **Comment count** — read `asset._commentCount` from existing API field; no new Firestore queries
+- **Comparison modal** — use modal (not new route) to avoid signed URL re-fetch; reuse assets already in grid state
