@@ -4,9 +4,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { UserTable } from '@/components/admin/UserTable';
+import { ProjectsTable } from '@/components/admin/ProjectsTable';
 import { CreateUserModal } from '@/components/admin/CreateUserModal';
 import type { User } from '@/types';
-import { Shield, UserPlus, Users } from 'lucide-react';
+import { Shield, UserPlus, Users, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import toast from 'react-hot-toast';
 
@@ -16,6 +17,9 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [activeTab, setActiveTab] = useState<'users' | 'projects'>('users');
+  const [projects, setProjects] = useState<any[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
 
   useEffect(() => {
     if (user && user.role !== 'admin') router.replace('/dashboard');
@@ -38,9 +42,33 @@ export default function AdminPage() {
     }
   }, [getIdToken]);
 
+  const fetchProjects = useCallback(async () => {
+    setProjectsLoading(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/admin/projects', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProjects(data.projects);
+      }
+    } catch {
+      toast.error('Failed to load projects');
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, [getIdToken]);
+
   useEffect(() => {
     if (user?.role === 'admin') fetchUsers();
   }, [user, fetchUsers]);
+
+  useEffect(() => {
+    if (activeTab === 'projects' && projects.length === 0 && !projectsLoading) {
+      fetchProjects();
+    }
+  }, [activeTab, projects.length, projectsLoading, fetchProjects]);
 
   const handleRoleChange = async (userId: string, role: 'admin' | 'manager' | 'editor' | 'viewer') => {
     try {
@@ -101,7 +129,7 @@ export default function AdminPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">Admin Panel</h1>
-              <p className="text-frame-textSecondary text-sm">Manage users and permissions</p>
+              <p className="text-frame-textSecondary text-sm">Manage users, roles, and projects</p>
             </div>
           </div>
           <Button onClick={() => setShowCreate(true)} icon={<UserPlus className="w-4 h-4" />}>
@@ -111,8 +139,8 @@ export default function AdminPage() {
       </div>
       <div className="p-8 max-w-5xl mx-auto">
 
-      {/* Stats */}
-      {!loading && (
+      {/* Stats — only shown on Users tab */}
+      {activeTab === 'users' && !loading && (
         <div className="grid grid-cols-5 gap-4 mb-6">
           {[
             { label: 'Total users', value: users.length, icon: Users },
@@ -134,25 +162,62 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Users table */}
-      <div className="bg-frame-card border border-frame-border rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-frame-border flex items-center justify-between">
-          <div>
-            <h2 className="font-semibold text-white">Users</h2>
-            {!loading && (
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-frame-border mb-6">
+        {([
+          { key: 'users' as const, label: 'Users', icon: Users },
+          { key: 'projects' as const, label: 'All Projects', icon: FolderOpen },
+        ]).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === key
+                ? 'border-frame-accent text-white'
+                : 'border-transparent text-frame-textSecondary hover:text-white'
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'users' && (
+        <div className="bg-frame-card border border-frame-border rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-frame-border flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-white">Users</h2>
+              {!loading && (
+                <p className="text-frame-textSecondary text-xs mt-0.5">
+                  {users.length} {users.length === 1 ? 'user' : 'users'} registered
+                </p>
+              )}
+            </div>
+          </div>
+          <UserTable
+            users={users}
+            loading={loading}
+            onRoleChange={handleRoleChange}
+            onDelete={handleDelete}
+          />
+        </div>
+      )}
+
+      {activeTab === 'projects' && (
+        <div className="bg-frame-card border border-frame-border rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-frame-border">
+            <h2 className="font-semibold text-white">All Projects</h2>
+            {!projectsLoading && (
               <p className="text-frame-textSecondary text-xs mt-0.5">
-                {users.length} {users.length === 1 ? 'user' : 'users'} registered
+                {projects.length} {projects.length === 1 ? 'project' : 'projects'} in the system
               </p>
             )}
           </div>
+          <ProjectsTable projects={projects} loading={projectsLoading} />
         </div>
-        <UserTable
-          users={users}
-          loading={loading}
-          onRoleChange={handleRoleChange}
-          onDelete={handleDelete}
-        />
-      </div>
+      )}
 
       {showCreate && (
         <CreateUserModal
