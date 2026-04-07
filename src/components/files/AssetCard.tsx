@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useRef, useCallback, useState, useEffect } from 'react';
+import { useRef, useCallback, useState, useEffect, memo } from 'react';
 import { Play, Image as ImageIcon, Film, MoreHorizontal, Trash2, Clock, Upload, Layers, Check, Pencil, Copy, CopyPlus, Home, Folder as FolderIcon, X, ExternalLink, Move as MoveIcon, Download, Link as LinkIcon } from 'lucide-react';
 import { formatDuration, formatBytes, forceDownload } from '@/lib/utils';
 import type { Asset, Folder } from '@/types';
@@ -26,7 +26,7 @@ interface AssetCardProps {
   hideActions?: boolean;
 }
 
-export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, onCopied, onDuplicated, onRequestMove, isSelected, onToggleSelect, onDragStart, hideActions }: AssetCardProps) {
+export const AssetCard = memo(function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, onCopied, onDuplicated, onRequestMove, isSelected, onToggleSelect, onDragStart, hideActions }: AssetCardProps) {
   const { getIdToken } = useAuth();
   const { uploadFile } = useUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -416,7 +416,7 @@ export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, onCopi
       )}
     </>
   );
-}
+});
 
 // ── VersionStackModal ─────────────────────────────────────────────────────────
 

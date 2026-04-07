@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { CommentItem } from './CommentItem';
 import type { Asset, Comment } from '@/types';
 import { MessageSquare, Send, Clock, Pencil, X, Filter, CheckCircle2 } from 'lucide-react';
@@ -75,14 +75,19 @@ export function CommentSidebar({
     el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [selectedCommentId]);
 
-  // Sort top-level: timed ascending, untimed after
-  const topLevel = comments
-    .filter((c) => !c.parentId && (showResolved || !c.resolved))
-    .sort((a, b) => {
-      const aT = a.timestamp !== undefined, bT = b.timestamp !== undefined;
-      if (aT && bT) return (a.timestamp ?? 0) - (b.timestamp ?? 0);
-      if (aT) return -1; if (bT) return 1; return 0;
-    });
+  // Sort top-level: timed ascending, untimed after — memoized so it only
+  // recalculates when comments array or showResolved changes, not on every currentTime tick.
+  const topLevel = useMemo(
+    () =>
+      comments
+        .filter((c) => !c.parentId && (showResolved || !c.resolved))
+        .sort((a, b) => {
+          const aT = a.timestamp !== undefined, bT = b.timestamp !== undefined;
+          if (aT && bT) return (a.timestamp ?? 0) - (b.timestamp ?? 0);
+          if (aT) return -1; if (bT) return 1; return 0;
+        }),
+    [comments, showResolved]
+  );
 
   const getReplies = (id: string) => comments.filter((c) => c.parentId === id);
 

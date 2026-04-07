@@ -139,10 +139,20 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
       ctxRef.current?.close().catch(() => {});
     }, []);
 
-    // ── rAF draw ─────────────────────────────────────────────────────────────
+    // ── rAF draw — only runs while isPlaying to avoid CPU burn when paused ────
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
+
+      // When not playing, clear the canvas to blank and skip the loop entirely
+      if (!isPlaying) {
+        const c = canvas.getContext('2d');
+        if (c) c.clearRect(0, 0, canvas.width, canvas.height);
+        peaks.current    = [0, 0];
+        peakTimes.current = [0, 0];
+        peakDisp.current  = [0, 0];
+        return;
+      }
 
       const draw = () => {
         rafRef.current = requestAnimationFrame(draw);
@@ -159,8 +169,8 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
           return Math.sqrt(s / buf.length);
         };
 
-        const lL = isPlaying ? lvl(analyserLRef.current) : 0;
-        const lR = isPlaying ? lvl(analyserRRef.current) : 0;
+        const lL = lvl(analyserLRef.current);
+        const lR = lvl(analyserRRef.current);
 
         for (let ch = 0; ch < 2; ch++) {
           const lv = ch === 0 ? lL : lR;

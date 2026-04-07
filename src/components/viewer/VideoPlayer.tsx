@@ -110,15 +110,17 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     return () => { video.removeEventListener('loadedmetadata', computeVideoRect); ro.disconnect(); };
   }, [computeVideoRect]);
 
-  // rAF time tracking — t !== lastT prevents re-renders when paused and idle
+  // rAF time tracking — throttled so setCurrentTime/onTimeUpdate only fire
+  // when time changes by more than 0.25 s (or while scrubbing for smooth scrubber).
   useEffect(() => {
-    let lastT = -1;
+    let lastReported = -1;
+    const TIME_THRESHOLD = 0.25;
     const tick = () => {
       const v = videoRef.current;
       if (v) {
         const t = v.currentTime;
-        if (t !== lastT) {
-          lastT = t;
+        if (scrubbing || Math.abs(t - lastReported) >= TIME_THRESHOLD) {
+          lastReported = t;
           setCurrentTime(t);
           onTimeUpdate?.(t);
         }

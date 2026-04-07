@@ -55,18 +55,20 @@ export async function GET(request: NextRequest) {
       asset._commentCount = commentCountMap.get(asset.id) ?? 0;
     }
 
-    // Generate signed read URLs for all ready assets
+    // Generate signed read URLs for all ready assets — parallelized per asset and across assets
     const assets = await Promise.all(
       grouped.map(async (asset: any) => {
-        if (asset.gcsPath && asset.status === 'ready') {
-          asset.signedUrl = await generateReadSignedUrl(asset.gcsPath, 120);
-        }
-        if (asset.thumbnailGcsPath && asset.status === 'ready') {
-          asset.thumbnailSignedUrl = await generateReadSignedUrl(asset.thumbnailGcsPath, 120);
-        }
-        if (asset.gcsPath && asset.status === 'ready') {
-          try { asset.downloadUrl = await generateDownloadSignedUrl(asset.gcsPath, asset.name); } catch {}
-        }
+        if (asset.status !== 'ready') return asset;
+        const [signedUrl, thumbnailSignedUrl, downloadUrl] = await Promise.all([
+          asset.gcsPath ? generateReadSignedUrl(asset.gcsPath, 120) : Promise.resolve(undefined),
+          asset.thumbnailGcsPath ? generateReadSignedUrl(asset.thumbnailGcsPath, 120) : Promise.resolve(undefined),
+          asset.gcsPath
+            ? generateDownloadSignedUrl(asset.gcsPath, asset.name).catch(() => undefined)
+            : Promise.resolve(undefined),
+        ]);
+        if (signedUrl !== undefined) asset.signedUrl = signedUrl;
+        if (thumbnailSignedUrl !== undefined) asset.thumbnailSignedUrl = thumbnailSignedUrl;
+        if (downloadUrl !== undefined) asset.downloadUrl = downloadUrl;
         return asset;
       })
     );

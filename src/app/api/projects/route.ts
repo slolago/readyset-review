@@ -9,15 +9,21 @@ export async function GET(request: NextRequest) {
 
   try {
     const db = getAdminDb();
-    const snap = await db.collection('projects').get();
-    const projects = snap.docs
+    // Fetch projects owned by this user directly via index query
+    const ownedSnap = await db.collection('projects').where('ownerId', '==', user.id).get();
+    const ownedIds = new Set(ownedSnap.docs.map((d) => d.id));
+    const ownedProjects = ownedSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    // Fetch all projects to find ones where user is a collaborator but not the owner
+    const allSnap = await db.collection('projects').get();
+    const collaboratorProjects = allSnap.docs
+      .filter((d) => !ownedIds.has(d.id))
       .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((p: any) => {
-        return (
-          p.ownerId === user.id ||
-          p.collaborators?.some((c: { userId: string }) => c.userId === user.id)
-        );
-      });
+      .filter((p: any) =>
+        p.collaborators?.some((c: { userId: string }) => c.userId === user.id)
+      );
+
+    const projects = [...ownedProjects, ...collaboratorProjects];
 
     return NextResponse.json({ projects });
   } catch (error) {
