@@ -30,13 +30,22 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
       if (e.key === 'Escape') onClose();
     };
     const handleScroll = () => onClose();
-    document.addEventListener('mousedown', handleMouseDown);
-    document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('scroll', handleScroll, true);
+
+    // Defer listener registration to next tick so the opening mousedown
+    // (which triggered this render) does not immediately fire onClose.
+    const timerId = setTimeout(() => {
+      document.addEventListener('mousedown', handleMouseDown);
+      document.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('blur', onClose);
+    }, 0);
+
     return () => {
+      clearTimeout(timerId);
       document.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('blur', onClose);
     };
   }, [onClose]);
 

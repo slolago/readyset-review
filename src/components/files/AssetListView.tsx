@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Film, Image as ImageIcon, ChevronUp, ChevronDown, Pencil, CopyPlus, Move, Download, Link as LinkIcon, Trash2, ExternalLink } from 'lucide-react';
+import { Film, Image as ImageIcon, ChevronUp, ChevronDown, Pencil, CopyPlus, Move, Download, Link as LinkIcon, Trash2, ExternalLink, Check } from 'lucide-react';
 import { formatBytes, formatRelativeTime } from '@/lib/utils';
 import { useUserNames } from '@/hooks/useUserNames';
 import { useAuth } from '@/hooks/useAuth';
@@ -101,15 +101,21 @@ export function AssetListView({
           <tr className="border-b border-frame-border text-left">
             {onToggleSelect && (
               <th className={headerCellClass} style={{ width: '2.5rem' }}>
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  ref={el => { if (el) el.indeterminate = someSelected; }}
-                  onChange={() => {}}
+                <div
                   onClick={handleSelectAllClick}
-                  className="w-4 h-4 accent-frame-accent cursor-pointer"
+                  className={`w-4 h-4 rounded border-2 flex items-center justify-center cursor-pointer transition-colors ${
+                    allSelected
+                      ? 'bg-frame-accent border-frame-accent'
+                      : someSelected
+                      ? 'bg-frame-accent/50 border-frame-accent'
+                      : 'bg-transparent border-white/30 hover:border-white/50'
+                  }`}
                   title={allSelected ? 'Deselect all' : 'Select all'}
-                />
+                >
+                  {(allSelected || someSelected) && (
+                    <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                  )}
+                </div>
               </th>
             )}
             <th className={`${headerCellClass} w-12`} />
@@ -290,12 +296,11 @@ function AssetListRow({
             onToggleSelect(asset.id, e);
           }}
         >
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => {}}
-            className="w-4 h-4 accent-frame-accent pointer-events-none"
-          />
+          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors pointer-events-none ${
+            isSelected ? 'bg-frame-accent border-frame-accent' : 'bg-transparent border-white/30'
+          }`}>
+            {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+          </div>
         </td>
       )}
 
