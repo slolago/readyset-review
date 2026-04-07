@@ -1,6 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
+
+export interface VUMeterHandle {
+  resumeAudio: () => void;
+}
 
 interface VUMeterProps {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -18,7 +22,7 @@ function getSegmentColor(index: number): string {
   return '#ef4444'; // red
 }
 
-export function VUMeter({ videoRef, isPlaying }: VUMeterProps) {
+export const VUMeter = forwardRef<VUMeterHandle, VUMeterProps>(function VUMeter({ videoRef, isPlaying }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserLRef = useRef<AnalyserNode | null>(null);
@@ -33,6 +37,16 @@ export function VUMeter({ videoRef, isPlaying }: VUMeterProps) {
   const peaksRef = useRef<[number, number]>([0, 0]);
   const peakTimesRef = useRef<[number, number]>([0, 0]);
   const peakDisplayRef = useRef<[number, number]>([0, 0]);
+
+  // Expose resumeAudio so VideoPlayer can call it synchronously on user gesture
+  useImperativeHandle(ref, () => ({
+    resumeAudio: () => {
+      const ctx = audioCtxRef.current;
+      if (ctx && ctx.state !== 'running') {
+        ctx.resume().catch(() => {});
+      }
+    },
+  }));
 
   const connectAudio = useCallback(() => {
     const video = videoRef.current;
@@ -263,4 +277,6 @@ export function VUMeter({ videoRef, isPlaying }: VUMeterProps) {
       />
     </div>
   );
-}
+});
+
+VUMeter.displayName = 'VUMeter';
