@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
 status: Milestone complete
-stopped_at: Completed 15-01-PLAN.md
-last_updated: "2026-04-07T13:18:55.769Z"
+stopped_at: Completed 15-02-PLAN.md
+last_updated: "2026-04-07T13:24:02.312Z"
 progress:
   total_phases: 15
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 26
-  completed_plans: 24
+  completed_plans: 25
 ---
 
 # State
@@ -28,7 +28,7 @@ in_progress
 
 ## Last Session
 
-Stopped at: Completed 15-01-PLAN.md
+Stopped at: Completed 15-02-PLAN.md
 
 ## Decisions
 
@@ -70,6 +70,7 @@ Stopped at: Completed 15-01-PLAN.md
 - [Phase 14-review-link-folders]: Gate Review Links sidebar entry on foldersLoaded to prevent layout jump
 - [Phase 15]: collectionGroup with 30-id chunks used for cross-project asset aggregation in /api/stats
 - [Phase 15]: StatCard value typed as string|null — null triggers animate-pulse skeleton instead of a loading prop
+- [Phase 15]: Root-level assets excluded from folder-scoped size query; BFS used for recursive descendant traversal
 
 ## Roadmap Evolution
 
@@ -105,3 +106,4 @@ Stopped at: Completed 15-01-PLAN.md
 | 14-review-link-folders | 01 | 15 min | 3/3 | 3 |
 | Phase 14-review-link-folders P02 | 5 | 1 tasks | 1 files |
 | Phase 15 P01 | 8 | 2 tasks | 2 files |
+| Phase 15 P02 | 8 | 2 tasks | 2 files |
