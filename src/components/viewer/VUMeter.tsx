@@ -110,8 +110,10 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
 
       if (!src || typeof window === 'undefined') { audioElRef.current = null; return; }
 
-      const audio       = new Audio(src);
-      audio.preload     = 'none';
+      const audio        = new Audio();
+      audio.crossOrigin  = 'anonymous'; // required for createMediaElementSource on cross-origin GCS URLs
+      audio.preload      = 'auto';
+      audio.src          = src;
       audioElRef.current = audio;
 
       return () => {
