@@ -32,7 +32,8 @@ export default function DashboardPage() {
         })
         .catch(() => setStatsLoading(false))
     );
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getIdToken]);
 
   const recentProjects = projects.slice(0, 4);
 

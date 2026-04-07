@@ -63,6 +63,7 @@ export default function ReviewPage() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchReview(); }, [token]);
 
   const fetchComments = useCallback(async (assetId: string) => {
