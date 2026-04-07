@@ -58,7 +58,7 @@ function captureThumbnail(file: File): Promise<Blob | null> {
 export function useAssets(projectId?: string, folderId?: string | null) {
   const { getIdToken } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAssets = useCallback(async () => {

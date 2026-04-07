@@ -40,6 +40,21 @@ export async function GET(request: NextRequest) {
     // Sort by earliest version's createdAt (stack creation time) descending
     grouped.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
 
+    // Fetch comment counts for all assets in one query, grouped by assetId
+    const commentCountMap = new Map<string, number>();
+    try {
+      const commentsSnap = await db.collection('comments').where('projectId', '==', projectId).get();
+      for (const doc of commentsSnap.docs) {
+        const aid = doc.data().assetId as string | undefined;
+        if (aid) commentCountMap.set(aid, (commentCountMap.get(aid) ?? 0) + 1);
+      }
+    } catch {
+      // Non-fatal: comment counts stay 0 if query fails
+    }
+    for (const asset of grouped) {
+      asset._commentCount = commentCountMap.get(asset.id) ?? 0;
+    }
+
     // Generate signed read URLs for all ready assets
     const assets = await Promise.all(
       grouped.map(async (asset: any) => {

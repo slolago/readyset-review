@@ -340,7 +340,9 @@ function AssetListRow({
 
       {/* Comments */}
       <td className="px-3 py-2">
-        <span className="text-frame-textMuted">—</span>
+        <span className="text-frame-textMuted">
+          {(asset as any)._commentCount ?? 0}
+        </span>
       </td>
 
       {/* Size */}

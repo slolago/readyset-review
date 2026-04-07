@@ -28,18 +28,20 @@ export async function GET(request: NextRequest) {
     let assetCount = 0;
     let storageBytes = 0;
     if (projectIds.length > 0) {
-      const chunks: string[][] = [];
-      for (let i = 0; i < projectIds.length; i += 30) {
-        chunks.push(projectIds.slice(i, i + 30));
-      }
-      for (const chunk of chunks) {
-        const assetsSnap = await db
-          .collectionGroup('assets')
-          .where('projectId', 'in', chunk)
-          .get();
-        assetCount += assetsSnap.size;
-        for (const doc of assetsSnap.docs) {
-          storageBytes += (doc.data().size as number) || 0;
+      // Use per-project queries to avoid requiring a composite collectionGroup index
+      for (const pid of projectIds) {
+        try {
+          const assetsSnap = await db
+            .collection('assets')
+            .where('projectId', '==', pid)
+            .get();
+          assetCount += assetsSnap.size;
+          for (const doc of assetsSnap.docs) {
+            const s = doc.data().size;
+            storageBytes += typeof s === 'number' ? s : 0;
+          }
+        } catch {
+          // Non-fatal: skip this project's assets if the query fails
         }
       }
     }

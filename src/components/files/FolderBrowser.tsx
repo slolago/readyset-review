@@ -677,14 +677,9 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-8 py-4 border-b border-frame-border flex items-center justify-between bg-frame-sidebar">
-        {/* Breadcrumb + size badge */}
+        {/* Breadcrumb */}
         <div className="flex items-center gap-2 min-w-0">
           <Breadcrumb items={breadcrumbs} projectId={projectId} projectColor={color} />
-          {!folderSizeLoading && folderSize !== null && folderSize > 0 && (
-            <span className="text-xs text-frame-textMuted whitespace-nowrap flex-shrink-0">
-              {formatBytes(folderSize)}
-            </span>
-          )}
         </div>
 
         {/* Actions */}
@@ -1010,6 +1005,13 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
           onMove={handleMoveSelected}
           onClose={() => setShowMoveModal(false)}
         />
+      )}
+
+      {/* Folder size overlay */}
+      {!folderSizeLoading && folderSize !== null && folderSize > 0 && (
+        <div className="fixed bottom-6 right-6 z-10 bg-frame-card border border-frame-border rounded-lg px-3 py-1.5 text-xs text-frame-textMuted shadow-lg pointer-events-none">
+          {formatBytes(folderSize)}
+        </div>
       )}
     </div>
   );

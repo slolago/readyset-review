@@ -59,6 +59,8 @@ export interface Asset {
   version: number;
   versionGroupId: string;
   createdAt: Timestamp;
+  _versionCount?: number;
+  _commentCount?: number;
 }
 
 export interface AnnotationData {
