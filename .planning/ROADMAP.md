@@ -324,10 +324,10 @@ Plans:
 **Goal:** Add a "Projects" tab to the admin panel showing all projects system-wide with owner name/email and collaborator count. Clean up roles display by removing dead `UserRoleSelect.tsx` component.
 **Requirements**: P21-01, P21-02, P21-03, P21-04, P21-05
 **Depends on:** Phase 20
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 21-01-PLAN.md — Admin projects API + ProjectsTable + tab navigation + delete dead UserRoleSelect
+- [x] 21-01-PLAN.md — Admin projects API + ProjectsTable + tab navigation + delete dead UserRoleSelect
 
 **Success Criteria** (what must be TRUE):
   1. Admin page has "Users" and "All Projects" tabs

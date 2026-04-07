@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
 status: Milestone complete
-stopped_at: "Completed 20-01-PLAN.md"
-last_updated: "2026-04-07T20:12:22Z"
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-04-07T20:35:47.718Z"
 progress:
   total_phases: 22
-  completed_phases: 14
-  total_plans: 27
-  completed_plans: 27
+  completed_phases: 16
+  total_plans: 29
+  completed_plans: 28
 ---
 
 # State
@@ -28,7 +28,7 @@ in_progress
 
 ## Last Session
 
-Stopped at: Checkpoint: Task 2 human-verify for 19-01-PLAN.md
+Stopped at: Completed 21-01-PLAN.md
 
 ## Decisions
 
@@ -73,6 +73,7 @@ Stopped at: Checkpoint: Task 2 human-verify for 19-01-PLAN.md
 - [Phase 15]: Root-level assets excluded from folder-scoped size query; BFS used for recursive descendant traversal
 - [Phase 20-01]: UserSearchCombobox passes selectedUser.email to existing collaborators POST API — no API contract change needed
 - [Phase 20-01]: Firestore prefix search requires 2+ characters; name query is case-sensitive (v1 limitation, nameLower field can be added later)
+- [Phase 21-admin-panel-polish]: Delete UserRoleSelect.tsx (dead code, stale 'admin'|'user' two-value type) rather than fix it
 
 ## Roadmap Evolution
 
@@ -115,3 +116,4 @@ Stopped at: Checkpoint: Task 2 human-verify for 19-01-PLAN.md
 | Phase 15 P02 | 8 | 2 tasks | 2 files |
 | Phase 19-review-link-auth-skip P01 | 1min | 1 tasks | 1 files |
 | Phase 20-collaborator-invite-autocomplete P01 | 2min | 2 tasks | 3 files |
+| Phase 21-admin-panel-polish P01 | 2min | 2 tasks | 4 files |
