@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { Play, Image as ImageIcon, Film, MoreHorizontal, Trash2, Clock, Upload, Layers, Check, Pencil, Copy, CopyPlus, Home, Folder as FolderIcon, X, ExternalLink, Move as MoveIcon, Download, Link as LinkIcon } from 'lucide-react';
-import { formatDuration, formatBytes } from '@/lib/utils';
+import { formatDuration, formatBytes, forceDownload } from '@/lib/utils';
 import type { Asset, Folder } from '@/types';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { ContextMenu } from '@/components/ui/ContextMenu';
@@ -172,14 +172,7 @@ export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, onCopi
   const handleDownload = () => {
     const url = downloadUrl ?? signedUrl;
     if (!url) return;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = asset.name;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    forceDownload(url, asset.name);
   };
 
   const handleGetLink = () => {
@@ -405,7 +398,7 @@ export function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, onCopi
           getIdToken={getIdToken}
         />
       )}
-      {contextMenu && (
+      {contextMenu && !hideActions && (
         <ContextMenu
           position={contextMenu}
           onClose={() => setContextMenu(null)}

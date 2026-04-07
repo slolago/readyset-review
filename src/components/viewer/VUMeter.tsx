@@ -113,12 +113,20 @@ export function VUMeter({ videoRef, isPlaying }: VUMeterProps) {
     };
   }, [videoRef, connectAudio]);
 
-  // Resume AudioContext on play (autoplay policy)
+  // Resume AudioContext on play (autoplay policy) — listen to both prop and native event
   useEffect(() => {
     if (isPlaying && audioCtxRef.current?.state === 'suspended') {
       audioCtxRef.current.resume().catch(() => {});
     }
   }, [isPlaying]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const resume = () => audioCtxRef.current?.resume().catch(() => {});
+    video.addEventListener('play', resume);
+    return () => video.removeEventListener('play', resume);
+  }, [videoRef]);
 
   // rAF draw loop
   useEffect(() => {

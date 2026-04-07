@@ -110,6 +110,30 @@ export function getAssetType(mimeType: string): 'video' | 'image' | null {
   return null;
 }
 
+/** Force a file download without opening a new tab, even for cross-origin URLs. */
+export async function forceDownload(url: string, filename: string): Promise<void> {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+  } catch {
+    // Fallback: open in same tab if fetch fails (e.g. CORS without credentials)
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+
 export function debounce<T extends (...args: unknown[]) => unknown>(
   fn: T,
   delay: number

@@ -3,7 +3,7 @@
 import { useState, useMemo, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Film, Image as ImageIcon, ChevronUp, ChevronDown, Pencil, CopyPlus, Move, Download, Link as LinkIcon, Trash2, ExternalLink, Check } from 'lucide-react';
-import { formatBytes, formatRelativeTime } from '@/lib/utils';
+import { formatBytes, formatRelativeTime, forceDownload } from '@/lib/utils';
 import { useUserNames } from '@/hooks/useUserNames';
 import { useAuth } from '@/hooks/useAuth';
 import { ContextMenu } from '@/components/ui/ContextMenu';
@@ -252,14 +252,7 @@ function AssetListRow({
   const handleDownload = () => {
     const url = downloadUrl ?? signedUrl ?? thumbnailSignedUrl;
     if (!url) return;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = asset.name;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    forceDownload(url, asset.name);
   };
 
   const handleGetLink = () => {

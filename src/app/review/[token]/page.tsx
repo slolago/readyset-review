@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { Film, Lock, AlertCircle, ChevronLeft, Download } from 'lucide-react';
 import type { ReviewLink, Asset, Folder, Comment } from '@/types';
+import { forceDownload } from '@/lib/utils';
 import { AssetCard } from '@/components/files/AssetCard';
 import { ReviewHeader } from '@/components/review/ReviewHeader';
 import { ReviewGuestForm } from '@/components/review/ReviewGuestForm';
@@ -346,14 +347,7 @@ export default function ReviewPage() {
                         onClick={(e) => {
                           e.stopPropagation();
                           const url = ((asset as any).downloadUrl ?? (asset as any).signedUrl) as string;
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = asset.name;
-                          a.target = '_blank';
-                          a.rel = 'noopener noreferrer';
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
+                          forceDownload(url, asset.name);
                         }}
                         className="absolute bottom-14 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-frame-card/90 backdrop-blur-sm border border-frame-border rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 text-xs text-white hover:bg-frame-cardHover"
                       >

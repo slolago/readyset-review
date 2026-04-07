@@ -236,3 +236,52 @@ Plans:
   1. Dashboard shows real counts: projects, total assets across all projects, collaborators, total storage in human-readable format
   2. FolderBrowser shows total storage size for current location (sum of all assets in folder + subfolders)
   3. Storage size updates when navigating to different folders
+
+### Phase 16: critical-bug-fixes
+
+**Goal:** Fix 4 bugs: (a) flash of upload/empty screen when navigating — initialize useAssets loading=true; (b) dashboard stats broken — fix /api/stats; (c) folder size to bottom-right corner overlay; (d) Comments column shows real counts.
+**Requirements**: REQ-16A, REQ-16B, REQ-16C, REQ-16D
+**Depends on:** Phase 15
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD
+
+**Success Criteria:**
+  1. No flash of upload screen when navigating routes
+  2. Dashboard loads with real stats
+  3. Folder size in bottom-right corner overlay
+  4. Comments column shows actual counts
+
+### Phase 17: version-copy-and-realtime
+
+**Goal:** Fix 3 bugs: (a) review links show only latest version per asset; (b) Copy to copies entire version stack; (c) sidebar names update in real-time on rename.
+**Requirements**: REQ-17A, REQ-17B, REQ-17C
+**Depends on:** Phase 16
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD
+
+**Success Criteria:**
+  1. Review links show only latest version of each asset
+  2. Copy to copies all versions under new versionGroupId
+  3. Sidebar names update immediately on rename without page refresh
+
+### Phase 18: safe-zones-and-vumeter
+
+**Goal:** Add two features to the VideoPlayer: (a) Safe Zones overlay — a dropdown selector showing 14 platform-specific safe zone PNGs (TikTok, Reels, Stories, etc.) as semi-transparent overlays on the video, correctly letterbox/pillarbox aware; (b) VU Meter — real-time audio level meter using Web Audio API showing current levels and peaks.
+**Requirements**: REQ-18A, REQ-18B
+**Depends on:** Phase 17
+**Plans:** 2 plans
+
+Plans:
+- [ ] 18-01-PLAN.md — Safe zones overlay: selector UI + PNG overlay at videoRect coordinates
+- [ ] 18-02-PLAN.md — VU meter: Web Audio API analyser + real-time bar display
+
+**Success Criteria:**
+  1. A safe zones button in the video player controls opens a dropdown listing all 14 platforms
+  2. Selecting a platform overlays its PNG transparently on the video, aligned to the actual video frame
+  3. The overlay respects letterboxing/pillarboxing (uses videoRect)
+  4. The VU meter shows real-time audio levels with peak hold indicators
+  5. Both features work on review links and main asset viewer

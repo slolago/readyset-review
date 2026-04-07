@@ -35,7 +35,7 @@ import {
   Download,
 } from 'lucide-react';
 import type { Folder as FolderType, UploadItem } from '@/types';
-import { getProjectColor, formatBytes } from '@/lib/utils';
+import { getProjectColor, formatBytes, forceDownload } from '@/lib/utils';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { ContextMenu } from '@/components/ui/ContextMenu';
 import type { MenuItem } from '@/components/ui/ContextMenu';
@@ -317,33 +317,19 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
   const handleDownloadSelected = useCallback(async () => {
     const selectedAssets = assets.filter(a => selectedIds.has(a.id));
     for (const asset of selectedAssets) {
-      const url = (asset as any).signedUrl as string | undefined;
+      const url = (asset as any).downloadUrl ?? (asset as any).signedUrl as string | undefined;
       if (!url) continue;
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = asset.name;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      await new Promise(r => setTimeout(r, 100));
+      await forceDownload(url, asset.name);
+      await new Promise(r => setTimeout(r, 300));
     }
   }, [assets, selectedIds]);
 
   const handleDownloadAll = useCallback(async () => {
     for (const asset of assets) {
-      const url = (asset as any).signedUrl as string | undefined;
+      const url = (asset as any).downloadUrl ?? (asset as any).signedUrl as string | undefined;
       if (!url) continue;
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = asset.name;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      await new Promise(r => setTimeout(r, 100));
+      await forceDownload(url, asset.name);
+      await new Promise(r => setTimeout(r, 300));
     }
   }, [assets]);
 

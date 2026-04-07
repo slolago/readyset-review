@@ -503,7 +503,13 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
             <button onClick={toggleMute} className="text-white/60 hover:text-white transition-colors">
               {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
-            <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={handleVolumeChange} className="w-16 cursor-pointer" />
+            <input
+              type="range" min={0} max={1} step={0.05}
+              value={muted ? 0 : volume}
+              onChange={handleVolumeChange}
+              className="w-16 cursor-pointer appearance-none h-1 rounded-full outline-none"
+              style={{ background: `linear-gradient(to right, #7a00df 0%, #7a00df ${(muted ? 0 : volume) * 100}%, rgba(255,255,255,0.15) ${(muted ? 0 : volume) * 100}%, rgba(255,255,255,0.15) 100%)` }}
+            />
           </div>
 
           {/* Speed */}
