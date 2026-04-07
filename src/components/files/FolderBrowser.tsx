@@ -36,6 +36,8 @@ import {
 import type { Folder as FolderType, UploadItem } from '@/types';
 import { getProjectColor, formatBytes } from '@/lib/utils';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { ContextMenu } from '@/components/ui/ContextMenu';
+import type { MenuItem } from '@/components/ui/ContextMenu';
 import toast from 'react-hot-toast';
 import { CreateReviewLinkModal } from '@/components/review/CreateReviewLinkModal';
 
@@ -95,6 +97,9 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
 
   // Drag-to-move state (move selected items by dropping onto a folder card)
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+
+  // Canvas right-click context menu
+  const [canvasMenu, setCanvasMenu] = useState<{ x: number; y: number } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -296,6 +301,11 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
     }
     setShowMoveModal(true);
   };
+
+  const handleRequestMoveItem = useCallback(async (itemId: string) => {
+    setSelectedIds(new Set([itemId]));
+    await handleOpenMoveModal();
+  }, [handleOpenMoveModal]);
 
   const ensureAllFolders = async () => {
     if (allFolders.length > 0) return; // already loaded
@@ -671,6 +681,12 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
+        onContextMenu={(e) => {
+          const card = (e.target as HTMLElement).closest('[data-selectable]');
+          if (card) return; // card's own handler fires via stopPropagation
+          e.preventDefault();
+          setCanvasMenu({ x: e.clientX, y: e.clientY });
+        }}
       >
         {/* File drop overlay */}
         {isDragActive && (
@@ -693,6 +709,19 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
               width: Math.abs(rubberBand.x2 - rubberBand.x1),
               height: Math.abs(rubberBand.y2 - rubberBand.y1),
             }}
+          />
+        )}
+
+        {/* Canvas context menu */}
+        {canvasMenu && (
+          <ContextMenu
+            position={canvasMenu}
+            onClose={() => setCanvasMenu(null)}
+            items={[
+              { label: 'New Folder', icon: <Plus className="w-4 h-4" />, onClick: () => setShowCreateFolder(true) },
+              { label: 'Upload files', icon: <Upload className="w-4 h-4" />, onClick: () => fileInputRef.current?.click() },
+              { label: 'Upload folder', icon: <FolderOpen className="w-4 h-4" />, onClick: () => folderInputRef.current?.click() },
+            ]}
           />
         )}
 
@@ -757,6 +786,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
                   onDragLeave={(e) => handleFolderDragLeave(folder.id, e)}
                   onDrop={(e) => handleFolderDrop(folder.id, e)}
                   onCreateReviewLink={() => setFolderReviewTarget(folder.id)}
+                  onRequestMove={() => handleRequestMoveItem(folder.id)}
                 />
               ))}
             </div>
@@ -780,6 +810,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
             onToggleSelect={toggleSelect}
             onSelectAll={(ids) => setSelectedIds(new Set(ids))}
             onAssetDragStart={handleItemDragStart}
+            onRequestMove={(assetId: string) => handleRequestMoveItem(assetId)}
           />
         ) : (
           <AssetGrid
@@ -792,6 +823,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
             onAssetDragStart={handleItemDragStart}
+            onRequestMove={(assetId: string) => handleRequestMoveItem(assetId)}
           />
         )}
 
@@ -943,6 +975,7 @@ function FolderCard({
   onDragLeave?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
   onCreateReviewLink?: () => void;
+  onRequestMove?: () => void;
 }) {
   const router = useRouter();
   const { getIdToken } = useAuth();
@@ -950,6 +983,7 @@ function FolderCard({
   const [renameValue, setRenameValue] = useState('');
   const renameInputRef = useRef<HTMLInputElement>(null);
   const [showFolderCopyModal, setShowFolderCopyModal] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const handleOpenCopyModal = async () => {
     await onBeforeCopyTo?.();
@@ -1003,6 +1037,11 @@ function FolderCard({
       onClick={() => {
         const url = `/projects/${projectId}/folders/${folder.id}${ancestorPath ? `?path=${ancestorPath}` : ''}`;
         router.push(url);
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenu({ x: e.clientX, y: e.clientY });
       }}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
@@ -1068,6 +1107,21 @@ function FolderCard({
             setShowFolderCopyModal(false);
           }}
           onClose={() => setShowFolderCopyModal(false)}
+        />
+      )}
+      {contextMenu && (
+        <ContextMenu
+          position={contextMenu}
+          onClose={() => setContextMenu(null)}
+          items={[
+            { label: 'Open', icon: <FolderOpen className="w-4 h-4" />, onClick: () => router.push(`/projects/${projectId}/folders/${folder.id}${ancestorPath ? `?path=${ancestorPath}` : ''}`) },
+            { label: 'Rename', icon: <Pencil className="w-4 h-4" />, onClick: handleRenameFolder },
+            { label: 'Duplicate', icon: <CopyPlus className="w-4 h-4" />, onClick: onDuplicate ?? (() => {}) },
+            { label: 'Copy to', icon: <Copy className="w-4 h-4" />, onClick: handleOpenCopyModal },
+            { label: 'Move to', icon: <Move className="w-4 h-4" />, onClick: () => onRequestMove?.() },
+            { label: 'Create review link', icon: <LinkIcon className="w-4 h-4" />, onClick: onCreateReviewLink ?? (() => {}) },
+            { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: onDelete, danger: true, dividerBefore: true },
+          ]}
         />
       )}
     </div>

@@ -14,6 +14,7 @@ interface AssetGridProps {
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string, e: React.MouseEvent) => void;
   onAssetDragStart?: (assetId: string, e: React.DragEvent) => void;
+  onRequestMove?: (assetId: string) => void;
 }
 
 export function AssetGrid({
@@ -26,6 +27,7 @@ export function AssetGrid({
   selectedIds,
   onToggleSelect,
   onAssetDragStart,
+  onRequestMove,
 }: AssetGridProps) {
   const router = useRouter();
 
@@ -49,6 +51,7 @@ export function AssetGrid({
             isSelected={selectedIds?.has(asset.id)}
             onToggleSelect={onToggleSelect ? (e) => onToggleSelect(asset.id, e) : undefined}
             onDragStart={onAssetDragStart ? (e) => onAssetDragStart(asset.id, e) : undefined}
+            onRequestMove={onRequestMove ? () => onRequestMove(asset.id) : undefined}
           />
         ))}
       </div>
