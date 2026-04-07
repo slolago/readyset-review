@@ -382,7 +382,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
       {/* VU Meter — right side strip */}
       <div className="flex-shrink-0 w-7 flex flex-col bg-[#0a0a0a] border-l border-white/5">
-        <VUMeter src={(asset as any).signedUrl as string | undefined} isPlaying={playing} currentTime={currentTime} />
+        <VUMeter src={(asset as any).signedUrl as string | undefined} isPlaying={playing} />
       </div>
 
       </div>{/* end flex-row */}
