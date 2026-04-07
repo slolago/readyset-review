@@ -6,6 +6,7 @@ import { AnnotationCanvas, AnnotationCanvasHandle } from './AnnotationCanvas';
 import { AnnotationToolbar } from './AnnotationToolbar';
 import { SafeZonesOverlay } from './SafeZonesOverlay';
 import { SafeZoneSelector } from './SafeZoneSelector';
+import { VUMeter } from './VUMeter';
 import { formatDuration } from '@/lib/utils';
 import { Play, Pause, Volume2, VolumeX, ChevronLeft, ChevronRight, Pencil, X, Maximize } from 'lucide-react';
 
@@ -336,6 +337,13 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         {activeSafeZone && videoRect.w > 0 && (
           <div style={{ position: 'absolute', left: videoRect.x, top: videoRect.y, width: videoRect.w, height: videoRect.h, pointerEvents: 'none', zIndex: 5 }}>
             <SafeZonesOverlay videoRect={videoRect} safeZone={activeSafeZone} />
+          </div>
+        )}
+
+        {/* VU Meter overlay */}
+        {videoRect.w > 0 && (
+          <div style={{ position: 'absolute', left: videoRect.x + 8, top: videoRect.y + 8, bottom: videoRect.y === 0 ? 8 : undefined, height: videoRect.h - 16, zIndex: 6, pointerEvents: 'none' }}>
+            <VUMeter videoRef={videoRef} isPlaying={playing} />
           </div>
         )}
 
