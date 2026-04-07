@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useProject } from '@/hooks/useProject';
@@ -340,6 +340,12 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
     setSelectedIds(new Set([itemId]));
     await handleOpenMoveModal();
   }, [handleOpenMoveModal]);
+
+  const handleSelectAll = useCallback((ids: string[]) => {
+    setSelectedIds(new Set(ids));
+  }, []);
+
+  const closeCanvasMenu = useCallback(() => setCanvasMenu(null), []);
 
   const ensureAllFolders = async () => {
     if (allFolders.length > 0) return; // already loaded
@@ -750,7 +756,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
         {canvasMenu && (
           <ContextMenu
             position={canvasMenu}
-            onClose={() => setCanvasMenu(null)}
+            onClose={closeCanvasMenu}
             items={[
               { label: 'New Folder', icon: <Plus className="w-4 h-4" />, onClick: () => setShowCreateFolder(true) },
               { label: 'Upload files', icon: <Upload className="w-4 h-4" />, onClick: () => fileInputRef.current?.click() },
@@ -843,9 +849,9 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
             onDuplicated={refetchAssets}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
-            onSelectAll={(ids) => setSelectedIds(new Set(ids))}
+            onSelectAll={handleSelectAll}
             onAssetDragStart={handleItemDragStart}
-            onRequestMove={(assetId: string) => handleRequestMoveItem(assetId)}
+            onRequestMove={handleRequestMoveItem}
           />
         ) : (
           <AssetGrid
@@ -858,7 +864,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
             onAssetDragStart={handleItemDragStart}
-            onRequestMove={(assetId: string) => handleRequestMoveItem(assetId)}
+            onRequestMove={handleRequestMoveItem}
           />
         )}
 
@@ -981,7 +987,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
 
 // ── FolderCard ───────────────────────────────────────────────────────────────
 
-function FolderCard({
+const FolderCard = React.memo(function FolderCard({
   folder,
   projectId,
   ancestorPath,
@@ -1169,7 +1175,7 @@ function FolderCard({
       )}
     </div>
   );
-}
+});
 
 // ── MoveModal ────────────────────────────────────────────────────────────────
 

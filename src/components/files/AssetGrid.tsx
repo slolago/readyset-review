@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { AssetCard } from './AssetCard';
 import type { Asset } from '@/types';
@@ -17,7 +18,7 @@ interface AssetGridProps {
   onRequestMove?: (assetId: string) => void;
 }
 
-export function AssetGrid({
+export const AssetGrid = React.memo(function AssetGrid({
   assets,
   projectId,
   onAssetDeleted,
@@ -57,4 +58,4 @@ export function AssetGrid({
       </div>
     </div>
   );
-}
+});

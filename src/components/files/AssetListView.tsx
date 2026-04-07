@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Film, Image as ImageIcon, ChevronUp, ChevronDown, Pencil, CopyPlus, Move, Download, Link as LinkIcon, Trash2, ExternalLink, Check } from 'lucide-react';
 import { formatBytes, formatRelativeTime } from '@/lib/utils';
@@ -28,7 +28,7 @@ interface AssetListViewProps {
 type SortKey = 'name' | 'date';
 type SortDir = 'asc' | 'desc';
 
-export function AssetListView({
+export const AssetListView = memo(function AssetListView({
   assets,
   projectId,
   onAssetDeleted,
@@ -172,7 +172,7 @@ export function AssetListView({
       </table>
     </div>
   );
-}
+});
 
 interface AssetListRowProps {
   asset: Asset;
