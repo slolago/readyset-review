@@ -51,6 +51,12 @@ export function VUMeter({ videoRef, isPlaying }: VUMeterProps) {
       sourceRef.current = source;
       connectedRef.current = true;
 
+      // Resume immediately if video is already playing — handles the race where
+      // the 'play' event fired before connectAudio ran (e.g. canplay fires late)
+      if (!video.paused) {
+        ctx.resume().catch(() => {});
+      }
+
       // Determine channel count after source creation
       const channels = source.channelCount ?? 1;
       channelCountRef.current = channels;

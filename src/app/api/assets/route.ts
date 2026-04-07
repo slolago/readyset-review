@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
-import { generateReadSignedUrl } from '@/lib/gcs';
+import { generateReadSignedUrl, generateDownloadSignedUrl } from '@/lib/gcs';
 
 export async function GET(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -63,6 +63,9 @@ export async function GET(request: NextRequest) {
         }
         if (asset.thumbnailGcsPath && asset.status === 'ready') {
           asset.thumbnailSignedUrl = await generateReadSignedUrl(asset.thumbnailGcsPath, 120);
+        }
+        if (asset.gcsPath && asset.status === 'ready') {
+          try { asset.downloadUrl = await generateDownloadSignedUrl(asset.gcsPath, asset.name); } catch {}
         }
         return asset;
       })

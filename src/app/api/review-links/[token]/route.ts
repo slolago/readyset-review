@@ -51,8 +51,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         if (asset.gcsPath) {
           try { asset.signedUrl = await generateReadSignedUrl(asset.gcsPath); } catch {}
         }
-        if (asset.thumbnailPath) {
-          try { asset.thumbnailSignedUrl = await generateReadSignedUrl(asset.thumbnailPath); } catch {}
+        if (asset.thumbnailGcsPath) {
+          try { asset.thumbnailSignedUrl = await generateReadSignedUrl(asset.thumbnailGcsPath); } catch {}
         }
         if (asset.gcsPath && link.allowDownloads) {
           try { asset.downloadUrl = await generateDownloadSignedUrl(asset.gcsPath, asset.name); } catch {}

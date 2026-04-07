@@ -312,7 +312,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       >
         <video
           ref={videoRef}
-          src={(asset as any).signedUrl || asset.url}
+          src={(asset as any).signedUrl as string | undefined}
           className="w-full h-full object-contain"
           playsInline preload="auto"
           onLoadedMetadata={(e) => { setDuration(e.currentTarget.duration); computeVideoRect(); }}

@@ -46,7 +46,7 @@ export function useProjectTree() {
         fetchingRef.current.add(projectId);
         try {
           const token = await getIdToken();
-          const res = await fetch(`/api/folders?projectId=${projectId}&parentId=null`, {
+          const res = await fetch(`/api/folders?projectId=${projectId}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (res.ok) {
