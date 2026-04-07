@@ -3,7 +3,9 @@
 import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 
 export interface VUMeterHandle {
-  resumeAudio: () => void;
+  /** Must be called inside a user-gesture handler (click / keydown) so the
+   *  browser permits AudioContext.resume(). Creates the context on first call. */
+  initAudio: () => void;
 }
 
 interface VUMeterProps {
@@ -13,13 +15,12 @@ interface VUMeterProps {
 
 const SEGMENT_COUNT = 20;
 const PEAK_HOLD_MS = 1500;
-const PEAK_DECAY_RATE = 0.015; // per frame
+const PEAK_DECAY_RATE = 0.015;
 
 function getSegmentColor(index: number): string {
-  // index is 0-based from bottom
-  if (index < 12) return '#22c55e'; // green
-  if (index < 16) return '#eab308'; // yellow
-  return '#ef4444'; // red
+  if (index < 12) return '#22c55e';
+  if (index < 16) return '#eab308';
+  return '#ef4444';
 }
 
 export const VUMeter = forwardRef<VUMeterHandle, VUMeterProps>(function VUMeter({ videoRef, isPlaying }, ref) {
@@ -31,68 +32,36 @@ export const VUMeter = forwardRef<VUMeterHandle, VUMeterProps>(function VUMeter(
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const connectedRef = useRef(false);
   const rafRef = useRef<number>(0);
-  const channelCountRef = useRef(1);
 
-  // Peak hold state: [leftPeak, rightPeak] as 0–1 values
   const peaksRef = useRef<[number, number]>([0, 0]);
   const peakTimesRef = useRef<[number, number]>([0, 0]);
   const peakDisplayRef = useRef<[number, number]>([0, 0]);
 
-  // Expose resumeAudio so VideoPlayer can call it synchronously on user gesture
-  useImperativeHandle(ref, () => ({
-    resumeAudio: () => {
-      const ctx = audioCtxRef.current;
-      if (ctx && ctx.state !== 'running') {
-        ctx.resume().catch(() => {});
-      }
-    },
-  }));
-
-  const connectAudio = useCallback(() => {
+  // ── Step 2: connect source to an already-running AudioContext ─────────────
+  const connectSource = useCallback(() => {
     const video = videoRef.current;
-    if (!video || connectedRef.current) return;
+    const ctx = audioCtxRef.current;
+    if (!video || !ctx || connectedRef.current) return;
 
     try {
-      const AudioContextClass =
-        window.AudioContext ||
-        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioContextClass) return;
-
-      const ctx = new AudioContextClass();
-      audioCtxRef.current = ctx;
-
       const source = ctx.createMediaElementSource(video);
       sourceRef.current = source;
       connectedRef.current = true;
 
-      // Resume immediately if video is already playing — handles the race where
-      // the 'play' event fired before connectAudio ran (e.g. canplay fires late)
-      if (!video.paused) {
-        ctx.resume().catch(() => {});
-      }
-
-      // Determine channel count after source creation
       const channels = source.channelCount ?? 1;
-      channelCountRef.current = channels;
 
       if (channels >= 2) {
-        // Stereo: split channels
         const splitter = ctx.createChannelSplitter(2);
         splitterRef.current = splitter;
-
         const analyserL = ctx.createAnalyser();
         analyserL.fftSize = 256;
         analyserL.smoothingTimeConstant = 0.8;
         analyserLRef.current = analyserL;
-
         const analyserR = ctx.createAnalyser();
         analyserR.fftSize = 256;
         analyserR.smoothingTimeConstant = 0.8;
         analyserRRef.current = analyserR;
-
-        // Merge back to destination
         const merger = ctx.createChannelMerger(2);
-
         source.connect(splitter);
         splitter.connect(analyserL, 0);
         splitter.connect(analyserR, 1);
@@ -100,52 +69,61 @@ export const VUMeter = forwardRef<VUMeterHandle, VUMeterProps>(function VUMeter(
         analyserR.connect(merger, 0, 1);
         merger.connect(ctx.destination);
       } else {
-        // Mono
         const analyserL = ctx.createAnalyser();
         analyserL.fftSize = 256;
         analyserL.smoothingTimeConstant = 0.8;
         analyserLRef.current = analyserL;
         analyserRRef.current = null;
-
         source.connect(analyserL);
         analyserL.connect(ctx.destination);
       }
     } catch {
-      // Web Audio API not supported or already connected elsewhere
+      // createMediaElementSource can fail if the element was already used
     }
   }, [videoRef]);
 
-  // Connect once video element is available
+  // ── Step 1: create + resume AudioContext — MUST run inside a user gesture ─
+  const initAudio = useCallback(() => {
+    if (!audioCtxRef.current) {
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) return;
+      audioCtxRef.current = new AudioContextClass();
+    }
+    // resume() is reliable here because we're inside the gesture handler
+    if (audioCtxRef.current.state !== 'running') {
+      audioCtxRef.current.resume().catch(() => {});
+    }
+    // If the video is already loaded, connect immediately
+    connectSource();
+  }, [connectSource]);
+
+  useImperativeHandle(ref, () => ({ initAudio }));
+
+  // Connect source once video has enough data (canplay / already loaded)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
-    const handleCanPlay = () => { connectAudio(); };
-
+    const handleCanPlay = () => connectSource();
     if (video.readyState >= 1) {
-      connectAudio();
+      connectSource();
     } else {
       video.addEventListener('canplay', handleCanPlay, { once: true });
     }
+    return () => video.removeEventListener('canplay', handleCanPlay);
+  }, [videoRef, connectSource]);
 
-    return () => {
-      video.removeEventListener('canplay', handleCanPlay);
-    };
-  }, [videoRef, connectAudio]);
-
-  // Resume AudioContext on play (autoplay policy) — listen to both prop and native event
-  useEffect(() => {
-    if (isPlaying && audioCtxRef.current?.state === 'suspended') {
-      audioCtxRef.current.resume().catch(() => {});
-    }
-  }, [isPlaying]);
-
+  // Fallback: also try to resume on the native 'play' event (belt-and-suspenders)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const resume = () => audioCtxRef.current?.resume().catch(() => {});
-    video.addEventListener('play', resume);
-    return () => video.removeEventListener('play', resume);
+    const handlePlay = () => {
+      const ctx = audioCtxRef.current;
+      if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+    };
+    video.addEventListener('play', handlePlay);
+    return () => video.removeEventListener('play', handlePlay);
   }, [videoRef]);
 
   // rAF draw loop
@@ -155,83 +133,58 @@ export const VUMeter = forwardRef<VUMeterHandle, VUMeterProps>(function VUMeter(
 
     const draw = () => {
       rafRef.current = requestAnimationFrame(draw);
-
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
       const analyserL = analyserLRef.current;
       const analyserR = analyserRRef.current;
-      const channels = (analyserL && analyserR) ? 2 : 1;
+      const channels = analyserL && analyserR ? 2 : 1;
       const now = performance.now();
 
-      const getLevelFromAnalyser = (analyser: AnalyserNode | null): number => {
+      const getLevel = (analyser: AnalyserNode | null): number => {
         if (!analyser) return 0;
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        analyser.getByteFrequencyData(dataArray);
-        // RMS
+        const buf = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(buf);
         let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          const val = dataArray[i] / 255;
-          sum += val * val;
-        }
-        return Math.sqrt(sum / bufferLength);
+        for (let i = 0; i < buf.length; i++) { const v = buf[i] / 255; sum += v * v; }
+        return Math.sqrt(sum / buf.length);
       };
 
-      const levelL = isPlaying ? getLevelFromAnalyser(analyserL) : 0;
-      const levelR = isPlaying ? getLevelFromAnalyser(analyserR) : 0;
+      const levelL = isPlaying ? getLevel(analyserL) : 0;
+      const levelR = isPlaying ? getLevel(analyserR) : 0;
 
-      // Update peaks
-      if (levelL >= peaksRef.current[0]) {
-        peaksRef.current[0] = levelL;
-        peakTimesRef.current[0] = now;
-        peakDisplayRef.current[0] = levelL;
-      } else {
-        if (now - peakTimesRef.current[0] > PEAK_HOLD_MS) {
-          peakDisplayRef.current[0] = Math.max(0, peakDisplayRef.current[0] - PEAK_DECAY_RATE);
+      for (let ch = 0; ch < 2; ch++) {
+        const level = ch === 0 ? levelL : levelR;
+        if (level >= peaksRef.current[ch]) {
+          peaksRef.current[ch] = level;
+          peakTimesRef.current[ch] = now;
+          peakDisplayRef.current[ch] = level;
+        } else {
+          if (now - peakTimesRef.current[ch] > PEAK_HOLD_MS) {
+            peakDisplayRef.current[ch] = Math.max(0, peakDisplayRef.current[ch] - PEAK_DECAY_RATE);
+          }
+          peaksRef.current[ch] = level;
         }
-        peaksRef.current[0] = levelL;
-      }
-
-      if (levelR >= peaksRef.current[1]) {
-        peaksRef.current[1] = levelR;
-        peakTimesRef.current[1] = now;
-        peakDisplayRef.current[1] = levelR;
-      } else {
-        if (now - peakTimesRef.current[1] > PEAK_HOLD_MS) {
-          peakDisplayRef.current[1] = Math.max(0, peakDisplayRef.current[1] - PEAK_DECAY_RATE);
-        }
-        peaksRef.current[1] = levelR;
       }
 
       const w = canvas.width;
       const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
 
-      const drawChannel = (level: number, peakLevel: number, offsetX: number, chanWidth: number) => {
+      const drawChannel = (level: number, peak: number, offsetX: number, chanW: number) => {
         const segH = Math.floor((h - (SEGMENT_COUNT - 1) * 2) / SEGMENT_COUNT);
         const segStep = segH + 2;
         const activeBars = Math.round(level * SEGMENT_COUNT);
-        const peakBar = Math.round(peakLevel * SEGMENT_COUNT);
-
+        const peakBar = Math.round(peak * SEGMENT_COUNT);
         for (let i = 0; i < SEGMENT_COUNT; i++) {
-          // i=0 is bottom, i=SEGMENT_COUNT-1 is top
           const y = h - (i + 1) * segStep + 2;
-          const color = getSegmentColor(i);
-
-          if (i < activeBars) {
-            ctx.globalAlpha = 1;
-          } else {
-            ctx.globalAlpha = 0.2;
-          }
-          ctx.fillStyle = color;
-          ctx.fillRect(offsetX, y, chanWidth, segH);
-
-          // Peak indicator: bright white line at peak position
+          ctx.globalAlpha = i < activeBars ? 1 : 0.2;
+          ctx.fillStyle = getSegmentColor(i);
+          ctx.fillRect(offsetX, y, chanW, segH);
           if (i === peakBar && peakBar > 0) {
             ctx.globalAlpha = 1;
             ctx.fillStyle = '#ffffff';
-            ctx.fillRect(offsetX, y, chanWidth, 2);
+            ctx.fillRect(offsetX, y, chanW, 2);
           }
         }
         ctx.globalAlpha = 1;
@@ -260,10 +213,9 @@ export const VUMeter = forwardRef<VUMeterHandle, VUMeterProps>(function VUMeter(
         analyserRRef.current?.disconnect();
         splitterRef.current?.disconnect();
         audioCtxRef.current?.close();
-      } catch {
-        // ignore cleanup errors
-      }
+      } catch { /* ignore */ }
       connectedRef.current = false;
+      audioCtxRef.current = null;
     };
   }, []);
 

@@ -147,7 +147,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           e.preventDefault();
           onUserInteraction?.();
           if (v.paused) {
-            vuMeterRef.current?.resumeAudio();
+            vuMeterRef.current?.initAudio();
             v.play();
             setPlaying(true);
           } else {
@@ -226,7 +226,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     if (!v) return;
     onUserInteraction?.();
     if (v.paused) {
-      vuMeterRef.current?.resumeAudio(); // resume AudioContext inside user-gesture context
+      vuMeterRef.current?.initAudio(); // resume AudioContext inside user-gesture context
       v.play();
       setPlaying(true);
     } else {
