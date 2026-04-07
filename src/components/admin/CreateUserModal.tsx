@@ -52,7 +52,7 @@ export function CreateUserModal({ onClose, onCreated, getIdToken }: CreateUserMo
             </div>
             <div>
               <h2 className="text-base font-semibold text-white">Invite user</h2>
-              <p className="text-xs text-frame-textMuted">They'll sign in with Google using this email</p>
+              <p className="text-xs text-frame-textMuted">They&apos;ll sign in with Google using this email</p>
             </div>
           </div>
           <button onClick={onClose} className="text-frame-textMuted hover:text-white transition-colors">
