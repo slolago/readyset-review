@@ -240,11 +240,11 @@ export function VUMeter({ videoRef, isPlaying }: VUMeterProps) {
   }, []);
 
   return (
-    <div className="h-full flex items-stretch bg-black/40 rounded px-1 py-1" style={{ width: '1.25rem' }}>
+    <div className="flex-1 flex items-stretch px-1 py-2">
       <canvas
         ref={canvasRef}
-        width={16}
-        height={200}
+        width={20}
+        height={300}
         style={{ width: '100%', height: '100%', display: 'block' }}
       />
     </div>

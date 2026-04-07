@@ -301,6 +301,8 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   return (
     <div ref={wrapperRef} className="w-full h-full flex flex-col bg-black select-none">
+      {/* Video area + VU meter side strip */}
+      <div className="flex-1 flex flex-row overflow-hidden">
       {/* Video area */}
       <div
         ref={containerRef}
@@ -340,13 +342,6 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           </div>
         )}
 
-        {/* VU Meter overlay */}
-        {videoRect.w > 0 && (
-          <div style={{ position: 'absolute', left: videoRect.x + 8, top: videoRect.y + 8, bottom: videoRect.y === 0 ? 8 : undefined, height: videoRect.h - 16, zIndex: 6, pointerEvents: 'none' }}>
-            <VUMeter videoRef={videoRef} isPlaying={playing} />
-          </div>
-        )}
-
         {/* Annotation toolbar */}
         {isAnnotationMode && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-20">
@@ -374,6 +369,13 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           </div>
         )}
       </div>
+
+      {/* VU Meter — right side strip */}
+      <div className="flex-shrink-0 w-7 flex flex-col bg-[#0a0a0a] border-l border-white/5">
+        <VUMeter videoRef={videoRef} isPlaying={playing} />
+      </div>
+
+      </div>{/* end flex-row */}
 
       {/* ── Controls ── */}
       <div className="flex-shrink-0 bg-[#111] border-t border-white/5 px-4 pt-2 pb-3 space-y-2">
