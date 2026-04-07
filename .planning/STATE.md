@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-04-06T23:19:20.370Z"
+status: Executing Phase 11
+stopped_at: Completed 11-02-PLAN.md
+last_updated: "2026-04-07T00:33:28.704Z"
 progress:
   total_phases: 11
-  completed_phases: 8
-  total_plans: 15
-  completed_plans: 14
+  completed_phases: 9
+  total_plans: 17
+  completed_plans: 16
 ---
 
 # State
@@ -28,7 +28,7 @@ in_progress
 
 ## Last Session
 
-Stopped at: Completed 09-02-PLAN.md
+Stopped at: Completed 11-02-PLAN.md
 
 ## Decisions
 
@@ -58,6 +58,8 @@ Stopped at: Completed 09-02-PLAN.md
 - [Phase 09-review-link-enhancements]: PATCH handler added to existing [token]/route.ts file alongside GET and DELETE — no new route files needed
 - [Phase 09-review-link-enhancements]: [Phase 09-02]: Inline rename uses renamingId === link.id pattern for per-row edit state — avoids separate modal
 - [Phase 09-review-link-enhancements]: [Phase 09-02]: Tab bar uses -mb-px on active tab border to overlap container border-b for connected underline effect
+- [Phase 11-nice-to-have]: MenuItem type import used as documentation even though items inlined as object literals
+- [Phase 11-nice-to-have]: Copy to excluded from AssetListView rows: AssetListRow does not own CopyModal state
 
 ## Blockers
 
@@ -79,3 +81,4 @@ Stopped at: Completed 09-02-PLAN.md
 | Phase 08-project-sidebar P02 | 2min | 2 tasks | 2 files |
 | 09-review-link-enhancements | 01 | 10 min | 3/3 | 4 |
 | Phase 09-review-link-enhancements P02 | 15min | 3 tasks | 3 files |
+| Phase 11-nice-to-have P02 | 15min | 4 tasks | 5 files |
