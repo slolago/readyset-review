@@ -291,10 +291,10 @@ Plans:
 **Goal:** Detect Firebase auth session on the review page and auto-populate guest identity from the logged-in user, skipping the guest name prompt entirely.
 **Requirements**: P19-01, P19-02, P19-03, P19-04, P19-05
 **Depends on:** Phase 18
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 19-01-PLAN.md — Wire useAuth into ReviewPage, auto-populate guestInfo, guard guest form gate
+- [x] 19-01-PLAN.md — Wire useAuth into ReviewPage, auto-populate guestInfo, guard guest form gate
 
 **Success Criteria** (what must be TRUE):
   1. Logged-in user visiting a review link with comments enabled goes directly to the review UI
