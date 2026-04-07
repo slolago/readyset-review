@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
 status: Milestone complete
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-04-07T12:04:22Z"
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-04-07T12:07:48Z"
 progress:
   total_phases: 12
   completed_phases: 10
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # State
@@ -20,7 +20,7 @@ progress:
 
 ## Current Plan
 
-Plan 01 complete — Phase 13 plan 01 done
+Plan 02 complete — Phase 13 plan 02 done
 
 ## Status
 
@@ -28,7 +28,7 @@ in_progress
 
 ## Last Session
 
-Stopped at: Completed 13-01-PLAN.md
+Stopped at: Completed 13-02-PLAN.md
 
 ## Decisions
 
@@ -63,6 +63,7 @@ Stopped at: Completed 13-01-PLAN.md
 - [Phase 12-download-and-polish]: setTimeout(0) wraps addEventListener in ContextMenu to prevent opening mousedown from firing onClose
 - [Phase 12-download-and-polish]: List view checkboxes use div+Check pattern (not native input) to match AssetCard grid style; row variant uses pointer-events-none
 - [Phase 13-01]: Dual signed URL strategy — signedUrl (no disposition) for inline playback, downloadUrl (attachment disposition) for forced download; downloadUrl only generated when allowDownloads is true
+- [Phase 13-02]: createPortal to document.body with position:fixed from getBoundingClientRect() — canonical escape from overflow-hidden ancestors; dual-ref outside-click checks triggerRef AND panelRef
 
 ## Roadmap Evolution
 
@@ -94,3 +95,4 @@ Stopped at: Completed 13-01-PLAN.md
 | Phase 11-nice-to-have P02 | 15min | 4 tasks | 5 files |
 | Phase 12-download-and-polish P01 | 8min | 1 tasks | 2 files |
 | 13-review-polish-and-fixes | 01 | 10 min | 2/2 | 5 |
+| 13-review-polish-and-fixes | 02 | 10 min | 1/1 | 2 |
