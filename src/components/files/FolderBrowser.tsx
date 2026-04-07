@@ -183,6 +183,29 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
     setBreadcrumbs(crumbs);
   }, [project, currentFolder, ancestorFolders]);
 
+  // Folder size badge
+  const [folderSize, setFolderSize] = useState<number | null>(null);
+  const [folderSizeLoading, setFolderSizeLoading] = useState(false);
+
+  useEffect(() => {
+    setFolderSize(null);
+    setFolderSizeLoading(true);
+    const params = new URLSearchParams({ projectId });
+    if (folderId) params.set('folderId', folderId);
+
+    getIdToken().then((token) =>
+      fetch(`/api/assets/size?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          setFolderSize(typeof data.sizeBytes === 'number' ? data.sizeBytes : null);
+          setFolderSizeLoading(false);
+        })
+        .catch(() => setFolderSizeLoading(false))
+    );
+  }, [projectId, folderId, getIdToken]);
+
   // Path string for child folder navigation (ancestor IDs + current folder ID)
   const childAncestorPath = [
     ...( ancestorPath ? ancestorPath.split(',').filter(Boolean) : []),
@@ -654,8 +677,15 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-8 py-4 border-b border-frame-border flex items-center justify-between bg-frame-sidebar">
-        {/* Breadcrumb */}
-        <Breadcrumb items={breadcrumbs} projectId={projectId} projectColor={color} />
+        {/* Breadcrumb + size badge */}
+        <div className="flex items-center gap-2 min-w-0">
+          <Breadcrumb items={breadcrumbs} projectId={projectId} projectColor={color} />
+          {!folderSizeLoading && folderSize !== null && folderSize > 0 && (
+            <span className="text-xs text-frame-textMuted whitespace-nowrap flex-shrink-0">
+              {formatBytes(folderSize)}
+            </span>
+          )}
+        </div>
 
         {/* Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
