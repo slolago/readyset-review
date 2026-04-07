@@ -285,3 +285,49 @@ Plans:
   3. The overlay respects letterboxing/pillarboxing (uses videoRect)
   4. The VU meter shows real-time audio levels with peak hold indicators
   5. Both features work on review links and main asset viewer
+
+### Phase 19: review-link-auth-skip — If viewer is already logged in, skip the guest name prompt on review links and use their existing session identity
+
+**Goal:** Detect Firebase auth session on the review page and auto-populate guest identity from the logged-in user, skipping the guest name prompt entirely.
+**Requirements**: P19-01, P19-02, P19-03, P19-04, P19-05
+**Depends on:** Phase 18
+**Plans:** 1 plan
+
+Plans:
+- [ ] 19-01-PLAN.md — Wire useAuth into ReviewPage, auto-populate guestInfo, guard guest form gate
+
+**Success Criteria** (what must be TRUE):
+  1. Logged-in user visiting a review link with comments enabled goes directly to the review UI
+  2. Comments posted by logged-in users show their account name
+  3. Non-logged-in users still see the guest form
+  4. No guest-form flicker on page load for logged-in users
+
+### Phase 20: collaborator-invite-autocomplete — Search users by name when inviting to a project instead of requiring full email
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 19
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 20 to break down)
+
+### Phase 21: admin-panel-polish — Admin sees all projects with owner info; clean up roles display
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 20
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 21 to break down)
+
+### Phase 22: asset-download-button — Download button inside the asset viewer page
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 21
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 22 to break down)
