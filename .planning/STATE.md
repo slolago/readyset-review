@@ -61,6 +61,10 @@ Stopped at: Completed 11-02-PLAN.md
 - [Phase 11-nice-to-have]: MenuItem type import used as documentation even though items inlined as object literals
 - [Phase 11-nice-to-have]: Copy to excluded from AssetListView rows: AssetListRow does not own CopyModal state
 
+## Roadmap Evolution
+
+- Phase 12 added: download-and-polish — bulk download, select-all toggle, right-click dismiss fix, checkbox styling, perf optimisations
+
 ## Blockers
 
 (none)
