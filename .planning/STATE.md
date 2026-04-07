@@ -1,30 +1,30 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Feature Expansion
-status: archived
-stopped_at: Milestone v1.2 archived 2026-04-07
+milestone: v1.3
+milestone_name: Video Review Polish
+status: defining_requirements
+stopped_at: ""
 last_updated: "2026-04-07T00:00:00Z"
 progress:
-  total_phases: 22
-  completed_phases: 22
-  total_plans: 30
-  completed_plans: 30
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # State
 
 ## Current Phase
 
-22 (complete — milestone archived)
+Not started (defining requirements)
 
 ## Current Plan
 
-All 30 plans complete
+—
 
 ## Status
 
-archived
+Defining requirements — Milestone v1.3 started 2026-04-07
 
 ## Last Session
 

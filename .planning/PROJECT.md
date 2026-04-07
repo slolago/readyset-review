@@ -2,6 +2,18 @@
 
 Frame.io V4 clone — internal media review platform.
 
+## Current Milestone: v1.3 — Video Review Polish
+
+**Goal:** Refinar la experiencia de revisión con mejoras al manejo de versiones, comparación de assets, información de archivos y controles del player de video.
+
+**Target features:**
+1. Version stacking via drag & drop — arrastrar un asset encima de otro lo agrega a su stack de versiones
+2. Asset comparison — 2+ assets seleccionados → "Compare assets" → vista side-by-side
+3. File information tab — pestaña junto a comentarios mostrando fps, resolución, tamaño, codec, duración
+4. Safe zones opacity slider — control de opacidad para el overlay de Safe Zones
+5. Comment count in grid view — badge de comentarios en tarjetas de grilla (como en lista)
+6. Timecode frame bug fix — corregir actualización al avanzar cuadro por cuadro en modo frames
+
 ## Current State (v1.2 — shipped 2026-04-07)
 
 A fully-featured media review platform with:
@@ -27,21 +39,20 @@ A fully-featured media review platform with:
 - origin: slolago/readyset-review
 - vercel: slolago/readyset-review-vercel
 
-## Next Milestone Goals
-
-_To be defined. Run `/gsd:new-milestone` to start requirements gathering._
-
 ---
+
+<details>
+<summary>v1.2 Context (shipped 2026-04-07)</summary>
+
+22 phases shipped: breadcrumb nav, drag-to-move, context menus, review link management, bulk download, list view, admin panel, safe zones, VU meter, auth-skip, collaborator autocomplete, asset download button.
+
+See `.planning/milestones/v1.2-ROADMAP.md` for full details.
+
+</details>
 
 <details>
 <summary>v1.1 Context (pre-v1.2)</summary>
 
-## Previous Goal (v1.1)
-
-Add 4 missing UX features to the existing working app:
-1. Breadcrumb navigation bar
-2. Video thumbnail generation
-3. Multi-select with rubber-band drag
-4. Folder drag-and-drop import (with subfolder structure)
+Add 4 missing UX features: breadcrumb navigation bar, video thumbnail generation, multi-select with rubber-band drag, folder drag-and-drop import.
 
 </details>
