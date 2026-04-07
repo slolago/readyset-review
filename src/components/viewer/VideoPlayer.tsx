@@ -148,7 +148,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           onUserInteraction?.();
           if (v.paused) {
             vuMeterRef.current?.warmAudio(); // keydown is a user gesture
-            v.play();
+            v.play().catch(() => {});
             setPlaying(true);
           } else {
             v.pause();
@@ -226,7 +226,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     if (!v) return;
     onUserInteraction?.();
     if (v.paused) {
-      v.play();
+      v.play().catch(() => {});
       setPlaying(true);
     } else {
       v.pause();
@@ -319,7 +319,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       <div
         ref={containerRef}
         className="flex-1 relative overflow-hidden"
-        onMouseDown={() => { if (!isAnnotationMode) vuMeterRef.current?.warmAudio(); }}
+        onMouseDown={() => { try { if (!isAnnotationMode) vuMeterRef.current?.warmAudio(); } catch {} }}
         onClick={() => { if (!isAnnotationMode) togglePlay(); }}
         style={{ cursor: isAnnotationMode ? 'default' : 'pointer' }}
       >
@@ -469,7 +469,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         {/* Controls row */}
         <div className="flex items-center gap-3">
           {/* Play/pause */}
-          <button onMouseDown={() => vuMeterRef.current?.warmAudio()} onClick={togglePlay} className="w-8 h-8 flex items-center justify-center text-white hover:text-frame-accent transition-colors">
+          <button onMouseDown={() => { try { vuMeterRef.current?.warmAudio(); } catch {} }} onClick={togglePlay} className="w-8 h-8 flex items-center justify-center text-white hover:text-frame-accent transition-colors">
             {playing ? <Pause className="w-5 h-5" fill="currentColor" /> : <Play className="w-5 h-5" fill="currentColor" />}
           </button>
 

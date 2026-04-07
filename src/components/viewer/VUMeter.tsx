@@ -38,12 +38,16 @@ const _connected = new WeakMap<HTMLVideoElement, ConnectedEntry>();
 function getOrCreateCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (_audioCtx && _audioCtx.state !== 'closed') return _audioCtx;
-  const Ctor =
-    window.AudioContext ||
-    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctor) return null;
-  _audioCtx = new Ctor();
-  return _audioCtx;
+  try {
+    const Ctor =
+      window.AudioContext ||
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return null;
+    _audioCtx = new Ctor();
+    return _audioCtx;
+  } catch {
+    return null;
+  }
 }
 
 /** Wire the Web Audio graph for a specific video element + running context. */
