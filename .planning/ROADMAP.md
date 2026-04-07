@@ -307,10 +307,10 @@ Plans:
 **Goal:** Replace the free-text email input in the collaborator invite flow with a name/email prefix search combobox that queries registered users and lets the inviter select from matching results.
 **Requirements**: P20-01, P20-02, P20-03, P20-04, P20-05
 **Depends on:** Phase 19
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 20-01-PLAN.md — User search API route + UserSearchCombobox + CollaboratorsPanel wiring
+- [x] 20-01-PLAN.md — User search API route + UserSearchCombobox + CollaboratorsPanel wiring
 
 **Success Criteria** (what must be TRUE):
   1. Typing 2+ characters in the invite field shows matching users in a dropdown

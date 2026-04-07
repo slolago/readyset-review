@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
 status: Milestone complete
-stopped_at: "Checkpoint: Task 2 human-verify for 19-01-PLAN.md"
-last_updated: "2026-04-07T19:25:26.759Z"
+stopped_at: "Completed 20-01-PLAN.md"
+last_updated: "2026-04-07T20:12:22Z"
 progress:
   total_phases: 22
   completed_phases: 14
   total_plans: 27
-  completed_plans: 26
+  completed_plans: 27
 ---
 
 # State
@@ -71,6 +71,8 @@ Stopped at: Checkpoint: Task 2 human-verify for 19-01-PLAN.md
 - [Phase 15]: collectionGroup with 30-id chunks used for cross-project asset aggregation in /api/stats
 - [Phase 15]: StatCard value typed as string|null — null triggers animate-pulse skeleton instead of a loading prop
 - [Phase 15]: Root-level assets excluded from folder-scoped size query; BFS used for recursive descendant traversal
+- [Phase 20-01]: UserSearchCombobox passes selectedUser.email to existing collaborators POST API — no API contract change needed
+- [Phase 20-01]: Firestore prefix search requires 2+ characters; name query is case-sensitive (v1 limitation, nameLower field can be added later)
 
 ## Roadmap Evolution
 
@@ -112,3 +114,4 @@ Stopped at: Checkpoint: Task 2 human-verify for 19-01-PLAN.md
 | Phase 15 P01 | 8 | 2 tasks | 2 files |
 | Phase 15 P02 | 8 | 2 tasks | 2 files |
 | Phase 19-review-link-auth-skip P01 | 1min | 1 tasks | 1 files |
+| Phase 20-collaborator-invite-autocomplete P01 | 2min | 2 tasks | 3 files |
