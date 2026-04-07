@@ -23,11 +23,10 @@ function getSegmentColor(i: number): string {
 }
 
 // ── Module-level singletons ──────────────────────────────────────────────────
-// The AudioContext and MediaElementSource connections must survive component
-// remounts. createMediaElementSource can only be called once per video element;
-// closing and recreating the AudioContext (as cleanup used to do) left the
-// element permanently silent. A module-level WeakMap tracks which elements
-// are already wired so we never call createMediaElementSource twice.
+// createMediaElementSource can only be called once per HTMLVideoElement.
+// We keep a WeakMap so remounting the React component never triggers a second
+// call on the same DOM node.  The AudioContext is never closed — closing it
+// makes the element permanently silent even after a fresh context is created.
 let _audioCtx: AudioContext | null = null;
 
 interface ConnectedEntry {
@@ -61,50 +60,59 @@ export const VUMeter = forwardRef<VUMeterHandle, VUMeterProps>(function VUMeter(
     const ctx = getOrCreateCtx();
     if (!ctx) return;
 
-    // Always resume inside the user gesture
-    if (ctx.state !== 'running') {
-      ctx.resume().catch(() => {});
-    }
+    // Wire the graph only AFTER the AudioContext is running.
+    // createMediaElementSource immediately hijacks the video's native audio
+    // output — if we call it while the context is still suspended the audio
+    // goes nowhere and some browsers stall video playback.
+    // ctx.resume() must be called inside the user-gesture (here), but
+    // the actual graph setup can safely happen in the .then() callback.
+    const doConnect = () => {
+      const video = videoRef.current;
+      if (!video) return;
 
-    const video = videoRef.current;
-    if (!video) return;
+      // Reuse existing connection for this DOM element
+      const existing = _connected.get(video);
+      if (existing) {
+        analyserLRef.current = existing.analyserL;
+        analyserRRef.current = existing.analyserR;
+        return;
+      }
 
-    // Reuse existing connection if the element was already wired
-    const existing = _connected.get(video);
-    if (existing) {
-      analyserLRef.current = existing.analyserL;
-      analyserRRef.current = existing.analyserR;
-      return;
-    }
+      try {
+        const source = ctx.createMediaElementSource(video);
 
-    // First time for this video element — create the Web Audio graph
-    try {
-      const source = ctx.createMediaElementSource(video);
+        const analyserL = ctx.createAnalyser();
+        analyserL.fftSize = 256;
+        analyserL.smoothingTimeConstant = 0.8;
 
-      const analyserL = ctx.createAnalyser();
-      analyserL.fftSize = 256;
-      analyserL.smoothingTimeConstant = 0.8;
+        const analyserR = ctx.createAnalyser();
+        analyserR.fftSize = 256;
+        analyserR.smoothingTimeConstant = 0.8;
 
-      const analyserR = ctx.createAnalyser();
-      analyserR.fftSize = 256;
-      analyserR.smoothingTimeConstant = 0.8;
+        const splitter = ctx.createChannelSplitter(2);
 
-      const splitter = ctx.createChannelSplitter(2);
+        // Restore the playback path hijacked by createMediaElementSource
+        source.connect(ctx.destination);
 
-      // Playback: restore the audio path hijacked by createMediaElementSource
-      source.connect(ctx.destination);
+        // Analysis path (dead-end — no extra destination)
+        source.connect(splitter);
+        splitter.connect(analyserL, 0);
+        splitter.connect(analyserR, 1);
 
-      // Analysis: split into L/R for the meter (dead-end, no destination)
-      source.connect(splitter);
-      splitter.connect(analyserL, 0);
-      splitter.connect(analyserR, 1);
+        _connected.set(video, { analyserL, analyserR });
+        analyserLRef.current = analyserL;
+        analyserRRef.current = analyserR;
+      } catch {
+        // Element already captured by a previous context, or security restriction.
+        // Audio continues through whatever path is already wired.
+      }
+    };
 
-      _connected.set(video, { analyserL, analyserR });
-      analyserLRef.current = analyserL;
-      analyserRRef.current = analyserR;
-    } catch {
-      // Security restriction or element already captured by a closed context —
-      // audio still plays natively; meter just won't animate.
+    if (ctx.state === 'running') {
+      doConnect();
+    } else {
+      // resume() must be called in the gesture; doConnect runs once it resolves
+      ctx.resume().then(doConnect).catch(() => {});
     }
   }, [videoRef]);
 
@@ -182,9 +190,9 @@ export const VUMeter = forwardRef<VUMeterHandle, VUMeterProps>(function VUMeter(
     return () => cancelAnimationFrame(rafRef.current);
   }, [isPlaying]);
 
-  // On unmount: cancel RAF and detach local analyser refs.
-  // Do NOT close the AudioContext or disconnect nodes — the video element may
-  // be reused and createMediaElementSource cannot be called twice on the same element.
+  // On unmount: stop the draw loop and clear local refs.
+  // Do NOT close the AudioContext or disconnect nodes — the WeakMap entry
+  // keeps the graph alive for when the component remounts with the same element.
   useEffect(() => {
     return () => {
       cancelAnimationFrame(rafRef.current);
