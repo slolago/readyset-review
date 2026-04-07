@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
+import { UserSearchCombobox } from '@/components/ui/UserSearchCombobox';
+import type { UserResult } from '@/components/ui/UserSearchCombobox';
 import { useAuth } from '@/hooks/useAuth';
 import type { Project, Collaborator } from '@/types';
 import { Trash2, UserPlus } from 'lucide-react';
@@ -25,14 +26,21 @@ const ROLE_COLORS: Record<string, 'purple' | 'success' | 'info'> = {
 
 export function CollaboratorsPanel({ project, onClose, onUpdated }: CollaboratorsPanelProps) {
   const { user, getIdToken } = useAuth();
-  const [email, setEmail] = useState('');
+  const [selectedUser, setSelectedUser] = useState<UserResult | null>(null);
   const [role, setRole] = useState<'editor' | 'reviewer'>('reviewer');
   const [loading, setLoading] = useState(false);
   const isOwner = project.ownerId === user?.id;
 
+  // Build the list of user IDs to exclude from search results:
+  // the project owner and all existing collaborators
+  const excludeIds = [
+    project.ownerId,
+    ...(project.collaborators?.map((c) => c.userId) ?? []),
+  ];
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!selectedUser) return;
     setLoading(true);
     try {
       const token = await getIdToken();
@@ -42,14 +50,14 @@ export function CollaboratorsPanel({ project, onClose, onUpdated }: Collaborator
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ email: email.trim(), role }),
+        body: JSON.stringify({ email: selectedUser.email, role }),
       });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to add collaborator');
       }
       toast.success('Collaborator added');
-      setEmail('');
+      setSelectedUser(null);
       onUpdated();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add collaborator');
@@ -115,17 +123,21 @@ export function CollaboratorsPanel({ project, onClose, onUpdated }: Collaborator
 
         {/* Add collaborator */}
         {isOwner && (
-          <form onSubmit={handleAdd} className="border-t border-frame-border pt-5">
+          <form
+            onSubmit={handleAdd}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+            className="border-t border-frame-border pt-5"
+          >
             <h3 className="text-sm font-medium text-frame-textSecondary mb-3">
               Invite member
             </h3>
             <div className="flex gap-2 mb-3">
-              <Input
-                placeholder="colleague@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                className="flex-1"
+              <UserSearchCombobox
+                onSelect={(u) => setSelectedUser(u)}
+                onClear={() => setSelectedUser(null)}
+                exclude={excludeIds}
+                placeholder="Search by name or email..."
+                disabled={loading}
               />
               <select
                 value={role}
@@ -139,6 +151,7 @@ export function CollaboratorsPanel({ project, onClose, onUpdated }: Collaborator
             <Button
               type="submit"
               loading={loading}
+              disabled={!selectedUser}
               icon={<UserPlus className="w-4 h-4" />}
               className="w-full"
             >
