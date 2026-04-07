@@ -209,11 +209,11 @@ Plans:
 **Goal:** Add a "Review Links" virtual folder section in each project. Each review link appears as a navigable folder containing the linked assets with their comments. In list view, show creation date. Accessible from the sidebar/project navigation.
 **Requirements**: REQ-14A, REQ-14B, REQ-14C
 **Depends on:** Phase 13
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 14-01-PLAN.md — ReviewLinkFolderBrowser component + /review-links list page + /review-links/[token] asset page
-- [ ] 14-02-PLAN.md — Sidebar: add "Review Links" entry to ProjectTreeNav
+- [x] 14-01-PLAN.md — ReviewLinkFolderBrowser component + /review-links list page + /review-links/[token] asset page
+- [x] 14-02-PLAN.md — Sidebar: add "Review Links" entry to ProjectTreeNav
 
 **Success Criteria** (what must be TRUE):
   1. Each project has a "Review Links" section/folder in the navigation
