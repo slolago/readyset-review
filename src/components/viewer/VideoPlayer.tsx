@@ -149,11 +149,10 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           e.preventDefault();
           onUserInteraction?.();
           if (v.paused) {
-            vuMeterRef.current?.start();
+            vuMeterRef.current?.resume();
             v.play().catch(() => {});
             setPlaying(true);
           } else {
-            vuMeterRef.current?.stop();
             v.pause();
             setPlaying(false);
           }
@@ -229,11 +228,10 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     if (!v) return;
     onUserInteraction?.();
     if (v.paused) {
-      vuMeterRef.current?.start(); // inside user gesture → audio.play() + ctx.resume() work
+      vuMeterRef.current?.resume(); // inside user gesture → AudioContext.resume() is permitted
       v.play().catch(() => {});
       setPlaying(true);
     } else {
-      vuMeterRef.current?.stop();
       v.pause();
       setPlaying(false);
     }
@@ -330,6 +328,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         <video
           ref={videoRef}
           src={(asset as any).signedUrl as string | undefined}
+          crossOrigin="anonymous"
           className="w-full h-full object-contain"
           playsInline preload="auto"
           onLoadedMetadata={(e) => { setDuration(e.currentTarget.duration); computeVideoRect(); }}
@@ -389,7 +388,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
       {/* VU Meter — right side strip */}
       <div className="flex-shrink-0 w-7 flex flex-col bg-[#0a0a0a] border-l border-white/5">
-        <VUMeter ref={vuMeterRef} src={(asset as any).signedUrl as string | undefined} isPlaying={playing} />
+        <VUMeter ref={vuMeterRef} videoRef={videoRef} isPlaying={playing} />
       </div>
 
       </div>{/* end flex-row */}

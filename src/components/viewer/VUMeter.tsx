@@ -2,23 +2,23 @@
 
 import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo } from 'react';
 
-/** Called from VideoPlayer's togglePlay — must run inside the user-gesture
- *  call stack so the browser permits audio.play() and ctx.resume(). */
+/**
+ * Called from VideoPlayer's togglePlay — must run inside the user-gesture
+ * call stack so the browser permits AudioContext.resume().
+ */
 export interface VUMeterHandle {
-  start: () => void;
-  stop: () => void;
+  resume: () => void;
 }
 
 interface VUMeterProps {
-  /** Same signed URL as the video. Loaded in a hidden Audio element for
-   *  analysis only — the <video> element is never referenced here. */
-  src: string | undefined;
+  /** Direct ref to the <video> element that is already playing audio. */
+  videoRef: React.RefObject<HTMLVideoElement>;
   isPlaying: boolean;
 }
 
 const SEGMENT_COUNT = 20;
-const PEAK_HOLD_MS   = 1500;
-const PEAK_DECAY     = 0.015;
+const PEAK_HOLD_MS  = 1500;
+const PEAK_DECAY    = 0.015;
 
 function segColor(i: number) {
   if (i < 12) return '#22c55e';
@@ -27,128 +27,92 @@ function segColor(i: number) {
 }
 
 export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
-  function VUMeter({ src, isPlaying }, ref) {
+  function VUMeter({ videoRef, isPlaying }, ref) {
     const canvasRef    = useRef<HTMLCanvasElement>(null);
-    const audioElRef   = useRef<HTMLAudioElement | null>(null);
     const ctxRef       = useRef<AudioContext | null>(null);
     const analyserLRef = useRef<AnalyserNode | null>(null);
     const analyserRRef = useRef<AnalyserNode | null>(null);
-    const wiredRef     = useRef(false);
     const rafRef       = useRef(0);
-    const peaks        = useRef<[number,number]>([0,0]);
-    const peakTimes    = useRef<[number,number]>([0,0]);
-    const peakDisp     = useRef<[number,number]>([0,0]);
+    const peaks        = useRef<[number, number]>([0, 0]);
+    const peakTimes    = useRef<[number, number]>([0, 0]);
+    const peakDisp     = useRef<[number, number]>([0, 0]);
 
-    // ── Wire Web Audio graph once, lazily on first start() call ────────────
-    const ensureGraph = useCallback(() => {
-      if (wiredRef.current) return;
-      const audio = audioElRef.current;
-      if (!audio) return;
+    // ── resume() — call inside user-gesture so AudioContext is allowed ──
+    const resume = useCallback(() => {
+      const ctx = ctxRef.current;
+      if (ctx && ctx.state !== 'running') {
+        ctx.resume().catch(() => {});
+      }
+    }, []);
 
+    useImperativeHandle(ref, () => ({ resume }), [resume]);
+
+    // ── Wire Web Audio graph once, at mount, from the real video element ─
+    useEffect(() => {
+      const video = videoRef.current;
+      if (!video || typeof window === 'undefined') return;
+
+      const Ctor =
+        window.AudioContext ||
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctor) return;
+
+      let ctx: AudioContext;
       try {
-        const Ctor =
-          window.AudioContext ||
-          (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-        if (!Ctor) return;
+        ctx = new Ctor();
+        // Context starts suspended — that's fine. resume() is called in the
+        // play-button gesture handler so the browser permits it.
 
-        const ctx = new Ctor();
-        ctxRef.current = ctx;
-
-        const source   = ctx.createMediaElementSource(audio);
-        const aL       = ctx.createAnalyser(); aL.fftSize = 256; aL.smoothingTimeConstant = 0.8;
-        const aR       = ctx.createAnalyser(); aR.fftSize = 256; aR.smoothingTimeConstant = 0.8;
+        const source   = ctx.createMediaElementSource(video);
         const splitter = ctx.createChannelSplitter(2);
+        const aL       = ctx.createAnalyser();
+        const aR       = ctx.createAnalyser();
 
+        aL.fftSize = 256; aL.smoothingTimeConstant = 0.8;
+        aR.fftSize = 256; aR.smoothingTimeConstant = 0.8;
+
+        // IMPORTANT: reconnect to destination so the user can still hear audio.
+        // createMediaElementSource hijacks the element's native output.
+        source.connect(ctx.destination);
         source.connect(splitter);
         splitter.connect(aL, 0);
         splitter.connect(aR, 1);
-        // Intentionally NOT connecting to ctx.destination:
-        // the <video> handles all audible output; this element is silent.
 
+        ctxRef.current    = ctx;
         analyserLRef.current = aL;
         analyserRRef.current = aR;
-        wiredRef.current     = true;
-      } catch { /* security/CORS restriction — meter stays dark */ }
-    }, []);
-
-    // ── start() / stop() — must be called inside user-gesture context ───────
-    const start = useCallback(() => {
-      const audio = audioElRef.current;
-      if (!audio) return;
-
-      ensureGraph();
-
-      // Resume AudioContext inside the gesture so browser allows it
-      if (ctxRef.current && ctxRef.current.state !== 'running') {
-        ctxRef.current.resume().catch(() => {});
+      } catch {
+        // SecurityError (CORS) or InvalidStateError — meter stays dark,
+        // native video audio is untouched because we never called
+        // createMediaElementSource successfully.
+        return;
       }
-
-      // play() inside the gesture so browser's autoplay policy is satisfied
-      audio.play().catch(() => {});
-    }, [ensureGraph]);
-
-    const stop = useCallback(() => {
-      audioElRef.current?.pause();
-    }, []);
-
-    useImperativeHandle(ref, () => ({ start, stop }), [start, stop]);
-
-    // ── Recreate hidden Audio element when src changes ──────────────────────
-    useEffect(() => {
-      // Tear down previous
-      if (audioElRef.current) {
-        audioElRef.current.pause();
-        audioElRef.current.src = '';
-      }
-      if (ctxRef.current && ctxRef.current.state !== 'closed') {
-        ctxRef.current.close().catch(() => {});
-      }
-      ctxRef.current    = null;
-      analyserLRef.current = null;
-      analyserRRef.current = null;
-      wiredRef.current  = false;
-
-      if (!src || typeof window === 'undefined') { audioElRef.current = null; return; }
-
-      const audio        = new Audio();
-      audio.crossOrigin  = 'anonymous'; // required for createMediaElementSource on cross-origin GCS URLs
-      audio.preload      = 'auto';
-      audio.src          = src;
-      audioElRef.current = audio;
 
       return () => {
-        audio.pause();
-        audio.src = '';
+        ctx.close().catch(() => {});
+        ctxRef.current       = null;
+        analyserLRef.current = null;
+        analyserRRef.current = null;
       };
-    }, [src]);
+    // videoRef is a stable ref object — this runs exactly once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    // ── Sync play/pause when isPlaying prop changes (fallback path) ─────────
-    // For browsers where the gesture window has already been satisfied.
-    useEffect(() => {
-      if (isPlaying) {
-        start();
-      } else {
-        stop();
-      }
-    }, [isPlaying, start, stop]);
-
-    // ── Cleanup ─────────────────────────────────────────────────────────────
+    // ── Global cleanup on unmount ────────────────────────────────────────
     useEffect(() => () => {
       cancelAnimationFrame(rafRef.current);
-      audioElRef.current?.pause();
       ctxRef.current?.close().catch(() => {});
     }, []);
 
-    // ── rAF draw — only runs while isPlaying to avoid CPU burn when paused ────
+    // ── rAF draw loop — only active while isPlaying ──────────────────────
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      // When not playing, clear the canvas to blank and skip the loop entirely
       if (!isPlaying) {
         const c = canvas.getContext('2d');
         if (c) c.clearRect(0, 0, canvas.width, canvas.height);
-        peaks.current    = [0, 0];
+        peaks.current     = [0, 0];
         peakTimes.current = [0, 0];
         peakDisp.current  = [0, 0];
         return;
@@ -160,7 +124,7 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
         if (!c) return;
 
         const now = performance.now();
-        const lvl = (a: AnalyserNode | null) => {
+        const lvl = (a: AnalyserNode | null): number => {
           if (!a) return 0;
           const buf = new Uint8Array(a.frequencyBinCount);
           a.getByteFrequencyData(buf);
@@ -175,7 +139,9 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
         for (let ch = 0; ch < 2; ch++) {
           const lv = ch === 0 ? lL : lR;
           if (lv >= peaks.current[ch]) {
-            peaks.current[ch] = lv; peakTimes.current[ch] = now; peakDisp.current[ch] = lv;
+            peaks.current[ch]     = lv;
+            peakTimes.current[ch] = now;
+            peakDisp.current[ch]  = lv;
           } else if (now - peakTimes.current[ch] > PEAK_HOLD_MS) {
             peakDisp.current[ch] = Math.max(0, peakDisp.current[ch] - PEAK_DECAY);
             peaks.current[ch]    = lv;
@@ -188,17 +154,18 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
         c.clearRect(0, 0, w, h);
 
         const paint = (level: number, peak: number, ox: number, cw: number) => {
-          const segH  = Math.floor((h - (SEGMENT_COUNT - 1) * 2) / SEGMENT_COUNT);
-          const step  = segH + 2;
+          const segH   = Math.floor((h - (SEGMENT_COUNT - 1) * 2) / SEGMENT_COUNT);
+          const step   = segH + 2;
           const active = Math.round(level * SEGMENT_COUNT);
-          const pk    = Math.round(peak * SEGMENT_COUNT);
+          const pk     = Math.round(peak * SEGMENT_COUNT);
           for (let i = 0; i < SEGMENT_COUNT; i++) {
             const y = h - (i + 1) * step + 2;
             c.globalAlpha = i < active ? 1 : 0.2;
             c.fillStyle   = segColor(i);
             c.fillRect(ox, y, cw, segH);
             if (i === pk && pk > 0) {
-              c.globalAlpha = 1; c.fillStyle = '#fff';
+              c.globalAlpha = 1;
+              c.fillStyle   = '#fff';
               c.fillRect(ox, y, cw, 2);
             }
           }
@@ -216,8 +183,12 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
 
     return (
       <div className="flex-1 flex items-stretch px-1 py-2">
-        <canvas ref={canvasRef} width={20} height={300}
-          style={{ width: '100%', height: '100%', display: 'block' }} />
+        <canvas
+          ref={canvasRef}
+          width={20}
+          height={300}
+          style={{ width: '100%', height: '100%', display: 'block' }}
+        />
       </div>
     );
   }
