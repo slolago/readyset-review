@@ -176,6 +176,8 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           v.pause(); setPlaying(false);
           // Shift+← = 1 frame back, plain ← = 5s back
           v.currentTime = Math.max(0, v.currentTime - (e.shiftKey ? 1 / DEFAULT_FPS : SKIP_SECONDS));
+          setCurrentTime(v.currentTime);
+          onTimeUpdate?.(v.currentTime);
           break;
         case 'ArrowRight':
           e.preventDefault();
@@ -183,6 +185,8 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           v.pause(); setPlaying(false);
           // Shift+→ = 1 frame forward, plain → = 5s forward
           v.currentTime = Math.min(duration, v.currentTime + (e.shiftKey ? 1 / DEFAULT_FPS : SKIP_SECONDS));
+          setCurrentTime(v.currentTime);
+          onTimeUpdate?.(v.currentTime);
           break;
         case 'm':
         case 'M':
@@ -243,6 +247,8 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     onUserInteraction?.();
     v.pause(); setPlaying(false);
     v.currentTime = Math.max(0, Math.min(duration, v.currentTime + dir / DEFAULT_FPS));
+    setCurrentTime(v.currentTime);
+    onTimeUpdate?.(v.currentTime);
   };
 
   const handleSeekClick = (e: React.MouseEvent<HTMLDivElement>) => {
