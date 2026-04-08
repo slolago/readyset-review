@@ -80,10 +80,10 @@ Plans:
 **Goal:** Allow selecting 2 assets in the grid and opening a synchronized side-by-side comparison modal.
 **Depends on:** Phase 26
 **Requirements:** P27-01, P27-02, P27-03, P27-04, P27-05, P27-06, P27-07, P27-08, P27-09, P27-10
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 27-01-PLAN.md — AssetCompareModal + Compare button in FolderBrowser multi-select toolbar
+- [x] 27-01-PLAN.md — AssetCompareModal + Compare button in FolderBrowser multi-select toolbar
 
 **Success Criteria:**
 1. "Compare" button appears in action toolbar when exactly 2 assets are selected ✓
