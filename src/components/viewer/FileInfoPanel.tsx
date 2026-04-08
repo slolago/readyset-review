@@ -54,7 +54,7 @@ export function FileInfoPanel({ asset }: FileInfoPanelProps) {
     { label: 'Duration', value: asset.duration !== undefined ? formatDuration(asset.duration) : '—' },
     { label: 'Resolution', value: formatResolution(asset.width, asset.height) },
     { label: 'Aspect Ratio', value: formatAspectRatio(asset.width, asset.height) },
-    { label: 'FPS', value: (asset as any).fps !== undefined ? String((asset as any).fps) : '—' },
+    { label: 'FPS', value: asset.frameRate !== undefined ? String(asset.frameRate) : '—' },
     { label: 'Uploaded by', value: asset.uploadedBy || '—' },
     { label: 'Date', value: formatDate(asset.createdAt as any) },
     { label: 'Version', value: asset.version !== undefined ? `v${asset.version}` : '—' },

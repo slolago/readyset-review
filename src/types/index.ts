@@ -61,6 +61,7 @@ export interface Asset {
   createdAt: Timestamp;
   _versionCount?: number;
   _commentCount?: number;
+  frameRate?: number;
 }
 
 export interface AnnotationData {
