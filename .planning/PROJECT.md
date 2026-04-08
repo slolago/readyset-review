@@ -2,24 +2,22 @@
 
 Frame.io V4 clone — internal media review platform.
 
-## Current Milestone: v1.3 — Video Review Polish
+## What This Is
 
-**Goal:** Refinar la experiencia de revisión con mejoras al manejo de versiones, comparación de assets, información de archivos y controles del player de video.
+A fully-featured media review platform for internal teams: upload video/image assets, organize into projects and folders, annotate with time-stamped comments, share via review links, and compare versions side-by-side.
 
-**Target features:**
-1. Version stacking via drag & drop — arrastrar un asset encima de otro lo agrega a su stack de versiones
-2. Asset comparison — 2+ assets seleccionados → "Compare assets" → vista side-by-side
-3. File information tab — pestaña junto a comentarios mostrando fps, resolución, tamaño, codec, duración
-4. Safe zones opacity slider — control de opacidad para el overlay de Safe Zones
-5. Comment count in grid view — badge de comentarios en tarjetas de grilla (como en lista)
-6. Timecode frame bug fix — corregir actualización al avanzar cuadro por cuadro en modo frames
+## Core Value
 
-## Current State (v1.2 — shipped 2026-04-07)
+Fast, accurate video review — frame-level precision, rich metadata, and fluid version management without leaving the browser.
 
-A fully-featured media review platform with:
-- **Asset management** — upload, drag-to-move, version stacks, context menus (rename/copy/duplicate), bulk download, list + grid views
+## Current State (v1.3 — shipped 2026-04-08)
+
+- **Asset management** — upload, drag-to-move, version stacks (drag-and-drop merge), context menus (rename/copy/duplicate), bulk download, list + grid views
+- **Video player** — SMPTE timecode (frame-accurate), safe zones overlay (14 platforms, adjustable opacity), VU meter, version switcher, download button
+- **Asset viewer sidebar** — Comments tab + Info tab (filename, type, size, duration, resolution, aspect ratio, FPS, uploader name, date, version)
+- **Asset comparison** — select 2 assets → full-screen side-by-side modal with shared play/pause, scrubber, and per-side audio toggle
+- **Grid view** — comment count badges, version count badges, thumbnail previews
 - **Review links** — short tokens, guest name prompt, allow downloads/approvals toggles, folder sharing, virtual folder browser, auth-skip for logged-in users
-- **Video player** — safe zones overlay (14 platforms), VU meter (Web Audio API), version switcher, download button
 - **Collaboration** — name-based autocomplete invite search, collaborator roles, guest read-only enforcement
 - **Navigation** — collapsible sidebar with project tree, breadcrumb nav, folder size badges, dashboard real stats
 - **Admin** — user management, all-projects view with owner info, role-based access
@@ -39,20 +37,58 @@ A fully-featured media review platform with:
 - origin: slolago/readyset-review
 - vercel: slolago/readyset-review-vercel
 
+## Requirements
+
+### Validated
+
+- ✓ SMPTE timecode frame-step accuracy — v1.3 (bypass rAF threshold for discrete seeks)
+- ✓ Safe zones opacity control — v1.3
+- ✓ Comment count badge in grid view — v1.3
+- ✓ File info tab (resolution, duration, FPS, uploader, etc.) — v1.3
+- ✓ Synchronized asset comparison modal — v1.3
+- ✓ Drag-and-drop version stacking — v1.3 (atomic Firestore batch merge)
+- ✓ Breadcrumb navigation — v1.2
+- ✓ Drag-to-move assets/folders — v1.2
+- ✓ Asset context menus (rename, copy, duplicate) — v1.2
+- ✓ Review link management (create, edit, delete, folder-scoped) — v1.2
+- ✓ Bulk download — v1.2
+- ✓ List view with date column — v1.2
+- ✓ Admin panel (all projects + user management) — v1.2
+- ✓ Safe zones overlay (14 platforms) — v1.2
+- ✓ VU meter — v1.2
+- ✓ Auth-skip for review links — v1.2
+- ✓ Collaborator invite autocomplete — v1.2
+- ✓ Asset download button in viewer — v1.2
+
+### Active
+
+*(none — planning next milestone)*
+
+### Out of Scope
+
+- Mobile app — web-first approach
+- ffprobe server-side codec/FPS extraction — browser `requestVideoFrameCallback` is sufficient for upload-time FPS; codec display deferred
+- Offline mode — real-time collaboration is core value
+
+## Key Decisions
+
+| Decision | Outcome | Phase |
+|----------|---------|-------|
+| Bypass rAF TIME_THRESHOLD for frame-step with direct `setCurrentTime` | ✓ Good — frame digit updates instantly, playback unaffected | 23 |
+| Opacity slider resets to 100% on every zone change (not just deselect) | ✓ Good — predictable, no hidden carry-over state | 24 |
+| Comment badge hidden (not zero-displayed) when count is 0 | ✓ Good — cleaner grid, matches design intent | 25 |
+| FPS stored as `frameRate?: number` on Asset type, measured via `requestVideoFrameCallback` | ✓ Good — typed, no `any` cast; graceful fallback if API unavailable | 26 |
+| Comparison modal reuses signed URLs from grid state — no extra API call | ✓ Good — instant open, no round-trip cost | 27 |
+| Dual MIME type on drag start (`x-frame-move` + `x-frame-version-stack`) | ✓ Good — handlers can distinguish intent without ambiguity | 28 |
+| `e.stopPropagation()` in handleAssetDrop prevents OS upload handler | ✓ Good — critical for correct drop routing | 28 |
+| Atomic Firestore batch for version group merge | ✓ Good — no version number collisions even under concurrency | 28 |
+| `isDropTarget` placed before `isSelected` in className ternary | ✓ Good — drop highlight has higher visual priority than selection | 28 |
+| Token as Firestore doc ID for review links | ✓ Good — consistent lookup vs query | v1.2 |
+
+## Context
+
+~6,000 LOC TypeScript added in v1.3 across 56 files. All features use existing browser APIs and repo code — no new npm packages added.
+
 ---
 
-<details>
-<summary>v1.2 Context (shipped 2026-04-07)</summary>
-
-22 phases shipped: breadcrumb nav, drag-to-move, context menus, review link management, bulk download, list view, admin panel, safe zones, VU meter, auth-skip, collaborator autocomplete, asset download button.
-
-See `.planning/milestones/v1.2-ROADMAP.md` for full details.
-
-</details>
-
-<details>
-<summary>v1.1 Context (pre-v1.2)</summary>
-
-Add 4 missing UX features: breadcrumb navigation bar, video thumbnail generation, multi-select with rubber-band drag, folder drag-and-drop import.
-
-</details>
+*Last updated: 2026-04-08 after v1.3 milestone*
