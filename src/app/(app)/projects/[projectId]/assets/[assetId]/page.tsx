@@ -206,10 +206,7 @@ export default function AssetViewerPage() {
         {/* Video/image area — swaps between player and comparison */}
         <div className="flex-1 bg-black overflow-hidden">
           {compareMode && versions.length >= 2 ? (
-            <VersionComparison
-              assetA={versions[versions.length - 2]}
-              assetB={versions[versions.length - 1]}
-            />
+            <VersionComparison versions={versions} />
           ) : displayAsset && displayAsset.type === 'video' ? (
             <VideoPlayer
               key={displayAsset.id}
