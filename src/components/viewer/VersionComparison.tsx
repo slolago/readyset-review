@@ -187,8 +187,9 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
 
   return (
     <div className="flex flex-col h-full w-full bg-black">
-      {/* View mode toggle — floating top center */}
-      <div className="absolute top-14 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 bg-black/70 backdrop-blur-sm border border-white/10 rounded-lg p-1">
+      {/* View mode toggle — fixed toolbar row */}
+      <div className="flex-shrink-0 flex items-center justify-center py-2 border-b border-white/10 bg-black/60">
+      <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
         <button
           onClick={() => setViewMode('slider')}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
@@ -207,6 +208,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
           <Columns2 className="w-3.5 h-3.5" />
           Side by side
         </button>
+      </div>
       </div>
 
       {/* Viewer */}
