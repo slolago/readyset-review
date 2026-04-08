@@ -261,7 +261,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
 
             {/* Panel B */}
             <div className="relative flex-1 flex items-center justify-center bg-black overflow-hidden">
-              <div className="absolute top-14 left-3 z-10 pointer-events-auto">
+              <div className="absolute top-14 right-3 z-10 pointer-events-auto">
                 {assetB && <VersionLabel side="B" asset={assetB} />}
               </div>
               {isVideo ? (
