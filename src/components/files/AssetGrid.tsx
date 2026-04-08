@@ -16,6 +16,10 @@ interface AssetGridProps {
   onToggleSelect?: (id: string, e: React.MouseEvent) => void;
   onAssetDragStart?: (assetId: string, e: React.DragEvent) => void;
   onRequestMove?: (assetId: string) => void;
+  dragOverAssetId?: string | null;
+  onAssetDragOver?: (assetId: string, e: React.DragEvent) => void;
+  onAssetDragLeave?: (assetId: string, e: React.DragEvent) => void;
+  onAssetDrop?: (assetId: string, e: React.DragEvent) => void;
 }
 
 export const AssetGrid = React.memo(function AssetGrid({
@@ -29,6 +33,10 @@ export const AssetGrid = React.memo(function AssetGrid({
   onToggleSelect,
   onAssetDragStart,
   onRequestMove,
+  dragOverAssetId,
+  onAssetDragOver,
+  onAssetDragLeave,
+  onAssetDrop,
 }: AssetGridProps) {
   const router = useRouter();
 
@@ -53,6 +61,10 @@ export const AssetGrid = React.memo(function AssetGrid({
             onToggleSelect={onToggleSelect ? (e) => onToggleSelect(asset.id, e) : undefined}
             onDragStart={onAssetDragStart ? (e) => onAssetDragStart(asset.id, e) : undefined}
             onRequestMove={onRequestMove ? () => onRequestMove(asset.id) : undefined}
+            isDropTarget={dragOverAssetId === asset.id}
+            onDragOver={onAssetDragOver ? (e) => onAssetDragOver(asset.id, e) : undefined}
+            onDragLeave={onAssetDragLeave ? (e) => onAssetDragLeave(asset.id, e) : undefined}
+            onDrop={onAssetDrop ? (e) => onAssetDrop(asset.id, e) : undefined}
           />
         ))}
       </div>

@@ -102,6 +102,9 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
   // Drag-to-move state (move selected items by dropping onto a folder card)
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
+  // Drag-to-version-stack state (merge asset into another asset's version group)
+  const [dragOverAssetId, setDragOverAssetId] = useState<string | null>(null);
+
   // Canvas right-click context menu
   const [canvasMenu, setCanvasMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -287,6 +290,8 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
     // Carry all selected IDs when dragging a selected item; otherwise just this item
     const ids = selectedIds.has(itemId) ? Array.from(selectedIds) : [itemId];
     e.dataTransfer.setData('application/x-frame-move', JSON.stringify({ ids }));
+    // Also advertise as version-stack draggable (single asset only — multi-select stack not supported)
+    e.dataTransfer.setData('application/x-frame-version-stack', JSON.stringify({ id: itemId }));
     e.dataTransfer.effectAllowed = 'move';
   }, [selectedIds]);
 
@@ -652,6 +657,72 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
     }
   }, [assets, folders, getIdToken, refetchAssets, fetchFolders]);
 
+  // ── Drag-to-version-stack: asset drop target handlers ────────────────────
+  const handleAssetDragOver = useCallback((targetAssetId: string, e: React.DragEvent) => {
+    // Only accept version-stack payloads
+    if (!e.dataTransfer.types.includes('application/x-frame-version-stack')) return;
+    // Block dropping onto uploading/pending assets (P28-14) — belt-and-suspenders guard
+    const targetAsset = assets.find((a) => a.id === targetAssetId);
+    if (!targetAsset || targetAsset.status !== 'ready') return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverAssetId(targetAssetId);
+  }, [assets]);
+
+  const handleAssetDragLeave = useCallback((_targetAssetId: string, _e: React.DragEvent) => {
+    setDragOverAssetId(null);
+  }, []);
+
+  const handleAssetDrop = useCallback(async (targetAssetId: string, e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling to the container handleDrop (OS upload handler)
+    setDragOverAssetId(null);
+
+    const raw = e.dataTransfer.getData('application/x-frame-version-stack');
+    if (!raw) return;
+
+    let payload: { id: string };
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      return;
+    }
+
+    const sourceId = payload.id;
+    if (!sourceId) return;
+
+    // UI guard: self-drop no-op (P28-11) — API also returns 400
+    if (sourceId === targetAssetId) return;
+
+    // UI guard: same-group no-op (P28-11)
+    const sourceAsset = assets.find((a) => a.id === sourceId);
+    const targetAsset = assets.find((a) => a.id === targetAssetId);
+    if (sourceAsset && targetAsset) {
+      const sourceGroup = (sourceAsset as any).versionGroupId || sourceId;
+      const targetGroup = (targetAsset as any).versionGroupId || targetAssetId;
+      if (sourceGroup === targetGroup) return;
+    }
+
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/assets/merge-version', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sourceId, targetId: targetAssetId }),
+      });
+      if (res.ok) {
+        const targetName = targetAsset?.name ?? 'version stack';
+        toast.success(`Added to ${targetName}'s version stack`);
+        refetchAssets();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || 'Failed to merge version stack');
+      }
+    } catch {
+      toast.error('Failed to merge version stack');
+    }
+  }, [assets, getIdToken, refetchAssets]);
+
   if (projectLoading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
@@ -879,6 +950,10 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
             onToggleSelect={toggleSelect}
             onAssetDragStart={handleItemDragStart}
             onRequestMove={handleRequestMoveItem}
+            dragOverAssetId={dragOverAssetId}
+            onAssetDragOver={handleAssetDragOver}
+            onAssetDragLeave={handleAssetDragLeave}
+            onAssetDrop={handleAssetDrop}
           />
         )}
 
