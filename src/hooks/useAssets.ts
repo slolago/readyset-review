@@ -55,6 +55,29 @@ function captureThumbnail(file: File): Promise<Blob | null> {
   });
 }
 
+function extractVideoMetadata(file: File): Promise<{ width: number; height: number; duration: number } | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.muted = true;
+    video.preload = 'metadata';
+    let settled = false;
+    const done = (result: { width: number; height: number; duration: number } | null) => {
+      if (settled) return;
+      settled = true;
+      video.src = '';
+      URL.revokeObjectURL(url);
+      resolve(result);
+    };
+    video.addEventListener('loadedmetadata', () => {
+      done({ width: video.videoWidth, height: video.videoHeight, duration: video.duration });
+    }, { once: true });
+    video.addEventListener('error', () => done(null), { once: true });
+    setTimeout(() => done(null), 5000);
+    video.src = url;
+  });
+}
+
 export function useAssets(projectId?: string, folderId?: string | null) {
   const { getIdToken } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -174,11 +197,18 @@ export function useUpload() {
       const { signedUrl, assetId } = await signedRes.json();
       updateUpload(uploadId, { assetId });
 
-      // Step 1b: Capture and upload thumbnail for videos (server-side via /api/upload/thumbnail)
+      // Step 1b: Capture thumbnail + extract metadata for videos
+      let videoMeta: { width: number; height: number; duration: number } | null = null;
       if (file.type.startsWith('video/')) {
-        try {
-          const thumbBlob = await captureThumbnail(file);
-          if (thumbBlob) {
+        // Run thumbnail capture and metadata extraction in parallel
+        const [thumbBlob, meta] = await Promise.all([
+          captureThumbnail(file).catch(() => null),
+          extractVideoMetadata(file).catch(() => null),
+        ]);
+        videoMeta = meta;
+
+        if (thumbBlob) {
+          try {
             const thumbForm = new FormData();
             thumbForm.append('assetId', assetId);
             thumbForm.append('thumbnail', thumbBlob, 'thumbnail.jpg');
@@ -190,11 +220,11 @@ export function useUpload() {
             if (!thumbRes.ok) {
               console.warn('[thumbnail] server upload failed:', thumbRes.status, thumbRes.statusText);
             }
-          } else {
-            console.warn('[thumbnail] captureThumbnail returned null — no thumbnail will be stored');
+          } catch (thumbErr) {
+            console.warn('[thumbnail] capture/upload error (non-fatal):', thumbErr);
           }
-        } catch (thumbErr) {
-          console.warn('[thumbnail] capture/upload error (non-fatal):', thumbErr);
+        } else {
+          console.warn('[thumbnail] captureThumbnail returned null — no thumbnail will be stored');
         }
       }
 
@@ -231,7 +261,10 @@ export function useUpload() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ assetId }),
+        body: JSON.stringify({
+          assetId,
+          ...(videoMeta ? { width: videoMeta.width, height: videoMeta.height, duration: videoMeta.duration } : {}),
+        }),
       });
 
       if (!completeRes.ok) throw new Error('Failed to complete upload');

@@ -1,6 +1,7 @@
 'use client';
 
 import type { Asset } from '@/types';
+import { useUserNames } from '@/hooks/useUserNames';
 
 interface FileInfoPanelProps {
   asset: Asset;
@@ -47,6 +48,9 @@ function formatDate(ts: { toDate?: () => Date; toMillis?: () => number } | null 
 }
 
 export function FileInfoPanel({ asset }: FileInfoPanelProps) {
+  const uploaderNames = useUserNames(asset.uploadedBy ? [asset.uploadedBy] : []);
+  const uploaderLabel = (asset.uploadedBy && uploaderNames[asset.uploadedBy]) || asset.uploadedBy || '—';
+
   const rows: { label: string; value: string }[] = [
     { label: 'Filename', value: asset.name || '—' },
     { label: 'Type', value: asset.mimeType || '—' },
@@ -55,7 +59,7 @@ export function FileInfoPanel({ asset }: FileInfoPanelProps) {
     { label: 'Resolution', value: formatResolution(asset.width, asset.height) },
     { label: 'Aspect Ratio', value: formatAspectRatio(asset.width, asset.height) },
     { label: 'FPS', value: asset.frameRate !== undefined ? String(asset.frameRate) : '—' },
-    { label: 'Uploaded by', value: asset.uploadedBy || '—' },
+    { label: 'Uploaded by', value: uploaderLabel },
     { label: 'Date', value: formatDate(asset.createdAt as any) },
     { label: 'Version', value: asset.version !== undefined ? `v${asset.version}` : '—' },
   ];
