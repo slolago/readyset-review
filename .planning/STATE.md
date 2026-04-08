@@ -3,32 +3,32 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: — Video Review Polish
 status: Executing Phase 28
-stopped_at: Completed 26-file-info-tab 26-02-PLAN.md
-last_updated: "2026-04-08T13:18:44.018Z"
+stopped_at: Completed 28-version-stack-dnd 28-02-PLAN.md
+last_updated: "2026-04-08T14:00:00.000Z"
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 8
 ---
 
 # State
 
 ## Current Phase
 
-Phase 23: timecode-frame-fix (next to plan)
+Phase 28: version-stack-dnd (complete)
 
 ## Current Plan
 
-—
+28-02 (complete)
 
 ## Status
 
-Planned — Milestone v1.3 roadmap complete (phases 23–28). Ready to plan Phase 23.
+Phase 28 complete — drag-to-version-stack end-to-end shipped (merge-version API + full DnD UI).
 
 ## Last Session
 
-Stopped at: Completed 26-file-info-tab 26-02-PLAN.md
+Stopped at: Completed 28-version-stack-dnd 28-02-PLAN.md
 
 ## Decisions
 
@@ -75,6 +75,9 @@ Stopped at: Completed 26-file-info-tab 26-02-PLAN.md
 - [Phase 20-01]: Firestore prefix search requires 2+ characters; name query is case-sensitive (v1 limitation, nameLower field can be added later)
 - [Phase 21-admin-panel-polish]: Delete UserRoleSelect.tsx (dead code, stale 'admin'|'user' two-value type) rather than fix it
 - [Phase 26-file-info-tab]: frameRate stored as optional number on Asset interface — absent for legacy assets; FPS row shows dash when not present
+- [Phase 28-02]: isDropTarget placed before isSelected in className ternary — drop target highlight has higher visual priority than selection ring
+- [Phase 28-02]: Belt-and-suspenders upload guard: AssetCard passes undefined (not noop) for onDragOver when isUploading so browser shows no-drop cursor; FolderBrowser also checks status !== 'ready'
+- [Phase 28-02]: e.stopPropagation() in handleAssetDrop prevents bubbling to OS file-upload container drop handler
 
 ## Roadmap Evolution
 
@@ -120,3 +123,4 @@ Stopped at: Completed 26-file-info-tab 26-02-PLAN.md
 | Phase 21-admin-panel-polish P01 | 2min | 2 tasks | 4 files |
 | Phase 22-asset-download-button P01 | 1min | 2 tasks | 2 files |
 | Phase 26-file-info-tab P02 | 3min | 1 tasks | 2 files |
+| Phase 28-version-stack-dnd P02 | 20min | 2 tasks | 3 files |

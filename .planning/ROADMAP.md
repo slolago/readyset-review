@@ -98,11 +98,11 @@ Plans:
 **Goal:** Implement drag-and-drop version stacking — dragging asset A onto asset B merges A into B's version stack.
 **Depends on:** Phase 27
 **Requirements:** P28-01 → P28-15
-**Plans:** 1/1 plans complete
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 28-01-PLAN.md — `POST /api/assets/merge-version` — atomic Firestore batch merge with version renumbering
-- [ ] 28-02-PLAN.md — UI wiring: AssetCard drop target, AssetGrid prop threading, FolderBrowser orchestration
+- [x] 28-02-PLAN.md — UI wiring: AssetCard drop target, AssetGrid prop threading, FolderBrowser orchestration
 
 **Success Criteria:**
 1. Dragging one asset card onto another triggers a version merge ✓
