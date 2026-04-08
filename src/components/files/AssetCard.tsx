@@ -24,9 +24,17 @@ interface AssetCardProps {
   onToggleSelect?: (e: React.MouseEvent) => void;
   onDragStart?: (e: React.DragEvent) => void;
   hideActions?: boolean;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  isDropTarget?: boolean;
 }
 
-export const AssetCard = memo(function AssetCard({ asset, onClick, onDeleted, onVersionUploaded, onCopied, onDuplicated, onRequestMove, isSelected, onToggleSelect, onDragStart, hideActions }: AssetCardProps) {
+export const AssetCard = memo(function AssetCard({
+  asset, onClick, onDeleted, onVersionUploaded, onCopied, onDuplicated,
+  onRequestMove, isSelected, onToggleSelect, onDragStart, hideActions,
+  onDragOver, onDragLeave, onDrop, isDropTarget
+}: AssetCardProps) {
   const { getIdToken } = useAuth();
   const { uploadFile } = useUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -191,6 +199,9 @@ export const AssetCard = memo(function AssetCard({ asset, onClick, onDeleted, on
       data-selectable={asset.id}
       draggable={!isUploading}
       onDragStart={isUploading ? undefined : onDragStart}
+      onDragOver={isUploading ? undefined : onDragOver}
+      onDragLeave={isUploading ? undefined : onDragLeave}
+      onDrop={isUploading ? undefined : onDrop}
       onClick={isUploading ? undefined : onClick}
       onContextMenu={isUploading || hideActions ? undefined : (e) => {
         e.preventDefault();
@@ -200,6 +211,8 @@ export const AssetCard = memo(function AssetCard({ asset, onClick, onDeleted, on
       className={`group bg-frame-card border rounded-xl overflow-hidden transition-all ${
         isUploading
           ? 'opacity-60 border-frame-border'
+          : isDropTarget
+          ? 'border-frame-accent ring-2 ring-frame-accent bg-frame-accent/10 cursor-pointer'
           : isSelected
           ? 'border-frame-accent ring-1 ring-frame-accent hover:bg-frame-cardHover cursor-pointer'
           : 'border-frame-border hover:border-frame-borderLight hover:bg-frame-cardHover cursor-pointer'
