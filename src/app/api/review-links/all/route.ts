@@ -29,8 +29,7 @@ export async function GET(request: NextRequest) {
       const chunk = projectIds.slice(i, i + 10);
       const snap = await db.collection('reviewLinks')
         .where('projectId', 'in', chunk)
-        .orderBy('createdAt', 'desc')
-        .get();
+        .get(); // no orderBy — avoids composite index requirement; sorted in-memory below
       allLinks.push(...snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }
 

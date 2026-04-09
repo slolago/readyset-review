@@ -333,8 +333,12 @@ export default function ReviewLinksPage() {
       if (res.ok) {
         const data = await res.json();
         setLinks(data.links ?? []);
+      } else {
+        toast.error('Failed to load review links');
       }
-    } catch { /* silent */ }
+    } catch {
+      toast.error('Failed to load review links');
+    }
     finally { setLoading(false); }
   }, [getIdToken]);
 
