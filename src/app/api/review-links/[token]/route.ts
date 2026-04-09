@@ -39,49 +39,81 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const projectDoc = await db.collection('projects').doc(link.projectId).get();
     const projectName = projectDoc.exists ? (projectDoc.data() as any).name : 'Unknown Project';
 
-    // Get assets
-    let assetsQuery = db.collection('assets').where('projectId', '==', link.projectId).where('status', '==', 'ready');
-    if (link.folderId) {
-      assetsQuery = assetsQuery.where('folderId', '==', link.folderId) as any;
-    }
-    const assetsSnap = await assetsQuery.get();
-    const assetsWithUrls = await Promise.all(
-      assetsSnap.docs.map(async (d) => {
-        const asset = { id: d.id, ...d.data() } as any;
-        if (asset.gcsPath) {
-          try { asset.signedUrl = await generateReadSignedUrl(asset.gcsPath); } catch {}
-        }
-        if (asset.thumbnailGcsPath) {
-          try { asset.thumbnailSignedUrl = await generateReadSignedUrl(asset.thumbnailGcsPath); } catch {}
-        }
-        if (asset.gcsPath && link.allowDownloads) {
-          try { asset.downloadUrl = await generateDownloadSignedUrl(asset.gcsPath, asset.name); } catch {}
-        }
-        return asset;
-      })
-    );
+    // Get assets — branch on selection-scoped vs folder/project-scoped
+    let assets: any[];
+    let folders: any[] = [];
 
-    // Group by versionGroupId — keep only latest version
-    const groups = new Map<string, any[]>();
-    for (const asset of assetsWithUrls) {
-      const groupId = asset.versionGroupId || asset.id;
-      if (!groups.has(groupId)) groups.set(groupId, []);
-      groups.get(groupId)!.push(asset);
-    }
-    const assets = Array.from(groups.values()).map((group) => {
-      const sorted = group.sort((a, b) => (b.version || 1) - (a.version || 1));
-      return { ...sorted[0], _versionCount: group.length };
-    });
-
-    // Get folders
-    let foldersQuery = db.collection('folders').where('projectId', '==', link.projectId);
-    if (link.folderId) {
-      foldersQuery = foldersQuery.where('parentId', '==', link.folderId) as any;
+    if (link.assetIds && link.assetIds.length > 0) {
+      // Selection-scoped link — fetch by individual doc IDs (Firestore `in` capped at 30)
+      const docs = await Promise.all(
+        (link.assetIds as string[]).map((id: string) => db.collection('assets').doc(id).get())
+      );
+      assets = (
+        await Promise.all(
+          docs.map(async (d) => {
+            if (!d.exists) return { id: d.id, _deleted: true };
+            const asset = { id: d.id, ...d.data() } as any;
+            if (asset.status !== 'ready') return null;
+            if (asset.gcsPath) {
+              try { asset.signedUrl = await generateReadSignedUrl(asset.gcsPath); } catch {}
+            }
+            if (asset.thumbnailGcsPath) {
+              try { asset.thumbnailSignedUrl = await generateReadSignedUrl(asset.thumbnailGcsPath); } catch {}
+            }
+            if (asset.gcsPath && link.allowDownloads) {
+              try { asset.downloadUrl = await generateDownloadSignedUrl(asset.gcsPath, asset.name); } catch {}
+            }
+            return asset;
+          })
+        )
+      ).filter(Boolean);
+      // Selection links skip version-grouping — return exactly the assets the user selected
+      // folders stays []
     } else {
-      foldersQuery = foldersQuery.where('parentId', '==', null) as any;
+      // Existing folder/project-scoped path
+      let assetsQuery = db.collection('assets').where('projectId', '==', link.projectId).where('status', '==', 'ready');
+      if (link.folderId) {
+        assetsQuery = assetsQuery.where('folderId', '==', link.folderId) as any;
+      }
+      const assetsSnap = await assetsQuery.get();
+      const assetsWithUrls = await Promise.all(
+        assetsSnap.docs.map(async (d) => {
+          const asset = { id: d.id, ...d.data() } as any;
+          if (asset.gcsPath) {
+            try { asset.signedUrl = await generateReadSignedUrl(asset.gcsPath); } catch {}
+          }
+          if (asset.thumbnailGcsPath) {
+            try { asset.thumbnailSignedUrl = await generateReadSignedUrl(asset.thumbnailGcsPath); } catch {}
+          }
+          if (asset.gcsPath && link.allowDownloads) {
+            try { asset.downloadUrl = await generateDownloadSignedUrl(asset.gcsPath, asset.name); } catch {}
+          }
+          return asset;
+        })
+      );
+
+      // Group by versionGroupId — keep only latest version
+      const groups = new Map<string, any[]>();
+      for (const asset of assetsWithUrls) {
+        const groupId = asset.versionGroupId || asset.id;
+        if (!groups.has(groupId)) groups.set(groupId, []);
+        groups.get(groupId)!.push(asset);
+      }
+      assets = Array.from(groups.values()).map((group) => {
+        const sorted = group.sort((a, b) => (b.version || 1) - (a.version || 1));
+        return { ...sorted[0], _versionCount: group.length };
+      });
+
+      // Get folders for folder/project-scoped links
+      let foldersQuery = db.collection('folders').where('projectId', '==', link.projectId);
+      if (link.folderId) {
+        foldersQuery = foldersQuery.where('parentId', '==', link.folderId) as any;
+      } else {
+        foldersQuery = foldersQuery.where('parentId', '==', null) as any;
+      }
+      const foldersSnap = await foldersQuery.get();
+      folders = foldersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
     }
-    const foldersSnap = await foldersQuery.get();
-    const folders = foldersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     // Remove password from response
     const { password: _pw, ...safeLink } = link;
