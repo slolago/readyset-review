@@ -1249,6 +1249,7 @@ const FolderCard = React.memo(function FolderCard({
             items={[
               { label: 'Rename', icon: <Pencil className="w-4 h-4" />, onClick: handleRenameFolder },
               { label: 'Copy to', icon: <Copy className="w-4 h-4" />, onClick: handleOpenCopyModal },
+              { label: 'Move to', icon: <Move className="w-4 h-4" />, onClick: () => onRequestMove?.() },
               { label: 'Duplicate', icon: <CopyPlus className="w-4 h-4" />, onClick: onDuplicate ?? (() => {}) },
               { label: 'Create review link', icon: <LinkIcon className="w-4 h-4" />, onClick: onCreateReviewLink ?? (() => {}), divider: true },
               { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: onDelete, danger: true, divider: true },
