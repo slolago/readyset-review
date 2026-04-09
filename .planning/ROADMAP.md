@@ -115,7 +115,7 @@ Plans:
 
 Plans:
 - [ ] 31-01: POST /api/assets/unstack-version + POST /api/assets/reorder-versions
-- [ ] 31-02: VersionStackModal unstack button + drag-to-reorder UI
+- [x] 31-02: VersionStackModal unstack button + drag-to-reorder UI
 
 #### Phase 32: smart-copy-options
 **Goal**: Copying to a review folder gives users control over which version is copied and whether comments travel with it
@@ -177,7 +177,7 @@ Plans:
 | 28. version-stack-dnd | v1.3 | 2/2 | Complete | 2026-04-08 |
 | 29. move-to-folder | v1.4 | 1/1 | Complete   | 2026-04-09 |
 | 30. asset-review-status | v1.4 | 1/2 | In Progress|  |
-| 31. version-stack-management | v1.4 | 0/2 | Not started | - |
+| 31. version-stack-management | v1.4 | 1/2 | In Progress|  |
 | 32. smart-copy-options | v1.4 | 0/1 | Not started | - |
 | 33. selection-review-links | v1.4 | 0/2 | Not started | - |
 | 34. compare-view-audio-comments | v1.4 | 0/2 | Not started | - |
