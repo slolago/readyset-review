@@ -1043,7 +1043,9 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
                     toast.error('Select 50 or fewer assets to create a review link');
                     return;
                   }
-                  setSelectionReviewIds(Array.from(selectedIds));
+                  // Only pass asset IDs (not folder IDs) to the review link API
+                  const assetOnlyIds = Array.from(selectedIds).filter(id => assets.some(a => a.id === id));
+                  setSelectionReviewIds(assetOnlyIds);
                   setShowReviewModal(true);
                 }}
                 title={overCap ? 'Select 50 or fewer assets' : 'Create review link from selection'}

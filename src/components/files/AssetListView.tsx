@@ -2,13 +2,20 @@
 
 import { useState, useMemo, useRef, useEffect, memo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Film, Image as ImageIcon, ChevronUp, ChevronDown, Pencil, CopyPlus, Move, Download, Link as LinkIcon, Trash2, ExternalLink, Check, ChevronDown as ChevronDownIcon } from 'lucide-react';
+import {
+  Film, Image as ImageIcon, ChevronUp, ChevronDown, Pencil, Copy, CopyPlus,
+  Move, Download, Link as LinkIcon, Trash2, ExternalLink, Check,
+  ChevronDown as ChevronDownIcon, Upload, Layers,
+} from 'lucide-react';
 import { formatBytes, formatRelativeTime, forceDownload } from '@/lib/utils';
 import { useUserNames } from '@/hooks/useUserNames';
 import { useAuth } from '@/hooks/useAuth';
+import { useUpload } from '@/hooks/useAssets';
 import { ContextMenu } from '@/components/ui/ContextMenu';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
-import type { ReviewStatus } from '@/types';
+import { SmartCopyModal } from './SmartCopyModal';
+import { VersionStackModal } from './VersionStackModal';
+import type { ReviewStatus, Folder } from '@/types';
 import toast from 'react-hot-toast';
 import type { Asset } from '@/types';
 
@@ -40,6 +47,7 @@ export const AssetListView = memo(function AssetListView({
   assets,
   projectId,
   onAssetDeleted,
+  onVersionUploaded,
   onCopied,
   onDuplicated,
   selectedIds,
@@ -171,6 +179,7 @@ export const AssetListView = memo(function AssetListView({
               onAssetDragStart={onAssetDragStart}
               uploaderName={uploaderNames[asset.uploadedBy]}
               onAssetDeleted={onAssetDeleted}
+              onVersionUploaded={onVersionUploaded}
               onCopied={onCopied}
               onDuplicated={onDuplicated}
               onRequestMove={onRequestMove}
@@ -191,6 +200,7 @@ interface AssetListRowProps {
   onAssetDragStart?: (assetId: string, e: React.DragEvent) => void;
   uploaderName?: string;
   onAssetDeleted?: () => void;
+  onVersionUploaded?: () => void;
   onCopied?: () => void;
   onDuplicated?: () => void;
   onRequestMove?: (assetId: string) => void;
@@ -205,19 +215,26 @@ function AssetListRow({
   onAssetDragStart,
   uploaderName,
   onAssetDeleted,
+  onVersionUploaded,
   onCopied,
   onDuplicated,
   onRequestMove,
 }: AssetListRowProps) {
   const { getIdToken } = useAuth();
+  const { uploadFile } = useUpload();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const [showCopyToModal, setShowCopyToModal] = useState(false);
+  const [allFolders, setAllFolders] = useState<Folder[]>([]);
+  const [showVersionModal, setShowVersionModal] = useState(false);
   const statusMenuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isSelected = selectedIds?.has(asset.id) ?? false;
   const isUploading = asset.status === 'uploading';
   const signedUrl = (asset as any).signedUrl as string | undefined;
   const thumbnailSignedUrl = (asset as any).thumbnailSignedUrl as string | undefined;
   const downloadUrl = (asset as any).downloadUrl as string | undefined;
+  const versionCount = (asset as any)._versionCount || 1;
 
   // Close status menu on outside click
   useEffect(() => {
@@ -235,13 +252,17 @@ function AssetListRow({
     setStatusMenuOpen(false);
     try {
       const token = await getIdToken();
-      await fetch(`/api/assets/${asset.id}`, {
+      const res = await fetch(`/api/assets/${asset.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ reviewStatus }),
       });
-      toast.success(reviewStatus ? 'Status updated' : 'Status cleared');
-      onAssetDeleted?.(); // refetch
+      if (res.ok) {
+        toast.success(reviewStatus ? 'Status updated' : 'Status cleared');
+        onAssetDeleted?.(); // refetch
+      } else {
+        toast.error('Failed to update status');
+      }
     } catch {
       toast.error('Failed to update status');
     }
@@ -262,6 +283,41 @@ function AssetListRow({
     } catch { toast.error('Rename failed'); }
   };
 
+  const openCopyTo = async () => {
+    try {
+      const token = await getIdToken();
+      const res = await fetch(`/api/folders?projectId=${asset.projectId}&all=true`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAllFolders(data.folders);
+      }
+    } catch {}
+    setShowCopyToModal(true);
+  };
+
+  const handleCopyTo = async (targetFolderId: string | null, latestVersionOnly: boolean) => {
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/assets/copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ assetId: asset.id, targetFolderId, latestVersionOnly }),
+      });
+      if (res.ok) {
+        toast.success('Copied');
+        onCopied?.();
+      } else {
+        toast.error('Copy failed');
+      }
+    } catch {
+      toast.error('Copy failed');
+    } finally {
+      setShowCopyToModal(false);
+    }
+  };
+
   const handleDuplicate = async () => {
     try {
       const token = await getIdToken();
@@ -273,6 +329,21 @@ function AssetListRow({
       if (res.ok) { toast.success('Duplicated'); onDuplicated?.(); }
       else toast.error('Duplicate failed');
     } catch { toast.error('Duplicate failed'); }
+  };
+
+  const handleUploadVersion = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const assetId = await uploadFile(file, asset.projectId, asset.folderId, asset.id);
+    if (assetId) {
+      toast.success('New version uploaded');
+      onVersionUploaded?.();
+    }
   };
 
   const handleDelete = async () => {
@@ -306,138 +377,163 @@ function AssetListRow({
 
   return (
     <>
-    <tr
-      data-selectable={asset.id}
-      draggable={onAssetDragStart ? !isUploading : undefined}
-      onDragStart={onAssetDragStart ? (e) => onAssetDragStart(asset.id, e) : undefined}
-      onClick={() => router.push(`/projects/${projectId}/assets/${asset.id}`)}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setContextMenu({ x: e.clientX, y: e.clientY });
-      }}
-      className={`cursor-pointer hover:bg-frame-card/50 transition-colors border-b border-frame-border/40 ${
-        isSelected ? 'bg-frame-accent/10' : ''
-      }`}
-    >
-      {onToggleSelect && (
-        <td
-          className="px-3 py-2 cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSelect(asset.id, e);
-          }}
-        >
-          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors pointer-events-none ${
-            isSelected ? 'bg-frame-accent border-frame-accent' : 'bg-transparent border-white/30'
-          }`}>
-            {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+      <input ref={fileInputRef} type="file" accept="video/*,image/*" className="hidden" onChange={handleFileSelected} />
+      <tr
+        data-selectable={asset.id}
+        draggable={onAssetDragStart ? !isUploading : undefined}
+        onDragStart={onAssetDragStart ? (e) => onAssetDragStart(asset.id, e) : undefined}
+        onClick={() => router.push(`/projects/${projectId}/assets/${asset.id}`)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setContextMenu({ x: e.clientX, y: e.clientY });
+        }}
+        className={`cursor-pointer hover:bg-frame-card/50 transition-colors border-b border-frame-border/40 ${
+          isSelected ? 'bg-frame-accent/10' : ''
+        }`}
+      >
+        {onToggleSelect && (
+          <td
+            className="px-3 py-2 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect(asset.id, e);
+            }}
+          >
+            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors pointer-events-none ${
+              isSelected ? 'bg-frame-accent border-frame-accent' : 'bg-transparent border-white/30'
+            }`}>
+              {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+            </div>
+          </td>
+        )}
+
+        {/* Thumbnail */}
+        <td className="px-3 py-2 w-12">
+          <div className="w-10 h-10 rounded overflow-hidden bg-frame-bg flex-shrink-0 flex items-center justify-center">
+            {asset.type === 'image' && signedUrl ? (
+              <img src={signedUrl} alt={asset.name} className="w-full h-full object-cover" />
+            ) : asset.type === 'video' && thumbnailSignedUrl ? (
+              <img src={thumbnailSignedUrl} alt={asset.name} className="w-full h-full object-cover" />
+            ) : asset.type === 'video' ? (
+              <Film className="w-5 h-5 text-frame-textMuted" />
+            ) : (
+              <ImageIcon className="w-5 h-5 text-frame-textMuted" />
+            )}
           </div>
         </td>
-      )}
 
-      {/* Thumbnail */}
-      <td className="px-3 py-2 w-12">
-        <div className="w-10 h-10 rounded overflow-hidden bg-frame-bg flex-shrink-0 flex items-center justify-center">
-          {asset.type === 'image' && signedUrl ? (
-            <img src={signedUrl} alt={asset.name} className="w-full h-full object-cover" />
-          ) : asset.type === 'video' && thumbnailSignedUrl ? (
-            <img src={thumbnailSignedUrl} alt={asset.name} className="w-full h-full object-cover" />
-          ) : asset.type === 'video' ? (
-            <Film className="w-5 h-5 text-frame-textMuted" />
-          ) : (
-            <ImageIcon className="w-5 h-5 text-frame-textMuted" />
-          )}
-        </div>
-      </td>
+        {/* Name */}
+        <td className="px-3 py-2">
+          <span className="font-medium text-white truncate block max-w-[240px]">{asset.name}</span>
+        </td>
 
-      {/* Name */}
-      <td className="px-3 py-2">
-        <span className="font-medium text-white truncate block max-w-[240px]">{asset.name}</span>
-      </td>
-
-      {/* Review status — clickable dropdown */}
-      <td
-        className="px-3 py-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="relative" ref={statusMenuRef}>
-          <button
-            onClick={(e) => { e.stopPropagation(); setStatusMenuOpen(v => !v); }}
-            className="flex items-center gap-1 group"
-            title="Set review status"
-          >
-            {asset.reviewStatus ? (
-              <ReviewStatusBadge status={asset.reviewStatus} />
-            ) : (
-              <span className="text-xs text-frame-textMuted group-hover:text-white transition-colors">—</span>
+        {/* Review status — clickable dropdown */}
+        <td
+          className="px-3 py-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="relative" ref={statusMenuRef}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setStatusMenuOpen(v => !v); }}
+              onKeyDown={(e) => { if (e.key === 'Escape') setStatusMenuOpen(false); }}
+              className="flex items-center gap-1 group"
+              aria-expanded={statusMenuOpen}
+              aria-haspopup="menu"
+              title="Set review status"
+            >
+              {asset.reviewStatus ? (
+                <ReviewStatusBadge status={asset.reviewStatus} />
+              ) : (
+                <span className="text-xs text-frame-textMuted group-hover:text-white transition-colors">—</span>
+              )}
+              <ChevronDownIcon className="w-3 h-3 text-frame-textMuted opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+            {statusMenuOpen && (
+              <div role="menu" className="absolute left-0 top-full mt-1 z-50 bg-frame-card border border-frame-border rounded-xl shadow-2xl overflow-hidden min-w-[160px]">
+                {REVIEW_STATUS_OPTIONS.map(opt => (
+                  <button
+                    key={String(opt.value)}
+                    role="menuitem"
+                    onClick={() => handleSetStatus(opt.value)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setStatusMenuOpen(false); }}
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-frame-border/50 transition-colors flex items-center gap-2 ${
+                      opt.value === null ? 'text-frame-textMuted border-t border-frame-border/50 mt-1 pt-2' : 'text-white'
+                    }`}
+                  >
+                    {opt.value && (
+                      <ReviewStatusBadge status={opt.value} />
+                    )}
+                    {opt.value === null && opt.label}
+                  </button>
+                ))}
+              </div>
             )}
-            <ChevronDownIcon className="w-3 h-3 text-frame-textMuted opacity-0 group-hover:opacity-100 transition-opacity" />
-          </button>
-          {statusMenuOpen && (
-            <div className="absolute left-0 top-full mt-1 z-50 bg-frame-card border border-frame-border rounded-xl shadow-2xl overflow-hidden min-w-[160px]">
-              {REVIEW_STATUS_OPTIONS.map(opt => (
-                <button
-                  key={String(opt.value)}
-                  onClick={() => handleSetStatus(opt.value)}
-                  className={`w-full text-left px-3 py-2 text-xs hover:bg-frame-border/50 transition-colors flex items-center gap-2 ${
-                    opt.value === null ? 'text-frame-textMuted border-t border-frame-border/50 mt-1 pt-2' : 'text-white'
-                  }`}
-                >
-                  {opt.value && (
-                    <ReviewStatusBadge status={opt.value} />
-                  )}
-                  {opt.value === null && opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </td>
+          </div>
+        </td>
 
-      {/* Comments */}
-      <td className="px-3 py-2">
-        <span className="text-frame-textMuted">
-          {(asset as any)._commentCount ?? 0}
-        </span>
-      </td>
+        {/* Comments */}
+        <td className="px-3 py-2">
+          <span className="text-frame-textMuted">
+            {(asset as any)._commentCount ?? 0}
+          </span>
+        </td>
 
-      {/* Size */}
-      <td className="px-3 py-2">
-        <span className="text-frame-textSecondary">{formatBytes(asset.size)}</span>
-      </td>
+        {/* Size */}
+        <td className="px-3 py-2">
+          <span className="text-frame-textSecondary">{formatBytes(asset.size)}</span>
+        </td>
 
-      {/* Date uploaded */}
-      <td className="px-3 py-2" title={date.toLocaleDateString()}>
-        <span className="text-frame-textSecondary">{formatRelativeTime(date)}</span>
-      </td>
+        {/* Date uploaded */}
+        <td className="px-3 py-2" title={date.toLocaleDateString()}>
+          <span className="text-frame-textSecondary">{formatRelativeTime(date)}</span>
+        </td>
 
-      {/* Uploaded by */}
-      <td className="px-3 py-2">
-        <span className="text-frame-textSecondary truncate max-w-[120px] block">
-          {uploaderName ?? asset.uploadedBy}
-        </span>
-      </td>
-    </tr>
-    {contextMenu && (
-      <ContextMenu
-        position={contextMenu}
-        onClose={() => setContextMenu(null)}
-        items={[
-          { label: 'Open', icon: <ExternalLink className="w-4 h-4" />, onClick: () => router.push(`/projects/${projectId}/assets/${asset.id}`) },
-          { label: 'Rename', icon: <Pencil className="w-4 h-4" />, onClick: handleRename },
-          { label: 'Duplicate', icon: <CopyPlus className="w-4 h-4" />, onClick: handleDuplicate },
-          { label: 'Move to', icon: <Move className="w-4 h-4" />, onClick: () => onRequestMove?.(asset.id) },
-          { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: handleDownload },
-          { label: 'Get link', icon: <LinkIcon className="w-4 h-4" />, onClick: handleGetLink },
-          { label: 'Approved', icon: <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />, onClick: () => handleSetStatus('approved'), dividerBefore: true },
-          { label: 'In Review', icon: <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />, onClick: () => handleSetStatus('in_review') },
-          { label: 'Needs Revision', icon: <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />, onClick: () => handleSetStatus('needs_revision') },
-          { label: 'Clear status', icon: <span className="w-2 h-2 rounded-full bg-white/20 inline-block" />, onClick: () => handleSetStatus(null) },
-          { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDelete, danger: true, dividerBefore: true },
-        ]}
-      />
-    )}
+        {/* Uploaded by */}
+        <td className="px-3 py-2">
+          <span className="text-frame-textSecondary truncate max-w-[120px] block">
+            {uploaderName ?? asset.uploadedBy}
+          </span>
+        </td>
+      </tr>
+      {contextMenu && (
+        <ContextMenu
+          position={contextMenu}
+          onClose={() => setContextMenu(null)}
+          items={[
+            { label: 'Open', icon: <ExternalLink className="w-4 h-4" />, onClick: () => router.push(`/projects/${projectId}/assets/${asset.id}`) },
+            { label: 'Rename', icon: <Pencil className="w-4 h-4" />, onClick: handleRename },
+            { label: 'Duplicate', icon: <CopyPlus className="w-4 h-4" />, onClick: handleDuplicate },
+            { label: 'Copy to', icon: <Copy className="w-4 h-4" />, onClick: openCopyTo },
+            { label: 'Move to', icon: <Move className="w-4 h-4" />, onClick: () => onRequestMove?.(asset.id) },
+            { label: 'Upload new version', icon: <Upload className="w-4 h-4" />, onClick: handleUploadVersion },
+            { label: 'Manage version stack', icon: <Layers className="w-4 h-4" />, onClick: () => setShowVersionModal(true) },
+            { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: handleDownload },
+            { label: 'Get link', icon: <LinkIcon className="w-4 h-4" />, onClick: handleGetLink },
+            { label: 'Approved', icon: <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />, onClick: () => handleSetStatus('approved'), dividerBefore: true },
+            { label: 'In Review', icon: <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />, onClick: () => handleSetStatus('in_review') },
+            { label: 'Needs Revision', icon: <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />, onClick: () => handleSetStatus('needs_revision') },
+            { label: 'Clear status', icon: <span className="w-2 h-2 rounded-full bg-white/20 inline-block" />, onClick: () => handleSetStatus(null) },
+            { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDelete, danger: true, dividerBefore: true },
+          ]}
+        />
+      )}
+      {showCopyToModal && (
+        <SmartCopyModal
+          folders={allFolders}
+          versionCount={versionCount}
+          onPick={handleCopyTo}
+          onClose={() => setShowCopyToModal(false)}
+        />
+      )}
+      {showVersionModal && (
+        <VersionStackModal
+          asset={asset}
+          onClose={() => setShowVersionModal(false)}
+          onDeleted={onAssetDeleted}
+          getIdToken={getIdToken}
+        />
+      )}
     </>
   );
 }
