@@ -94,12 +94,12 @@ Plans:
   3. A colored badge showing the current status appears on the asset's grid card
   4. The same badge is visible in the asset viewer
   5. Assets with no status set show no badge
-**Plans**: TBD
+**Plans**: 2 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 30-01: reviewStatus field + API endpoint + ReviewStatusBadge component
-- [ ] 30-02: Wire badge to grid cards and asset viewer
+- [ ] 30-01: ReviewStatus type + badge component + API null guard + AssetCard wiring
+- [ ] 30-02: Viewer header badge display + status setter dropdown
 
 #### Phase 31: version-stack-management
 **Goal**: Users have full control over version stacks — unstacking individual versions and reordering within a stack
@@ -111,7 +111,7 @@ Plans:
   3. Version numbers in the remaining stack are gapless after an unstack (e.g., 1, 2 — not 1, 3)
   4. Versions inside the modal can be dragged to reorder, and version numbers update to reflect the new order
   5. Version numbering is gapless after any reorder
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 31-01: POST /api/assets/unstack-version + POST /api/assets/reorder-versions
@@ -126,7 +126,7 @@ Plans:
   2. When "Latest version only" is enabled, only the head version is copied — older versions are not
   3. The copy modal includes a visible note that comments are not copied to the destination folder
   4. After copying, the destination folder contains the expected version(s) with no comments
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 32-01: SmartCopyModal + latestVersionOnly param on copy API
@@ -141,7 +141,7 @@ Plans:
   3. The review link page does not show the folder browser sidebar
   4. Selecting more than 50 assets disables or warns before the review link action
   5. If a linked asset is later deleted, the review link page shows a placeholder rather than breaking
-**Plans**: TBD
+**Plans**: 2 plans
 **UI hint**: yes
 
 Plans:
@@ -158,7 +158,7 @@ Plans:
   3. A comments panel below (or beside) the active video shows comments for that version
   4. Switching the active side by clicking the other label updates the comment panel to that version's comments
   5. The comment panel does not flicker when switching sides rapidly
-**Plans**: TBD
+**Plans**: 2 plans
 **UI hint**: yes
 
 Plans:
