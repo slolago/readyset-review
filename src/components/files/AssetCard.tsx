@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRef, useCallback, useState, useEffect, memo } from 'react';
-import { Play, Image as ImageIcon, Film, MoreHorizontal, Trash2, Clock, Upload, Layers, Check, Pencil, Copy, CopyPlus, Home, Folder as FolderIcon, X, ExternalLink, Move as MoveIcon, Download, Link as LinkIcon, MessageSquare, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Play, Image as ImageIcon, Film, MoreHorizontal, Trash2, Clock, Upload, Layers, Check, Pencil, Copy, CopyPlus, Home, Folder as FolderIcon, X, ExternalLink, Move as MoveIcon, Download, Link as LinkIcon, MessageSquare, CheckCircle2, AlertCircle, Unlink, GripVertical } from 'lucide-react';
 import { formatDuration, formatBytes, forceDownload } from '@/lib/utils';
 import type { Asset, Folder } from '@/types';
 import type { ReviewStatus } from '@/types';
@@ -507,6 +507,8 @@ interface VersionStackModalProps {
 function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: VersionStackModalProps) {
   const [versions, setVersions] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   const fetchVersions = async () => {
     setLoading(true);
@@ -563,6 +565,63 @@ function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: VersionSta
     }
   };
 
+  const handleUnstack = async (version: Asset) => {
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/assets/unstack-version', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ assetId: version.id }),
+      });
+      if (res.ok) {
+        toast.success(`V${version.version} unstacked`);
+        const remaining = versions.filter((v) => v.id !== version.id);
+        setVersions(remaining);
+        if (version.id === asset.id || remaining.length <= 1) {
+          onDeleted?.();
+          onClose();
+        } else {
+          onDeleted?.();
+        }
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Unstack failed');
+      }
+    } catch {
+      toast.error('Unstack failed');
+    }
+  };
+
+  const handleReorder = async (fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    const reordered = [...versions];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    setVersions(reordered); // optimistic update
+
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/assets/reorder-versions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ orderedIds: reordered.map((v) => v.id) }),
+      });
+      if (!res.ok) {
+        toast.error('Reorder failed');
+        fetchVersions(); // rollback to server state
+      }
+    } catch {
+      toast.error('Reorder failed');
+      fetchVersions(); // rollback to server state
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
@@ -589,11 +648,40 @@ function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: VersionSta
           ) : versions.length === 0 ? (
             <p className="text-center text-sm text-frame-textMuted py-8">No versions found.</p>
           ) : (
-            versions.map((version) => (
-              <div key={version.id} className="flex items-center gap-3 px-5 py-3 hover:bg-frame-border/30 transition-colors">
+            versions.map((version, idx) => (
+              <div
+                key={version.id}
+                draggable={versions.length > 1}
+                onDragStart={(e) => {
+                  setDragIdx(idx);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setHoverIdx(idx);
+                }}
+                onDragLeave={() => setHoverIdx(null)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragIdx !== null) handleReorder(dragIdx, idx);
+                  setDragIdx(null);
+                  setHoverIdx(null);
+                }}
+                onDragEnd={() => {
+                  setDragIdx(null);
+                  setHoverIdx(null);
+                }}
+                className={`flex items-center gap-3 px-5 py-3 hover:bg-frame-border/30 transition-colors ${
+                  hoverIdx === idx && dragIdx !== null && dragIdx !== idx ? 'border-t-2 border-frame-accent' : ''
+                } ${dragIdx === idx ? 'opacity-50' : ''}`}
+              >
+                {/* Drag handle — only when >1 version */}
+                {versions.length > 1 && (
+                  <GripVertical className="w-4 h-4 text-frame-textMuted cursor-grab flex-shrink-0" />
+                )}
                 {/* Version badge */}
                 <span className="flex-shrink-0 bg-frame-accent/20 text-frame-accent text-xs px-2 py-0.5 rounded font-mono">
-                  V{version.version}
+                  V{idx + 1}
                 </span>
                 {/* Info */}
                 <div className="flex-1 min-w-0">
@@ -602,15 +690,24 @@ function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: VersionSta
                     {formatDate(version.createdAt)} &middot; {version.uploadedBy}
                   </p>
                 </div>
-                {/* Delete button — hidden when only 1 version remains */}
+                {/* Action buttons — Unstack + Delete (hidden when only 1 version) */}
                 {versions.length > 1 && (
-                  <button
-                    onClick={() => handleDelete(version)}
-                    className="flex-shrink-0 text-red-400 hover:text-red-300 transition-colors"
-                    title={`Delete V${version.version}`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleUnstack(version)}
+                      className="flex-shrink-0 text-frame-textMuted hover:text-white transition-colors"
+                      title={`Unstack V${version.version}`}
+                    >
+                      <Unlink className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(version)}
+                      className="flex-shrink-0 text-red-400 hover:text-red-300 transition-colors"
+                      title={`Delete V${version.version}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
                 )}
               </div>
             ))
