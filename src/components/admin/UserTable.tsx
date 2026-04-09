@@ -45,7 +45,13 @@ function UserRow({
   const [roleLoading, setRoleLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const createdAt = (u.createdAt as any)?.toDate?.() ?? new Date();
+  const createdAtRaw = u.createdAt as any;
+  const createdAt: Date | null =
+    typeof createdAtRaw?.toDate === 'function'
+      ? createdAtRaw.toDate()
+      : createdAtRaw?._seconds
+      ? new Date(createdAtRaw._seconds * 1000)
+      : null;
 
   const handleRoleChange = async (role: 'admin' | 'manager' | 'editor' | 'viewer') => {
     setRoleLoading(true);
@@ -113,7 +119,9 @@ function UserRow({
 
       {/* Joined */}
       <td className="px-6 py-4">
-        <span className="text-sm text-frame-textSecondary">{formatRelativeTime(createdAt)}</span>
+        <span className="text-sm text-frame-textSecondary" title={createdAt?.toLocaleDateString() ?? ''}>
+          {createdAt ? formatRelativeTime(createdAt) : <span className="text-frame-textMuted">—</span>}
+        </span>
       </td>
 
       {/* Actions */}

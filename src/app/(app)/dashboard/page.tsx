@@ -77,6 +77,8 @@ export default function DashboardPage() {
             label="Collaborators"
             value={statsLoading ? null : (stats?.collaboratorCount.toString() ?? '—')}
             color="green"
+            href="/projects"
+            tooltip="Unique team members across all your projects"
           />
           <StatCard
             icon={<HardDrive className="w-5 h-5" />}
@@ -169,11 +171,15 @@ function StatCard({
   label,
   value,
   color,
+  href,
+  tooltip,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string | null;
   color: string;
+  href?: string;
+  tooltip?: string;
 }) {
   const colorMap: Record<string, { icon: string; glow: string }> = {
     purple: { icon: 'text-frame-accent bg-frame-accent/10', glow: 'shadow-frame-accent/10' },
@@ -182,8 +188,9 @@ function StatCard({
     orange: { icon: 'text-orange-400 bg-orange-400/10', glow: 'shadow-orange-400/10' },
   };
   const c = colorMap[color];
-  return (
-    <div className={`bg-frame-card border border-frame-border rounded-xl p-4 shadow-lg ${c.glow}`}>
+  const inner = (
+    <div className={`bg-frame-card border border-frame-border rounded-xl p-4 shadow-lg ${c.glow} ${href ? 'hover:border-frame-borderLight hover:bg-frame-cardHover transition-all cursor-pointer' : ''}`}
+      title={tooltip}>
       <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${c.icon}`}>
         {icon}
       </div>
@@ -195,6 +202,7 @@ function StatCard({
       <div className="text-frame-textSecondary text-xs font-medium mt-1">{label}</div>
     </div>
   );
+  return href ? <Link href={href}>{inner}</Link> : inner;
 }
 
 function DashboardProjectCard({ project }: { project: Project }) {
