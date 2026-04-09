@@ -71,6 +71,20 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [allFolders, setAllFolders] = useState<FolderType[]>([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close status menu on outside click
+  useEffect(() => {
+    if (!showStatusMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(e.target as Node)) {
+        setShowStatusMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showStatusMenu]);
 
   // Multi-select state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1044,20 +1058,55 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
               </button>
             );
           })()}
-          <Dropdown
-            trigger={
-              <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-frame-border hover:bg-frame-borderLight rounded-lg transition-colors">
-                <CheckCircle className="w-3.5 h-3.5" />
-                Status
-              </button>
-            }
-            items={[
-              { label: 'Approved', onClick: () => handleBulkSetStatus('approved') },
-              { label: 'In Review', onClick: () => handleBulkSetStatus('in_review') },
-              { label: 'Needs Revision', onClick: () => handleBulkSetStatus('needs_revision') },
-              { label: 'Clear status', onClick: () => handleBulkSetStatus(null), divider: true },
-            ]}
-          />
+          {(() => {
+            const selectedAssets = assets.filter(a => selectedIds.has(a.id));
+            const sharedStatus = selectedAssets.length > 0 && selectedAssets.every(a => a.reviewStatus === selectedAssets[0].reviewStatus)
+              ? selectedAssets[0].reviewStatus
+              : undefined;
+            const STATUS_OPTIONS: { value: ReviewStatus | null; label: string; color: string }[] = [
+              { value: 'approved', label: 'Approved', color: 'bg-emerald-400' },
+              { value: 'in_review', label: 'In Review', color: 'bg-blue-400' },
+              { value: 'needs_revision', label: 'Needs Revision', color: 'bg-yellow-400' },
+            ];
+            return (
+              <div className="relative" ref={statusMenuRef}>
+                <button
+                  onClick={() => setShowStatusMenu(v => !v)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-frame-border hover:bg-frame-borderLight rounded-lg transition-colors"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  Status
+                </button>
+                {showStatusMenu && (
+                  <div className="absolute bottom-full mb-2 left-0 z-50 bg-frame-card border border-frame-border rounded-xl shadow-2xl py-1 min-w-[170px]">
+                    {STATUS_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => { handleBulkSetStatus(opt.value); setShowStatusMenu(false); }}
+                        className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors text-left ${
+                          sharedStatus === opt.value
+                            ? 'text-white bg-frame-cardHover'
+                            : 'text-frame-textSecondary hover:text-white hover:bg-frame-cardHover'
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.color}`} />
+                        {opt.label}
+                        {sharedStatus === opt.value && <Check className="w-3 h-3 ml-auto text-frame-accent" />}
+                      </button>
+                    ))}
+                    <div className="my-1 border-t border-frame-border" />
+                    <button
+                      onClick={() => { handleBulkSetStatus(null); setShowStatusMenu(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-frame-textMuted hover:text-white hover:bg-frame-cardHover transition-colors text-left"
+                    >
+                      <span className="w-2 h-2 rounded-full flex-shrink-0 bg-white/20" />
+                      Clear status
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           <button
             onClick={handleOpenMoveModal}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-frame-border hover:bg-frame-borderLight rounded-lg transition-colors"
