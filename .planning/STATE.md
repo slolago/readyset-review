@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: — Review & Version Workflow
 status: verifying
-stopped_at: Completed 31-01-PLAN.md (version-stack-management API routes)
-last_updated: "2026-04-09T03:31:48.265Z"
+stopped_at: Completed 31-02-PLAN.md (version-stack-management UI)
+last_updated: "2026-04-09T03:37:35.903Z"
 last_activity: 2026-04-09
 progress:
   total_phases: 6
@@ -53,7 +53,7 @@ Progress: [░░░░░░░░░░] 0% (0/6 phases complete)
 
 | Phase 29-move-to-folder P01 | 20min | 2 tasks | 2 files |
 | Phase 30-asset-review-status P02 | 15 | 1 tasks | 5 files |
-| Phase 31-version-stack-management P01 | 10min | 2 tasks | 2 files |
+| Phase 31-version-stack-management P02 | 4 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -70,7 +70,8 @@ Progress: [░░░░░░░░░░] 0% (0/6 phases complete)
 - [Phase 29-move-to-folder]: FolderCard hover Dropdown fixed beyond plan scope to give consistent move-to-folder surface across all card types
 - [Phase 30-asset-review-status]: Optimistic reviewStatus update via setActiveVersion spread avoids re-fetching signed URLs
 - [Phase 30-asset-review-status]: Tag icon used as viewer header status-setter trigger to keep header uncluttered
-- [Phase 31-version-stack-management]: Unstack uses db.batch() (reads done before write); Reorder uses db.runTransaction() to guard concurrent version number assignment
+- [Phase 31-version-stack-management]: API routes for Plan 01 created inline as Rule 3 deviation — Plan 01 was not executed; unstack uses db.batch(), reorder uses db.runTransaction() per STATE.md mandate
+- [Phase 31-version-stack-management]: Version badge in VersionStackModal shows V{idx+1} to reflect current visual order after drag-reorder, not stored version number
 
 ### Pending Todos
 
@@ -86,6 +87,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-09T03:31:48.259Z
-Stopped at: Completed 31-01-PLAN.md (version-stack-management API routes)
+Last session: 2026-04-09T03:37:35.898Z
+Stopped at: Completed 31-02-PLAN.md (version-stack-management UI)
 Resume file: None

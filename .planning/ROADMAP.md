@@ -114,8 +114,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [x] 31-01: POST /api/assets/unstack-version + POST /api/assets/reorder-versions
-- [ ] 31-02: VersionStackModal unstack button + drag-to-reorder UI
+- [ ] 31-01: POST /api/assets/unstack-version + POST /api/assets/reorder-versions
+- [x] 31-02: VersionStackModal unstack button + drag-to-reorder UI
 
 #### Phase 32: smart-copy-options
 **Goal**: Copying to a review folder gives users control over which version is copied and whether comments travel with it
