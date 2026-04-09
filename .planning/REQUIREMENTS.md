@@ -17,7 +17,7 @@
 
 ## Review Link — Selection
 
-- [ ] **REVIEW-03**: User can generate a review link scoped to a manually selected set of assets (not the full folder)
+- [x] **REVIEW-03**: User can generate a review link scoped to a manually selected set of assets (not the full folder)
 
 ## Compare View
 
@@ -56,6 +56,6 @@
 | VSTK-02 | Phase 31 — version-stack-management | Complete |
 | REVIEW-01 | Phase 32 — smart-copy-options | Pending |
 | REVIEW-02 | Phase 32 — smart-copy-options | Pending |
-| REVIEW-03 | Phase 33 — selection-review-links | Pending |
+| REVIEW-03 | Phase 33 — selection-review-links | Complete |
 | COMPARE-01 | Phase 34 — compare-view-audio-comments | Pending |
 | COMPARE-02 | Phase 34 — compare-view-audio-comments | Pending |
