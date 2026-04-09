@@ -145,8 +145,8 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [x] 33-01: assetIds schema on ReviewLink + API branch + CreateReviewLinkModal prop
-- [ ] 33-02: Selection toolbar action + review link page guard (no folder browser, delete placeholder)
+- [ ] 33-01: assetIds schema on ReviewLink + API branch + CreateReviewLinkModal prop
+- [x] 33-02: Selection toolbar action + review link page guard (no folder browser, delete placeholder)
 
 #### Phase 34: compare-view-audio-comments
 **Goal**: The compare view lets users control audio per side and shows the active version's comments

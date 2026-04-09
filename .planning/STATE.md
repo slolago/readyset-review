@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: — Review & Version Workflow
 status: verifying
-stopped_at: Completed 33-01-PLAN.md (selection-review-links data model and API)
-last_updated: "2026-04-09T04:14:57.225Z"
+stopped_at: Completed 33-02-PLAN.md (selection-review-links UI)
+last_updated: "2026-04-09T04:19:37.113Z"
 last_activity: 2026-04-09
 progress:
   total_phases: 6
@@ -54,7 +54,7 @@ Progress: [░░░░░░░░░░] 0% (0/6 phases complete)
 | Phase 29-move-to-folder P01 | 20min | 2 tasks | 2 files |
 | Phase 30-asset-review-status P02 | 15 | 1 tasks | 5 files |
 | Phase 31-version-stack-management P02 | 4 | 2 tasks | 3 files |
-| Phase 33-selection-review-links P01 | 12 | 2 tasks | 4 files |
+| Phase 33-selection-review-links P02 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -73,9 +73,8 @@ Progress: [░░░░░░░░░░] 0% (0/6 phases complete)
 - [Phase 30-asset-review-status]: Tag icon used as viewer header status-setter trigger to keep header uncluttered
 - [Phase 31-version-stack-management]: API routes for Plan 01 created inline as Rule 3 deviation — Plan 01 was not executed; unstack uses db.batch(), reorder uses db.runTransaction() per STATE.md mandate
 - [Phase 31-version-stack-management]: Version badge in VersionStackModal shows V{idx+1} to reflect current visual order after drag-reorder, not stored version number
-- [Phase 33-selection-review-links]: Promise.all(getDoc) used for selection link asset fetch — Firestore in query capped at 30; per-ID fetch has no limit
-- [Phase 33-selection-review-links]: folderId nulled server-side when assetIds present — prevents GET handler falling into folder-scoped query branch
-- [Phase 33-selection-review-links]: Version-grouping skipped for selection-scoped links — returns exactly the assets user selected
+- [Phase 33-selection-review-links]: selectionReviewIds resets to null in modal onClose to prevent stale IDs across selection changes
+- [Phase 33-selection-review-links]: folderId passed as null when selectionReviewIds is set so modal POST sends folderId null
 
 ### Pending Todos
 
@@ -91,6 +90,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-09T04:14:57.220Z
-Stopped at: Completed 33-01-PLAN.md (selection-review-links data model and API)
+Last session: 2026-04-09T04:19:37.107Z
+Stopped at: Completed 33-02-PLAN.md (selection-review-links UI)
 Resume file: None
