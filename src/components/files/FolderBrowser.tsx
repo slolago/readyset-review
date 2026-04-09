@@ -65,6 +65,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectionReviewIds, setSelectionReviewIds] = useState<string[] | null>(null);
   const [folderReviewTarget, setFolderReviewTarget] = useState<string | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [allFolders, setAllFolders] = useState<FolderType[]>([]);
@@ -997,6 +998,31 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
               </button>
             );
           })()}
+          {(() => {
+            const count = selectedIds.size;
+            const overCap = count > 50;
+            return (
+              <button
+                onClick={() => {
+                  if (overCap) {
+                    toast.error('Select 50 or fewer assets to create a review link');
+                    return;
+                  }
+                  setSelectionReviewIds(Array.from(selectedIds));
+                  setShowReviewModal(true);
+                }}
+                title={overCap ? 'Select 50 or fewer assets' : 'Create review link from selection'}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  overCap
+                    ? 'text-white/30 bg-frame-border cursor-not-allowed'
+                    : 'text-white bg-frame-accent hover:bg-frame-accent/80'
+                }`}
+              >
+                <LinkIcon className="w-3.5 h-3.5" />
+                Review link
+              </button>
+            );
+          })()}
           <button
             onClick={handleOpenMoveModal}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-frame-border hover:bg-frame-borderLight rounded-lg transition-colors"
@@ -1067,8 +1093,9 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
       {showReviewModal && (
         <CreateReviewLinkModal
           projectId={projectId}
-          folderId={folderId}
-          onClose={() => setShowReviewModal(false)}
+          folderId={selectionReviewIds ? null : folderId}
+          assetIds={selectionReviewIds ?? undefined}
+          onClose={() => { setShowReviewModal(false); setSelectionReviewIds(null); }}
         />
       )}
 
