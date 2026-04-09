@@ -126,7 +126,7 @@ Plans:
   2. When "Latest version only" is enabled, only the head version is copied — older versions are not
   3. The copy modal includes a visible note that comments are not copied to the destination folder
   4. After copying, the destination folder contains the expected version(s) with no comments
-**Plans**: 2 plans
+**Plans**: 1 plan
 
 Plans:
 - [ ] 32-01: SmartCopyModal + latestVersionOnly param on copy API
