@@ -11,12 +11,14 @@ import toast from 'react-hot-toast';
 interface CreateReviewLinkModalProps {
   projectId: string;
   folderId?: string | null;
+  assetIds?: string[];
   onClose: () => void;
 }
 
 export function CreateReviewLinkModal({
   projectId,
   folderId,
+  assetIds,
   onClose,
 }: CreateReviewLinkModalProps) {
   const { getIdToken } = useAuth();
@@ -44,7 +46,8 @@ export function CreateReviewLinkModal({
         body: JSON.stringify({
           name,
           projectId,
-          folderId: folderId || null,
+          folderId: assetIds?.length ? null : (folderId || null),
+          assetIds: assetIds?.length ? assetIds : undefined,
           allowComments,
           allowDownloads,
           allowApprovals,
@@ -108,6 +111,9 @@ export function CreateReviewLinkModal({
         </div>
       ) : (
         <form onSubmit={handleCreate} className="space-y-4">
+          {assetIds?.length ? (
+            <p className="text-xs text-frame-textMuted mb-3">This link will include {assetIds.length} selected asset{assetIds.length !== 1 ? 's' : ''}.</p>
+          ) : null}
           <Input
             label="Link name"
             placeholder="e.g. Client Review v1"

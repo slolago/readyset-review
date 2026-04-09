@@ -145,7 +145,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 33-01: assetIds schema on ReviewLink + API branch + CreateReviewLinkModal prop
+- [x] 33-01: assetIds schema on ReviewLink + API branch + CreateReviewLinkModal prop
 - [ ] 33-02: Selection toolbar action + review link page guard (no folder browser, delete placeholder)
 
 #### Phase 34: compare-view-audio-comments
@@ -179,5 +179,5 @@ Plans:
 | 30. asset-review-status | v1.4 | 1/2 | In Progress|  |
 | 31. version-stack-management | v1.4 | 1/2 | In Progress|  |
 | 32. smart-copy-options | v1.4 | 0/1 | Planned    |  |
-| 33. selection-review-links | v1.4 | 0/2 | Not started | - |
+| 33. selection-review-links | v1.4 | 1/2 | In Progress|  |
 | 34. compare-view-audio-comments | v1.4 | 0/2 | Not started | - |
