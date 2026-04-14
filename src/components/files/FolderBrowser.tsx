@@ -1211,6 +1211,8 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
             assetA={selectedAssets[0]}
             assetB={selectedAssets[1]}
             onClose={() => setShowCompareModal(false)}
+            projectId={projectId}
+            getIdToken={getIdToken}
           />
         ) : null;
       })()}

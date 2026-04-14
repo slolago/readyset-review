@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { X, Play, Pause, Volume2, VolumeX, GitCompare, Columns2, SplitSquareHorizontal } from 'lucide-react';
-import type { Asset } from '@/types';
+import { X, Play, Pause, Volume2, VolumeX, GitCompare, Columns2, SplitSquareHorizontal, MessageSquare } from 'lucide-react';
+import type { Asset, Comment } from '@/types';
 
 type ViewMode = 'side-by-side' | 'slider';
 
@@ -10,6 +10,8 @@ interface AssetCompareModalProps {
   assetA: Asset;
   assetB: Asset;
   onClose: () => void;
+  projectId?: string;
+  getIdToken?: () => Promise<string | null>;
 }
 
 function MediaItem({
@@ -49,7 +51,7 @@ function MediaItem({
   return <div className="text-white/30 text-sm">No preview available</div>;
 }
 
-export function AssetCompareModal({ assetA, assetB, onClose }: AssetCompareModalProps) {
+export function AssetCompareModal({ assetA, assetB, onClose, projectId: _projectId, getIdToken }: AssetCompareModalProps) {
   const videoARef = useRef<HTMLVideoElement>(null);
   const videoBRef = useRef<HTMLVideoElement>(null);
   const sliderContainerRef = useRef<HTMLDivElement>(null);
@@ -61,6 +63,8 @@ export function AssetCompareModal({ assetA, assetB, onClose }: AssetCompareModal
   const [viewMode, setViewMode] = useState<ViewMode>('side-by-side');
   const [sliderPos, setSliderPos] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
+  const [commentsA, setCommentsA] = useState<Comment[]>([]);
+  const [commentsB, setCommentsB] = useState<Comment[]>([]);
 
   const signedUrlA = (assetA as any).signedUrl as string | undefined;
   const signedUrlB = (assetB as any).signedUrl as string | undefined;
@@ -77,6 +81,27 @@ export function AssetCompareModal({ assetA, assetB, onClose }: AssetCompareModal
     if (videoARef.current) videoARef.current.muted = false;
     if (videoBRef.current) videoBRef.current.muted = true;
   }, []);
+
+  // Fetch comments for both assets
+  useEffect(() => {
+    if (!getIdToken) return;
+    async function loadComments() {
+      if (!getIdToken) return;
+      try {
+        const token = await getIdToken();
+        if (!token) return;
+        const headers = { Authorization: `Bearer ${token}` };
+        const [resA, resB] = await Promise.all([
+          fetch(`/api/comments?assetId=${assetA.id}`, { headers }),
+          fetch(`/api/comments?assetId=${assetB.id}`, { headers }),
+        ]);
+        if (resA.ok) { const d = await resA.json(); setCommentsA(d.comments ?? []); }
+        if (resB.ok) { const d = await resB.json(); setCommentsB(d.comments ?? []); }
+      } catch {}
+    }
+    loadComments();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetA.id, assetB.id]);
 
   const togglePlayPause = useCallback(() => {
     const vidA = videoARef.current;
@@ -220,7 +245,16 @@ export function AssetCompareModal({ assetA, assetB, onClose }: AssetCompareModal
         <div className="flex flex-1 min-h-0 divide-x divide-white/10">
           {/* Panel A */}
           <div className="flex flex-col flex-1 min-w-0">
-            <div className="px-4 py-2 border-b border-white/10 flex-shrink-0">
+            <div
+              className={`px-4 py-2 border-b border-white/10 flex-shrink-0 flex items-center gap-2 cursor-pointer transition-colors ${
+                audioSide === 'A' ? 'bg-frame-accent/10' : 'hover:bg-white/5'
+              }`}
+              onClick={() => setAudioSide('A')}
+              title="Click to hear this side's audio"
+            >
+              {audioSide === 'A'
+                ? <Volume2 className="w-3 h-3 text-frame-accent flex-shrink-0" />
+                : <VolumeX className="w-3 h-3 text-white/30 flex-shrink-0" />}
               <p className="text-xs font-medium text-white truncate" title={assetA.name}>{assetA.name}</p>
             </div>
             <div className="flex-1 flex items-center justify-center bg-black min-h-0 overflow-hidden">
@@ -237,7 +271,16 @@ export function AssetCompareModal({ assetA, assetB, onClose }: AssetCompareModal
 
           {/* Panel B */}
           <div className="flex flex-col flex-1 min-w-0">
-            <div className="px-4 py-2 border-b border-white/10 flex-shrink-0">
+            <div
+              className={`px-4 py-2 border-b border-white/10 flex-shrink-0 flex items-center gap-2 cursor-pointer transition-colors ${
+                audioSide === 'B' ? 'bg-frame-accent/10' : 'hover:bg-white/5'
+              }`}
+              onClick={() => setAudioSide('B')}
+              title="Click to hear this side's audio"
+            >
+              {audioSide === 'B'
+                ? <Volume2 className="w-3 h-3 text-frame-accent flex-shrink-0" />
+                : <VolumeX className="w-3 h-3 text-white/30 flex-shrink-0" />}
               <p className="text-xs font-medium text-white truncate" title={assetB.name}>{assetB.name}</p>
             </div>
             <div className="flex-1 flex items-center justify-center bg-black min-h-0 overflow-hidden">
@@ -351,6 +394,44 @@ export function AssetCompareModal({ assetA, assetB, onClose }: AssetCompareModal
                 <><VolumeX className="w-3.5 h-3.5 text-white/40" /><Volume2 className="w-3.5 h-3.5 text-frame-accent" /><span>Audio: Right</span></>
               )}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Comments panel — shows active side's comments, only when comments exist */}
+      {(commentsA.length > 0 || commentsB.length > 0) && (
+        <div className="flex-shrink-0 max-h-44 overflow-y-auto border-t border-white/10 bg-black/40">
+          <div className="px-6 py-3">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className="w-3.5 h-3.5 text-white/40" />
+              <p className="text-xs text-white/50 font-medium">
+                {audioSide === 'A' ? assetA.name : assetB.name}
+              </p>
+            </div>
+            <div className="space-y-2.5">
+              {(audioSide === 'A' ? commentsA : commentsB).length === 0 ? (
+                <p className="text-xs text-white/30 italic">No comments for this version</p>
+              ) : (
+                (audioSide === 'A' ? commentsA : commentsB).map((c: any) => (
+                  <div key={c.id} className="flex gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-frame-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-[9px] font-bold text-frame-accent">
+                        {(c.authorName || c.authorEmail || '?')[0].toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-xs font-medium text-white">{c.authorName || c.authorEmail || 'Anonymous'}</span>
+                        {c.timestamp !== undefined && (
+                          <span className="text-[10px] text-white/40">{formatTime(c.timestamp)}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-white/70 mt-0.5 break-words">{c.body}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

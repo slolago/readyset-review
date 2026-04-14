@@ -267,8 +267,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 42-01: Per-side audio state refactor + active-side click handler in AssetCompareModal
-- [ ] 42-02: CompareCommentPanel component wired to activeSide
+- [x] 42-01: Per-side audio state refactor + active-side click handler in AssetCompareModal
+- [x] 42-02: CompareCommentPanel component wired to activeSide
 
 ## Progress
 
@@ -293,4 +293,4 @@ Plans:
 | 39. copy-naming | v1.5 | 1/1 | Complete | 2026-04-14 |
 | 40. review-link-show-all-versions | v1.5 | 1/1 | Complete | 2026-04-14 |
 | 41. viewer-download-cta | v1.5 | 1/1 | Complete | 2026-04-14 |
-| 42. compare-audio-comments | v1.5 | 0/2 | Not started | - |
+| 42. compare-audio-comments | v1.5 | 2/2 | Complete | 2026-04-14 |
