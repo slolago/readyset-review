@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     const newRef = db.collection('folders').doc();
     const copyData = {
-      name: name ?? `Copy of ${source.name}`,
+      name: name ?? source.name,
       projectId: source.projectId,
       parentId: destinationParentId ?? null,
       path,

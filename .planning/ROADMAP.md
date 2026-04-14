@@ -229,7 +229,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 39-01: Remove "copy of" prefix from copy API
+- [x] 39-01: Remove "copy of" prefix from copy API
 
 #### Phase 40: review-link-show-all-versions
 **Goal**: The "Show all versions" toggle on review link creation actually shows all versions on the review page
@@ -290,7 +290,7 @@ Plans:
 | 36. list-filename-fullname | v1.5 | 1/1 | Complete | 2026-04-14 |
 | 37. fps-accuracy | v1.5 | 1/1 | Complete | 2026-04-14 |
 | 38. vu-meter-pregain | v1.5 | 1/1 | Complete | 2026-04-14 |
-| 39. copy-naming | v1.5 | 0/1 | Not started | - |
+| 39. copy-naming | v1.5 | 1/1 | Complete | 2026-04-14 |
 | 40. review-link-show-all-versions | v1.5 | 0/1 | Not started | - |
 | 41. viewer-download-cta | v1.5 | 0/1 | Not started | - |
 | 42. compare-audio-comments | v1.5 | 0/2 | Not started | - |

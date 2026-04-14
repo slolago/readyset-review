@@ -48,8 +48,7 @@ export async function POST(request: NextRequest) {
       const copyData: any = {
         ...ver,
         folderId: destinationFolderId,
-        // Only the asset matching the requested assetId gets the "Copy of" prefix (or name override)
-        name: ver.id === assetId ? (name ?? `Copy of ${ver.name}`) : ver.name,
+        name: ver.id === assetId ? (name ?? ver.name) : ver.name,
         versionGroupId: newGroupId,
         version: versionsToCopy.length === 1 && latestVersionOnly ? 1 : ver.version,
         createdAt: Timestamp.now(),
