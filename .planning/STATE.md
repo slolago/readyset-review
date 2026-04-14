@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Polish & Production Accuracy
-status: planning
-stopped_at: Milestone initialized — ready for phase execution
+status: complete
+stopped_at: All 8 phases shipped
 last_updated: "2026-04-14T00:00:00.000Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 8
   total_plans: 9
-  completed_plans: 0
-  percent: 0
+  completed_plans: 9
+  percent: 100
 ---
 
 # State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Fast, accurate video review — frame-level precision, rich metadata, and fluid version management
-**Current focus:** Phase 35 — grid-asset-timestamps
+**Current focus:** v1.5 COMPLETE — all 8 phases shipped
 
 ## Current Position
 
-Phase: 35 (grid-asset-timestamps) — READY
-Plan: 0 of 1
-Status: Not started
+Phase: 42 (compare-audio-comments) — COMPLETE
+Plan: 9 of 9
+Status: All phases done
 Last activity: 2026-04-14
 
-Progress: [░░░░░░░░░░] 0% (0/8 phases complete)
+Progress: [██████████] 100% (8/8 phases complete)
 
 ## Performance Metrics
 
