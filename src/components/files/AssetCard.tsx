@@ -215,6 +215,18 @@ export const AssetCard = memo(function AssetCard({
 
   const isUploading = asset.status === 'uploading';
 
+  const uploadDate: Date | null =
+    typeof (asset.createdAt as any)?.toDate === 'function'
+      ? (asset.createdAt as any).toDate()
+      : (asset.createdAt as any)?._seconds
+      ? new Date((asset.createdAt as any)._seconds * 1000)
+      : null;
+  const uploadDateLabel = uploadDate
+    ? uploadDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+      ', ' +
+      uploadDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : '';
+
   return (
     <>
       <input ref={fileInputRef} type="file" accept="video/*,image/*" className="hidden" onChange={handleFileSelected} />
@@ -458,6 +470,12 @@ export const AssetCard = memo(function AssetCard({
             )}
           </div>
         </div>
+        {uploadDateLabel && (
+          <div className="flex items-center gap-1 mt-0.5">
+            <Clock className="w-3 h-3 text-frame-textMuted flex-shrink-0" />
+            <p className="text-xs text-frame-textMuted">{uploadDateLabel}</p>
+          </div>
+        )}
       </div>
     </div>
       {showCopyToModal && (
