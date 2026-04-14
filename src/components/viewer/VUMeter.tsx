@@ -55,16 +55,26 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
     const setVolume = useCallback((v: number) => {
       volumeRef.current = v;
       if (gainNodeRef.current) {
+        // Web Audio path: GainNode controls playback volume; source stays at 1.0
         gainNodeRef.current.gain.value = mutedRef.current ? 0 : v;
+        // Keep video.volume at 1 so createMediaElementSource output is always full-level
+        if (videoRef.current) videoRef.current.volume = 1;
+      } else {
+        // Fallback: Web Audio not available — use native video volume
+        if (videoRef.current) videoRef.current.volume = v;
       }
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const setMuted = useCallback((m: boolean) => {
       mutedRef.current = m;
       if (gainNodeRef.current) {
         gainNodeRef.current.gain.value = m ? 0 : volumeRef.current;
+        // Ensure video element is never muted (muting zeroes createMediaElementSource output)
+        if (videoRef.current) { videoRef.current.muted = false; videoRef.current.volume = 1; }
+      } else {
+        if (videoRef.current) videoRef.current.muted = m;
       }
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useImperativeHandle(ref, () => ({ resume, setVolume, setMuted }), [resume, setVolume, setMuted]);
 
