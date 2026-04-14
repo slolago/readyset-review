@@ -92,17 +92,27 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         })
       );
 
-      // Group by versionGroupId — keep only latest version
+      // Group by versionGroupId
       const groups = new Map<string, any[]>();
       for (const asset of assetsWithUrls) {
         const groupId = asset.versionGroupId || asset.id;
         if (!groups.has(groupId)) groups.set(groupId, []);
         groups.get(groupId)!.push(asset);
       }
-      assets = Array.from(groups.values()).map((group) => {
-        const sorted = group.sort((a, b) => (b.version || 1) - (a.version || 1));
-        return { ...sorted[0], _versionCount: group.length };
-      });
+
+      if (link.showAllVersions) {
+        // Show every version as its own card, sorted newest-first within each group
+        assets = Array.from(groups.values()).flatMap((group) => {
+          const sorted = group.sort((a, b) => (b.version || 1) - (a.version || 1));
+          return sorted.map((v) => ({ ...v, _versionCount: group.length }));
+        });
+      } else {
+        // Default: only latest version per group
+        assets = Array.from(groups.values()).map((group) => {
+          const sorted = group.sort((a, b) => (b.version || 1) - (a.version || 1));
+          return { ...sorted[0], _versionCount: group.length };
+        });
+      }
 
       // Get folders for folder/project-scoped links
       let foldersQuery = db.collection('folders').where('projectId', '==', link.projectId);

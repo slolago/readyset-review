@@ -241,7 +241,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 40-01: Debug and fix showAllVersions propagation through review link GET and render
+- [x] 40-01: Debug and fix showAllVersions propagation through review link GET and render
 
 #### Phase 41: viewer-download-cta
 **Goal**: A prominent download button is visible in the full video player without requiring hover on the thumbnail
@@ -291,6 +291,6 @@ Plans:
 | 37. fps-accuracy | v1.5 | 1/1 | Complete | 2026-04-14 |
 | 38. vu-meter-pregain | v1.5 | 1/1 | Complete | 2026-04-14 |
 | 39. copy-naming | v1.5 | 1/1 | Complete | 2026-04-14 |
-| 40. review-link-show-all-versions | v1.5 | 0/1 | Not started | - |
+| 40. review-link-show-all-versions | v1.5 | 1/1 | Complete | 2026-04-14 |
 | 41. viewer-download-cta | v1.5 | 0/1 | Not started | - |
 | 42. compare-audio-comments | v1.5 | 0/2 | Not started | - |
