@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: — Review & Version Workflow
-status: verifying
-stopped_at: Completed 33-02-PLAN.md (selection-review-links UI)
-last_updated: "2026-04-09T04:19:37.113Z"
-last_activity: 2026-04-09
+milestone: v1.5
+milestone_name: — Polish & Production Accuracy
+status: planning
+stopped_at: Milestone initialized — ready for phase execution
+last_updated: "2026-04-14T00:00:00.000Z"
+last_activity: 2026-04-14
 progress:
-  total_phases: 6
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 7
+  total_phases: 8
+  completed_phases: 0
+  total_plans: 9
+  completed_plans: 0
   percent: 0
 ---
 
@@ -18,43 +18,27 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-08)
+See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Fast, accurate video review — frame-level precision, rich metadata, and fluid version management
-**Current focus:** Phase 29 — move-to-folder
+**Current focus:** Phase 35 — grid-asset-timestamps
 
 ## Current Position
 
-Phase: 29 (move-to-folder) — EXECUTING
-Plan: 1 of 1
-Status: Phase complete — ready for verification
-Last activity: 2026-04-09
+Phase: 35 (grid-asset-timestamps) — READY
+Plan: 0 of 1
+Status: Not started
+Last activity: 2026-04-14
 
-Progress: [░░░░░░░░░░] 0% (0/6 phases complete)
+Progress: [░░░░░░░░░░] 0% (0/8 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 9 (v1.3)
-- Average duration: unknown
-- Total execution time: unknown
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| v1.3 phases (23–28) | 9 | - | - |
-
-**Recent Trend:**
-
 - v1.3: 9 plans across 6 phases
+- v1.4: 7 plans across 5 phases (phase 34 deferred)
 - Trend: Stable
-
-| Phase 29-move-to-folder P01 | 20min | 2 tasks | 2 files |
-| Phase 30-asset-review-status P02 | 15 | 1 tasks | 5 files |
-| Phase 31-version-stack-management P02 | 4 | 2 tasks | 3 files |
-| Phase 33-selection-review-links P02 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -62,19 +46,13 @@ Progress: [░░░░░░░░░░] 0% (0/6 phases complete)
 
 - Push to both origin (readyset-review) and vercel (readyset-review-vercel) after each phase
 - reviewStatus (not status) is the QC field — status is the upload lifecycle field (uploading | ready)
-- Status enum: approved / needs_revision / in_review — absent means pending (no badge shown)
-- Smart copy = reference copy + GCS delete guard (not full GCS object copy)
-- Selection review link asset cap = 50 max for v1.4
-- Atomic Firestore batch for version group merge (v1.3 pattern)
-- Dual MIME type on drag start (x-frame-move + x-frame-version-stack) for version stacking
-- [Phase 29-move-to-folder]: Move state lives in FolderBrowser only — AssetCard/FolderCard fire onRequestMove and own no move state
-- [Phase 29-move-to-folder]: FolderCard hover Dropdown fixed beyond plan scope to give consistent move-to-folder surface across all card types
-- [Phase 30-asset-review-status]: Optimistic reviewStatus update via setActiveVersion spread avoids re-fetching signed URLs
-- [Phase 30-asset-review-status]: Tag icon used as viewer header status-setter trigger to keep header uncluttered
-- [Phase 31-version-stack-management]: API routes for Plan 01 created inline as Rule 3 deviation — Plan 01 was not executed; unstack uses db.batch(), reorder uses db.runTransaction() per STATE.md mandate
-- [Phase 31-version-stack-management]: Version badge in VersionStackModal shows V{idx+1} to reflect current visual order after drag-reorder, not stored version number
-- [Phase 33-selection-review-links]: selectionReviewIds resets to null in modal onClose to prevent stale IDs across selection changes
-- [Phase 33-selection-review-links]: folderId passed as null when selectionReviewIds is set so modal POST sends folderId null
+- SmartCopyModal and VersionStackModal extracted to shared files in v1.4 audit
+- Atomic Firestore batch for version group merge (established v1.3)
+- Dual MIME type on drag start for version stacking (established v1.3)
+- FPS stored as frameRate on Asset, measured via requestVideoFrameCallback — v1.5 will snap to standard rates
+- VU meter AnalyserNode must tap BEFORE GainNode to measure source signal
+- Copy API currently prepends "copy of" — must be removed in Phase 39
+- showAllVersions stored on ReviewLink doc — bug is in the GET /review-links/[token] render path
 
 ### Pending Todos
 
@@ -82,14 +60,13 @@ None.
 
 ### Blockers/Concerns
 
-- Phase 31 (VSTK): Use Firestore transaction (not batch) for reorder — batches do not guard stale reads
-- Phase 31 (VSTK): versionGroupId must be set to asset.id (never null) on unstack
-- Phase 31 (VSTK): Re-compact version numbers 1..N after every unstack or reorder
-- Phase 33 (REVIEW-03): Firestore in query capped at 30 — use Promise.all(getDoc) instead
-- Phase 34 (COMPARE-01): Video.js does not reset audio track state on src() change — use player.muted() toggling
+- Phase 37 (FPS): requestVideoFrameCallback timing jitter can cause off-by-one; standard rate snap table: [23.976, 24, 25, 29.97, 30, 48, 50, 59.94, 60]
+- Phase 38 (VU meter): Web Audio API chain order — AnalyserNode must connect to source node directly, parallel to GainNode
+- Phase 40 (show-all-versions): Need to trace showAllVersions from ReviewLink doc through GET /api/review-links/[token] → render — likely the version grouping logic ignores the flag
+- Phase 42 (compare): Video.js does not reset audio track on src() change — use player.muted() for per-side audio toggle
 
 ## Session Continuity
 
-Last session: 2026-04-09T04:19:37.107Z
-Stopped at: Completed 33-02-PLAN.md (selection-review-links UI)
+Last session: 2026-04-14
+Stopped at: Milestone v1.5 initialized
 Resume file: None

@@ -4,7 +4,8 @@
 
 - ✅ **v1.2 — Feature Expansion** - Phases 1–22 (shipped 2026-04-07)
 - ✅ **v1.3 — Video Review Polish** - Phases 23–28 (shipped 2026-04-08)
-- 🚧 **v1.4 — Review & Version Workflow** - Phases 29–34 (in progress)
+- ✅ **v1.4 — Review & Version Workflow** - Phases 29–33 (shipped 2026-04-14)
+- 🚧 **v1.5 — Polish & Production Accuracy** - Phases 35–42 (in progress)
 
 ## Phases
 
@@ -165,6 +166,110 @@ Plans:
 - [ ] 34-01: Per-side audio state refactor (mutedA/mutedB + activeSide) in VersionComparison
 - [ ] 34-02: CompareCommentPanel component wired to activeSide
 
+### 🚧 v1.5 — Polish & Production Accuracy (In Progress)
+
+**Milestone Goal:** Close the gap between "mostly working" and production-ready — accurate measurements (FPS, VU), full UI legibility (grid timestamps, list filenames), no naming friction on copy, all review link features working as spec'd, and the long-deferred compare view completing with audio switching and comment panels.
+
+#### Phase 35: grid-asset-timestamps
+**Goal**: Upload date and time is visible on grid cards — critical for distinguishing versions after unstacking when all siblings show V1
+**Requirements**: GRID-01
+**Success Criteria** (what must be TRUE):
+  1. Each grid card shows the upload date/time (e.g. "Apr 14, 3:42 PM") in the info row below the filename
+  2. The timestamp is visible without hovering and without opening the asset
+  3. After unstacking two versions, the date/time on each card is different and correct, letting the user identify the latest
+  4. The info row layout does not shift or overflow with the added timestamp
+**Plans**: 1 plan
+
+Plans:
+- [ ] 35-01: Add upload date/time to AssetCard info row
+
+#### Phase 36: list-filename-fullname
+**Goal**: Full filename is readable in list view — currently truncated with no hover tooltip
+**Requirements**: LIST-01
+**Success Criteria** (what must be TRUE):
+  1. Hovering over a truncated filename in list view shows the full name in a native tooltip (title attribute)
+  2. Long filenames do not cause horizontal overflow in the table
+**Plans**: 1 plan
+
+Plans:
+- [ ] 36-01: Add title tooltip to filename cell in AssetListView
+
+#### Phase 37: fps-accuracy
+**Goal**: Frame rate in the info tab reflects the file's true frame rate, not a rounded measurement artifact
+**Requirements**: FPS-01
+**Success Criteria** (what must be TRUE):
+  1. A 30fps file shows 30fps (not 31fps)
+  2. A 29.97fps file shows 29.97fps
+  3. A 24fps file shows 24fps
+  4. FPS for any standard rate (23.976 / 24 / 25 / 29.97 / 30 / 50 / 59.94 / 60) is snapped to the exact value if the measured raw value is within ±0.6fps
+**Plans**: 1 plan
+
+Plans:
+- [ ] 37-01: Snap raw rVFC measurement to nearest standard frame rate
+
+#### Phase 38: vu-meter-pregain
+**Goal**: VU meter measures the source audio signal, not the post-volume signal — adjusting the volume slider must not change what the meter shows
+**Requirements**: VU-01
+**Success Criteria** (what must be TRUE):
+  1. With the volume slider at 100%, the VU meter shows the same level as with the slider at 50%
+  2. The VU meter still responds to actual audio content in the file
+  3. Muting the player does not zero out the VU meter (meter measures file signal, not speaker output)
+**Plans**: 1 plan
+
+Plans:
+- [ ] 38-01: Rewire AnalyserNode to tap audio chain before GainNode
+
+#### Phase 39: copy-naming
+**Goal**: Copying an asset preserves its original name — no "copy of" prefix added
+**Requirements**: COPY-01
+**Success Criteria** (what must be TRUE):
+  1. After "Copy to" an asset to any folder, the copy has the exact same name as the source
+  2. Duplicating an asset (same folder) also uses the original name
+  3. If a name collision exists in the destination, the copy still uses the original name (Firestore IDs are unique regardless)
+**Plans**: 1 plan
+
+Plans:
+- [ ] 39-01: Remove "copy of" prefix from copy API
+
+#### Phase 40: review-link-show-all-versions
+**Goal**: The "Show all versions" toggle on review link creation actually shows all versions on the review page
+**Requirements**: RVLINK-01
+**Success Criteria** (what must be TRUE):
+  1. Creating a review link with "Show all versions" ON and opening that link shows all versions of a versioned asset (e.g., a stack of 2 shows 2 cards)
+  2. Creating a review link with "Show all versions" OFF shows only the latest version (default)
+  3. The review page correctly reflects the toggle for both folder-scoped and selection-scoped links
+**Plans**: 1 plan
+
+Plans:
+- [ ] 40-01: Debug and fix showAllVersions propagation through review link GET and render
+
+#### Phase 41: viewer-download-cta
+**Goal**: A prominent download button is visible in the full video player without requiring hover on the thumbnail
+**Requirements**: RVLINK-02
+**Success Criteria** (what must be TRUE):
+  1. An always-visible "Download" button (or icon+label) appears in the player controls or above the video
+  2. The button is visible for both internal viewers and review link guests (when allowDownloads is true)
+  3. Clicking it triggers the same download behavior as the existing hover download
+**Plans**: 1 plan
+
+Plans:
+- [ ] 41-01: Add persistent download button to asset viewer player controls
+
+#### Phase 42: compare-audio-comments
+**Goal**: Compare view lets users choose which side's audio they hear and shows that version's comments
+**Requirements**: COMPARE-01, COMPARE-02
+**Success Criteria** (what must be TRUE):
+  1. Clicking a version label in the compare view makes that side the active audio source and mutes the other
+  2. Only one side plays audio at a time
+  3. A comment panel shows comments for the currently active version
+  4. Clicking the other version label switches audio and updates the comment panel
+  5. The comment panel does not flicker when switching sides rapidly
+**Plans**: 2 plans
+
+Plans:
+- [ ] 42-01: Per-side audio state refactor + active-side click handler in AssetCompareModal
+- [ ] 42-02: CompareCommentPanel component wired to activeSide
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -180,4 +285,12 @@ Plans:
 | 31. version-stack-management | v1.4 | 1/2 | In Progress|  |
 | 32. smart-copy-options | v1.4 | 0/1 | Planned    |  |
 | 33. selection-review-links | v1.4 | 1/2 | In Progress|  |
-| 34. compare-view-audio-comments | v1.4 | 0/2 | Not started | - |
+| 34. compare-view-audio-comments | v1.4 | 0/2 | Deferred → Phase 42 | - |
+| 35. grid-asset-timestamps | v1.5 | 0/1 | Not started | - |
+| 36. list-filename-fullname | v1.5 | 0/1 | Not started | - |
+| 37. fps-accuracy | v1.5 | 0/1 | Not started | - |
+| 38. vu-meter-pregain | v1.5 | 0/1 | Not started | - |
+| 39. copy-naming | v1.5 | 0/1 | Not started | - |
+| 40. review-link-show-all-versions | v1.5 | 0/1 | Not started | - |
+| 41. viewer-download-cta | v1.5 | 0/1 | Not started | - |
+| 42. compare-audio-comments | v1.5 | 0/2 | Not started | - |
