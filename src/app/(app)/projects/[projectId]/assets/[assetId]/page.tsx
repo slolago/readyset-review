@@ -231,7 +231,7 @@ export default function AssetViewerPage() {
             <VersionSwitcher
               versions={versions}
               activeVersionId={displayAsset.id}
-              onSelectVersion={(v) => { setActiveVersion(v); setCompareMode(false); }}
+              onSelectVersion={(v) => { setActiveVersion(v); setCompareMode(false); setDisplayShapes(null); setActiveAnnotationCommentId(null); setIsAnnotationMode(false); }}
               compareMode={compareMode}
               onToggleCompare={() => setCompareMode((v) => !v)}
             />

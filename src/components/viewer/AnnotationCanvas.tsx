@@ -147,9 +147,13 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCan
       canvas.selection = false;
 
       if (!isActive) {
-        canvas.forEachObject((obj: any) => { obj.selectable = false; });
+        canvas.forEachObject((obj: any) => { obj.selectable = false; obj.evented = false; });
         return;
       }
+
+      // Reset all objects to non-selectable before tool switch — prevents
+      // leftover selectability from 'select' mode leaking into other tools
+      canvas.forEachObject((obj: any) => { obj.selectable = false; obj.evented = false; });
 
       const register = (obj: any) => { historyRef.current.push(obj); };
 
