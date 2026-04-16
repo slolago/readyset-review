@@ -30,6 +30,23 @@ export async function POST(request: NextRequest) {
     }
 
     const projectId = asset.projectId;
+    const uploadType = formData.get('type') as string | null;
+
+    if (uploadType === 'sprite') {
+      // Sprite strip upload
+      const spriteGcsPath = `projects/${projectId}/assets/${assetId}/sprite-strip.jpg`;
+      const arrayBuffer = await thumbnailFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      await uploadBuffer(spriteGcsPath, buffer, 'image/jpeg');
+      const spriteUrl = getPublicUrl(spriteGcsPath);
+      await db.collection('assets').doc(assetId).update({
+        spriteStripUrl: spriteUrl,
+        spriteStripGcsPath: spriteGcsPath,
+      });
+      return NextResponse.json({ spriteStripGcsPath: spriteGcsPath, spriteStripUrl: spriteUrl });
+    }
+
+    // Regular thumbnail upload
     const thumbnailGcsPath = buildThumbnailPath(projectId, assetId);
 
     // Upload thumbnail buffer directly to GCS (server-side — no CORS issues)

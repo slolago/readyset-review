@@ -57,11 +57,9 @@ export const AssetCard = memo(function AssetCard({
   const downloadUrl = (asset as any).downloadUrl as string | undefined;
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [isHovering, setIsHovering] = useState(false);
-  const [scrubReady, setScrubReady] = useState(false);
   const [scrubPct, setScrubPct] = useState(0);
-  const hoverVideoRef = useRef<HTMLVideoElement>(null);
-  const scrubRafRef = useRef(0);
-  const targetTimeRef = useRef(0);
+  const [spriteLoaded, setSpriteLoaded] = useState(false);
+  const spriteUrl = (asset as any).spriteSignedUrl as string | undefined;
 
   // When a video element loads its metadata, seek to a non-black frame
   const handleVideoMetadata = useCallback(() => {
@@ -72,27 +70,10 @@ export const AssetCard = memo(function AssetCard({
   }, []);
 
   const handleHoverScrub = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const vid = hoverVideoRef.current;
-    if (!vid || !vid.duration || !scrubReady) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     setScrubPct(pct);
-    targetTimeRef.current = pct * vid.duration;
-    // Use rAF to coalesce seeks — only one per frame
-    if (!scrubRafRef.current) {
-      scrubRafRef.current = requestAnimationFrame(() => {
-        scrubRafRef.current = 0;
-        if (!hoverVideoRef.current) return;
-        const v = hoverVideoRef.current;
-        // fastSeek jumps to nearest keyframe — much faster than precise seek
-        if (v.fastSeek) {
-          v.fastSeek(targetTimeRef.current);
-        } else {
-          v.currentTime = targetTimeRef.current;
-        }
-      });
-    }
-  }, [scrubReady]);
+  }, []);
 
   const handleRename = () => {
     setRenameValue(asset.name);
@@ -286,9 +267,9 @@ export const AssetCard = memo(function AssetCard({
       {/* Thumbnail */}
       <div
         className="relative aspect-video bg-black overflow-hidden"
-        onMouseEnter={asset.type === 'video' && signedUrl ? () => { setIsHovering(true); setScrubPct(0); } : undefined}
-        onMouseLeave={asset.type === 'video' && signedUrl ? () => { setIsHovering(false); cancelAnimationFrame(scrubRafRef.current); scrubRafRef.current = 0; } : undefined}
-        onMouseMove={asset.type === 'video' && isHovering ? handleHoverScrub : undefined}
+        onMouseEnter={asset.type === 'video' && spriteUrl && spriteLoaded ? () => { setIsHovering(true); setScrubPct(0); } : undefined}
+        onMouseLeave={asset.type === 'video' && spriteUrl ? () => setIsHovering(false) : undefined}
+        onMouseMove={asset.type === 'video' && isHovering && spriteLoaded ? handleHoverScrub : undefined}
       >
         {asset.type === 'image' && signedUrl ? (
           <Image
@@ -323,24 +304,31 @@ export const AssetCard = memo(function AssetCard({
           </div>
         )}
 
-        {/* Hover scrub video — src only set on first hover to avoid loading all grid videos */}
-        {asset.type === 'video' && (
-          // eslint-disable-next-line jsx-a11y/media-has-caption
-          <video
-            ref={hoverVideoRef}
-            src={isHovering || scrubReady ? signedUrl : undefined}
-            preload="metadata"
-            muted
-            playsInline
-            onLoadedMetadata={() => setScrubReady(true)}
-            className={`absolute inset-0 w-full h-full object-cover z-[1] transition-opacity duration-150 ${
-              isHovering && scrubReady ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            }`}
+        {/* Preload sprite strip image (hidden) */}
+        {asset.type === 'video' && spriteUrl && !spriteLoaded && (
+          // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+          <img
+            src={spriteUrl}
+            onLoad={() => setSpriteLoaded(true)}
+            className="hidden"
+          />
+        )}
+
+        {/* Sprite strip hover overlay — pure CSS, no video decoding */}
+        {asset.type === 'video' && spriteUrl && isHovering && spriteLoaded && (
+          <div
+            className="absolute inset-0 z-[1] bg-black"
+            style={{
+              backgroundImage: `url(${spriteUrl})`,
+              backgroundSize: `${20 * 100}% 100%`,
+              backgroundPosition: `${(Math.min(Math.floor(scrubPct * 20), 19) / 19) * 100}% 0`,
+              backgroundRepeat: 'no-repeat',
+            }}
           />
         )}
 
         {/* Scrub progress bar */}
-        {asset.type === 'video' && isHovering && scrubReady && (
+        {asset.type === 'video' && isHovering && spriteLoaded && (
           <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-black/40 z-[2]">
             <div
               className="h-full bg-frame-accent"

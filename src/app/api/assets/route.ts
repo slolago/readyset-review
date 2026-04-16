@@ -59,16 +59,18 @@ export async function GET(request: NextRequest) {
     const assets = await Promise.all(
       grouped.map(async (asset: any) => {
         if (asset.status !== 'ready') return asset;
-        const [signedUrl, thumbnailSignedUrl, downloadUrl] = await Promise.all([
+        const [signedUrl, thumbnailSignedUrl, downloadUrl, spriteSignedUrl] = await Promise.all([
           asset.gcsPath ? generateReadSignedUrl(asset.gcsPath, 120) : Promise.resolve(undefined),
           asset.thumbnailGcsPath ? generateReadSignedUrl(asset.thumbnailGcsPath, 120) : Promise.resolve(undefined),
           asset.gcsPath
             ? generateDownloadSignedUrl(asset.gcsPath, asset.name).catch(() => undefined)
             : Promise.resolve(undefined),
+          asset.spriteStripGcsPath ? generateReadSignedUrl(asset.spriteStripGcsPath, 120) : Promise.resolve(undefined),
         ]);
         if (signedUrl !== undefined) asset.signedUrl = signedUrl;
         if (thumbnailSignedUrl !== undefined) asset.thumbnailSignedUrl = thumbnailSignedUrl;
         if (downloadUrl !== undefined) asset.downloadUrl = downloadUrl;
+        if (spriteSignedUrl !== undefined) asset.spriteSignedUrl = spriteSignedUrl;
         return asset;
       })
     );
