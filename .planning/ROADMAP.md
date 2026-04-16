@@ -293,7 +293,10 @@ Plans:
   1. Uploading a 30fps video shows 30fps in the info tab immediately after processing (not 31fps)
   2. The version selector dropdown shows an upload date/time alongside each version label (e.g., "V3 — Apr 14, 3:42 PM")
   3. The VU meter is wide enough that dB numbers (e.g., "-18") are fully readable without truncation
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 43-01-PLAN.md — Fix FPS off-by-one, version dropdown dates, VU meter width
 
 ### Phase 44: comment-system
 **Goal**: The comment panel behaves correctly — resolved comments stay visible, authors can edit their own, links are clickable, and users can mark a time range
@@ -366,7 +369,7 @@ Plans:
 | 40. review-link-show-all-versions | v1.5 | 1/1 | Complete | 2026-04-14 |
 | 41. viewer-download-cta | v1.5 | 1/1 | Complete | 2026-04-14 |
 | 42. compare-audio-comments | v1.5 | 2/2 | Complete | 2026-04-14 |
-| 43. quick-fixes | v1.6 | 0/? | Not started | - |
+| 43. quick-fixes | v1.6 | 0/1 | Not started | - |
 | 44. comment-system | v1.6 | 0/? | Not started | - |
 | 45. annotation-bugs | v1.6 | 0/? | Not started | - |
 | 46. compare-player | v1.6 | 0/? | Not started | - |
