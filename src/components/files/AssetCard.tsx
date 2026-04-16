@@ -58,8 +58,10 @@ export const AssetCard = memo(function AssetCard({
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [isHovering, setIsHovering] = useState(false);
   const [scrubReady, setScrubReady] = useState(false);
+  const [scrubPct, setScrubPct] = useState(0);
   const hoverVideoRef = useRef<HTMLVideoElement>(null);
-  const lastSeekRef = useRef(0);
+  const scrubRafRef = useRef(0);
+  const targetTimeRef = useRef(0);
 
   // When a video element loads its metadata, seek to a non-black frame
   const handleVideoMetadata = useCallback(() => {
@@ -72,12 +74,24 @@ export const AssetCard = memo(function AssetCard({
   const handleHoverScrub = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const vid = hoverVideoRef.current;
     if (!vid || !vid.duration || !scrubReady) return;
-    const now = performance.now();
-    if (now - lastSeekRef.current < 100) return; // throttle: max 10 seeks/sec
-    lastSeekRef.current = now;
     const rect = e.currentTarget.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    vid.currentTime = pct * vid.duration;
+    setScrubPct(pct);
+    targetTimeRef.current = pct * vid.duration;
+    // Use rAF to coalesce seeks — only one per frame
+    if (!scrubRafRef.current) {
+      scrubRafRef.current = requestAnimationFrame(() => {
+        scrubRafRef.current = 0;
+        if (!hoverVideoRef.current) return;
+        const v = hoverVideoRef.current;
+        // fastSeek jumps to nearest keyframe — much faster than precise seek
+        if (v.fastSeek) {
+          v.fastSeek(targetTimeRef.current);
+        } else {
+          v.currentTime = targetTimeRef.current;
+        }
+      });
+    }
   }, [scrubReady]);
 
   const handleRename = () => {
@@ -272,8 +286,8 @@ export const AssetCard = memo(function AssetCard({
       {/* Thumbnail */}
       <div
         className="relative aspect-video bg-black overflow-hidden"
-        onMouseEnter={asset.type === 'video' && signedUrl ? () => setIsHovering(true) : undefined}
-        onMouseLeave={asset.type === 'video' && signedUrl ? () => setIsHovering(false) : undefined}
+        onMouseEnter={asset.type === 'video' && signedUrl ? () => { setIsHovering(true); setScrubPct(0); } : undefined}
+        onMouseLeave={asset.type === 'video' && signedUrl ? () => { setIsHovering(false); cancelAnimationFrame(scrubRafRef.current); scrubRafRef.current = 0; } : undefined}
         onMouseMove={asset.type === 'video' && isHovering ? handleHoverScrub : undefined}
       >
         {asset.type === 'image' && signedUrl ? (
@@ -323,6 +337,16 @@ export const AssetCard = memo(function AssetCard({
               isHovering && scrubReady ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
           />
+        )}
+
+        {/* Scrub progress bar */}
+        {asset.type === 'video' && isHovering && scrubReady && (
+          <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-black/40 z-[2]">
+            <div
+              className="h-full bg-frame-accent"
+              style={{ width: `${scrubPct * 100}%` }}
+            />
+          </div>
         )}
 
         {/* Selection checkbox */}
