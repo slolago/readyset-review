@@ -28,6 +28,7 @@ export function CreateReviewLinkModal({
   const [allowApprovals, setAllowApprovals] = useState(false);
   const [showAllVersions, setShowAllVersions] = useState(false);
   const [password, setPassword] = useState('');
+  const [expiresIn, setExpiresIn] = useState<'never' | '1d' | '7d' | '30d'>('never');
   const [loading, setLoading] = useState(false);
   const [createdLink, setCreatedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -53,6 +54,11 @@ export function CreateReviewLinkModal({
           allowApprovals,
           showAllVersions,
           password: password || undefined,
+          expiresAt: (() => {
+            if (expiresIn === 'never') return undefined;
+            const ms = { '1d': 86400000, '7d': 604800000, '30d': 2592000000 }[expiresIn];
+            return new Date(Date.now() + ms).toISOString();
+          })(),
         }),
       });
 
@@ -211,6 +217,31 @@ export function CreateReviewLinkModal({
                   }`}
                 />
               </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-frame-textSecondary mb-1.5">Expires</label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {([
+                { v: 'never', label: 'Never' },
+                { v: '1d',    label: '1 day' },
+                { v: '7d',    label: '7 days' },
+                { v: '30d',   label: '30 days' },
+              ] as const).map(({ v, label }) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setExpiresIn(v)}
+                  className={`px-2 py-1.5 text-xs rounded-lg border transition-colors ${
+                    expiresIn === v
+                      ? 'bg-frame-accent/15 border-frame-accent text-frame-accent'
+                      : 'border-frame-border text-frame-textSecondary hover:text-white hover:border-frame-borderLight'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 

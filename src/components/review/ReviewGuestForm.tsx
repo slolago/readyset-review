@@ -19,8 +19,10 @@ export function ReviewGuestForm({ projectName, onSubmit }: ReviewGuestFormProps)
     e.preventDefault();
     const newErrors: { name?: string; email?: string } = {};
     if (!name.trim()) newErrors.name = 'Name is required';
-    if (!email.trim()) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Invalid email';
+    // Email is optional — validate format only if provided
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Invalid email format';
+    }
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -59,7 +61,7 @@ export function ReviewGuestForm({ projectName, onSubmit }: ReviewGuestFormProps)
             autoFocus
           />
           <Input
-            label="Your email"
+            label="Email (optional)"
             type="email"
             placeholder="jane@example.com"
             value={email}
@@ -69,6 +71,9 @@ export function ReviewGuestForm({ projectName, onSubmit }: ReviewGuestFormProps)
             }}
             error={errors.email}
           />
+          <p className="text-[11px] text-frame-textMuted -mt-2">
+            Used only to attribute comments — leave empty to comment anonymously.
+          </p>
           <Button type="submit" className="w-full">
             Start reviewing
           </Button>

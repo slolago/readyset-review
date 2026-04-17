@@ -24,7 +24,9 @@ interface ReviewLinkRow {
   allowDownloads?: boolean;
   allowApprovals?: boolean;
   password?: string;
+  hasPassword?: boolean;
   createdAt: any;
+  expiresAt?: any;
   _commentCount: number;
 }
 
@@ -419,6 +421,20 @@ export default function ReviewLinksPage() {
                             <Lock className="w-3 h-3 text-yellow-400" />
                           </span>
                         )}
+                        {(() => {
+                          const exp = parseDate(link.expiresAt);
+                          if (!exp) return null;
+                          const now = Date.now();
+                          const ms = exp.getTime() - now;
+                          if (ms < 0) {
+                            return <span className="flex-shrink-0 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 font-semibold">Expired</span>;
+                          }
+                          const days = ms / 86400000;
+                          if (days < 3) {
+                            return <span title={`Expires ${exp.toLocaleDateString()}`} className="flex-shrink-0 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 font-semibold">Expiring</span>;
+                          }
+                          return null;
+                        })()}
                       </div>
 
                       {/* Project */}

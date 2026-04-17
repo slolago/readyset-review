@@ -228,8 +228,17 @@ export default function ReviewPage() {
             <Lock className="w-6 h-6 text-frame-accent" />
           </div>
           <h2 className="text-lg font-semibold text-white text-center mb-1">Password protected</h2>
-          <p className="text-frame-textMuted text-sm text-center mb-5">Enter the password to access this review.</p>
-          {passwordError && <p className="text-red-400 text-xs text-center mb-3 bg-red-500/10 py-2 rounded-lg">Incorrect password, please try again</p>}
+          <p className="text-frame-textMuted text-sm text-center mb-5">
+            Enter the password shared with you by the project owner.
+          </p>
+          {passwordError && (
+            <div className="mb-3 bg-red-500/10 rounded-lg py-2 px-3">
+              <p className="text-red-400 text-xs text-center">Incorrect password</p>
+              <p className="text-frame-textMuted text-[11px] text-center mt-1">
+                If you believe this is incorrect, contact whoever sent you the link.
+              </p>
+            </div>
+          )}
           <input
             type="password"
             placeholder="Enter password"
