@@ -31,7 +31,10 @@ export async function POST(request: NextRequest) {
     const source = sourceDoc.data() as any;
     const target = targetDoc.data() as any;
 
-    // Auth check — both assets assumed in same project; checking source is sufficient
+    // Verify both assets live in the same project — never merge across projects
+    if (source.projectId !== target.projectId) {
+      return NextResponse.json({ error: 'Assets must be in the same project' }, { status: 400 });
+    }
     const hasAccess = await canAccessProject(user.id, source.projectId);
     if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 

@@ -22,6 +22,16 @@ export async function POST(request: NextRequest) {
     // targetFolderId may be null (project root) or a folder id; if omitted default to same folder
     const destinationFolderId = targetFolderId !== undefined ? targetFolderId : source.folderId;
 
+    // If a specific target folder was given, verify it exists and lives in the
+    // same project as the source — never allow copying across projects
+    if (destinationFolderId) {
+      const folderDoc = await db.collection('folders').doc(destinationFolderId).get();
+      if (!folderDoc.exists) return NextResponse.json({ error: 'Target folder not found' }, { status: 400 });
+      if ((folderDoc.data() as any).projectId !== source.projectId) {
+        return NextResponse.json({ error: 'Target folder must be in the same project' }, { status: 400 });
+      }
+    }
+
     // Fetch all versions in the stack so the copy is a complete independent group
     const versionGroupId = source.versionGroupId || assetId;
     const stackSnap = await db.collection('assets')

@@ -84,7 +84,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const hasAccess = await canAccessProject(user.id, asset.projectId);
     if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const updates = await request.json();
+    const rawUpdates = await request.json();
+    // Whitelist: only safe, user-mutable asset metadata. Never allow changing
+    // gcsPath/projectId/uploadedBy/createdAt/status/versionGroupId/size etc.
+    const ALLOWED = ['name', 'folderId', 'reviewStatus', 'description'];
+    const updates: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(rawUpdates)) {
+      if (ALLOWED.includes(k)) updates[k] = v;
+    }
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 });
+    }
 
     // When moving (folderId changes), update ALL versions in the group atomically
     if ('folderId' in updates) {
