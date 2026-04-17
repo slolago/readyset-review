@@ -292,15 +292,36 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
     isDraggingRef.current = false;
   };
 
+  // Track the last clicked item so shift-click can extend the range from it.
+  const lastClickedIdRef = useRef<string | null>(null);
+
   const toggleSelect = useCallback((id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    // Shift+click selects the contiguous range between lastClicked and this item.
+    // Uses the current visible order of folders+assets to compute the range.
+    if (e.shiftKey && lastClickedIdRef.current) {
+      const order = [...folders.map((f) => f.id), ...assets.map((a) => a.id)];
+      const from = order.indexOf(lastClickedIdRef.current);
+      const to = order.indexOf(id);
+      if (from !== -1 && to !== -1) {
+        const [start, end] = from < to ? [from, to] : [to, from];
+        const rangeIds = order.slice(start, end + 1);
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          rangeIds.forEach((rid) => next.add(rid));
+          return next;
+        });
+        return;
+      }
+    }
+    lastClickedIdRef.current = id;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  }, []);
+  }, [folders, assets]);
 
   const handleItemDragStart = useCallback((itemId: string, e: React.DragEvent) => {
     // Carry all selected IDs when dragging a selected item; otherwise just this item
@@ -408,6 +429,41 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
   const handleSelectAll = useCallback((ids: string[]) => {
     setSelectedIds(new Set(ids));
   }, []);
+
+  // Global keyboard shortcuts — Delete/Backspace to delete selection,
+  // Escape to clear selection, Ctrl/Cmd+A to select all.
+  // Only fire when focus is not in an input/textarea/contenteditable.
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) return;
+      // Ignore when a modal is open (any fixed-position dialog in DOM)
+      if (document.querySelector('[role="dialog"], [data-modal-open="true"]')) return;
+
+      if (e.key === 'Escape' && selectedIds.size > 0) {
+        e.preventDefault();
+        setSelectedIds(new Set());
+        return;
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.size > 0) {
+        e.preventDefault();
+        handleDeleteSelected();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        const ids = [...folders.map((f) => f.id), ...assets.map((a) => a.id)];
+        setSelectedIds(new Set(ids));
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIds.size, folders, assets]);
 
   const closeCanvasMenu = useCallback(() => setCanvasMenu(null), []);
 
