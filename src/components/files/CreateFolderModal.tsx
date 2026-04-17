@@ -72,7 +72,7 @@ export function CreateFolderModal({ projectId, parentId, onClose, onCreated }: C
           <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
             Cancel
           </Button>
-          <Button type="submit" loading={loading} className="flex-1">
+          <Button type="submit" loading={loading} disabled={!name.trim() || loading} className="flex-1">
             Create
           </Button>
         </div>

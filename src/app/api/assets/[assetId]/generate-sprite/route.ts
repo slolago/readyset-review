@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/auth-helpers';
+import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { uploadBuffer, getPublicUrl, generateReadSignedUrl } from '@/lib/gcs';
 import path from 'path';
@@ -101,6 +101,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (!doc.exists) return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
 
     const asset = doc.data() as any;
+    if (!(await canAccessProject(user.id, asset.projectId))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     if (!asset.gcsPath || asset.type !== 'video') {
       return NextResponse.json({ error: 'Not a video asset' }, { status: 400 });
     }

@@ -61,6 +61,7 @@ export const AssetCard = memo(function AssetCard({
   const [spriteLoaded, setSpriteLoaded] = useState(false);
   const [lazySpriteUrl, setLazySpriteUrl] = useState<string | null>(null);
   const [generatingSprite, setGeneratingSprite] = useState(false);
+  const [spriteFailed, setSpriteFailed] = useState(false);
   const serverSpriteUrl = (asset as any).spriteSignedUrl as string | undefined;
   const spriteUrl = serverSpriteUrl || lazySpriteUrl;
 
@@ -79,7 +80,9 @@ export const AssetCard = memo(function AssetCard({
   }, []);
 
   const ensureSprite = useCallback(async () => {
-    if (spriteUrl || generatingSprite || asset.type !== 'video') return;
+    // Don't retry after a failure — would hammer the server on every hover.
+    // User can refresh to try again.
+    if (spriteUrl || generatingSprite || spriteFailed || asset.type !== 'video') return;
     setGeneratingSprite(true);
     try {
       const token = await getIdToken();
@@ -90,18 +93,19 @@ export const AssetCard = memo(function AssetCard({
       if (res.ok) {
         const data = await res.json();
         if (data.spriteStripUrl) setLazySpriteUrl(data.spriteStripUrl);
-        else console.warn('[sprite] no URL in response', data);
+        else { console.warn('[sprite] no URL in response', data); setSpriteFailed(true); }
       } else {
-        // Read as JSON to get structured diagnostic info (error + steps + stderr)
         const data = await res.json().catch(() => null);
         console.warn('[sprite] generation failed', res.status, data ?? '(no body)');
+        setSpriteFailed(true);
       }
     } catch (err) {
       console.warn('[sprite] request error', err);
+      setSpriteFailed(true);
     } finally {
       setGeneratingSprite(false);
     }
-  }, [spriteUrl, generatingSprite, asset.type, asset.id, getIdToken]);
+  }, [spriteUrl, generatingSprite, spriteFailed, asset.type, asset.id, getIdToken]);
 
   const handleRename = () => {
     setRenameValue(asset.name);
@@ -290,7 +294,7 @@ export const AssetCard = memo(function AssetCard({
       }}
       className={`group bg-frame-card border rounded-xl overflow-hidden transition-all ${
         isUploading
-          ? 'opacity-60 border-frame-border'
+          ? 'opacity-70 border-frame-border cursor-wait'
           : isDropTarget
           ? 'border-frame-accent ring-2 ring-frame-accent bg-frame-accent/10 cursor-pointer'
           : isSelected

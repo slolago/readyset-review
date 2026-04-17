@@ -182,11 +182,20 @@ export function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: Ver
                 {versions.length > 1 && (
                   <GripVertical className="w-4 h-4 text-frame-textMuted cursor-grab flex-shrink-0" />
                 )}
-                <span className="flex-shrink-0 bg-frame-accent/20 text-frame-accent text-xs px-2 py-0.5 rounded font-mono">
+                <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded font-mono ${
+                  version.id === asset.id
+                    ? 'bg-frame-accent text-white'
+                    : 'bg-frame-accent/20 text-frame-accent'
+                }`}>
                   V{idx + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white truncate">{version.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-white truncate">{version.name}</p>
+                    {version.id === asset.id && (
+                      <span className="flex-shrink-0 text-[10px] uppercase tracking-wide text-frame-accent font-semibold">Current</span>
+                    )}
+                  </div>
                   <p className="text-xs text-frame-textMuted">
                     {formatDate(version.createdAt)} &middot; {version.uploadedBy}
                   </p>

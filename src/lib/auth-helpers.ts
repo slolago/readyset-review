@@ -54,8 +54,15 @@ export async function canAccessProject(
   projectId: string
 ): Promise<boolean> {
   const db = getAdminDb();
-  const projectDoc = await db.collection('projects').doc(projectId).get();
+  const [projectDoc, userDoc] = await Promise.all([
+    db.collection('projects').doc(projectId).get(),
+    db.collection('users').doc(userId).get(),
+  ]);
   if (!projectDoc.exists) return false;
+
+  // Admins have access to all projects — matches the pattern used by individual
+  // routes (e.g. DELETE /api/comments/[id]) that check role === 'admin' as an override.
+  if (userDoc.exists && (userDoc.data() as { role?: string }).role === 'admin') return true;
 
   const project = projectDoc.data()!;
   if (project.ownerId === userId) return true;

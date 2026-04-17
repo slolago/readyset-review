@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/auth-helpers';
+import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { uploadBuffer, buildThumbnailPath, getPublicUrl } from '@/lib/gcs';
 
@@ -25,7 +25,9 @@ export async function POST(request: NextRequest) {
     if (!doc.exists) return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
 
     const asset = doc.data() as any;
-    if (asset.uploadedBy !== user.id) {
+    // Any project collaborator can upload a thumbnail/sprite, not just the
+    // uploader — previously blocked legit re-generation by teammates.
+    if (!(await canAccessProject(user.id, asset.projectId))) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
