@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
-import { downloadToFile, uploadBuffer, getPublicUrl, generateReadSignedUrl } from '@/lib/gcs';
+import { uploadBuffer, getPublicUrl, generateReadSignedUrl } from '@/lib/gcs';
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
-import { existsSync, statSync } from 'fs';
+import { existsSync } from 'fs';
 import { spawn } from 'child_process';
 
 export const runtime = 'nodejs';
@@ -13,20 +13,17 @@ export const maxDuration = 60;
 
 const SPRITE_FRAMES = 20;
 const SPRITE_FRAME_W = 160;
-const SPRITE_FRAME_H = 90; // 16:9 — matches grid card aspect (aspect-video)
+const SPRITE_FRAME_H = 90; // 16:9
 
 interface RouteParams {
   params: { assetId: string };
 }
 
-// Resolve ffmpeg binary — try multiple sources so we can diagnose what's missing
 async function resolveFfmpeg(): Promise<{ binPath: string | null; source: string; diag: string[] }> {
   const diag: string[] = [];
 
-  // Try @ffmpeg-installer/ffmpeg first (better cross-platform support)
   try {
     const installer = await import('@ffmpeg-installer/ffmpeg');
-    // CJS default export vs named
     const installerPath = (installer as { path?: string; default?: { path?: string } }).path
       ?? (installer as { default?: { path?: string } }).default?.path;
     diag.push(`@ffmpeg-installer path: ${installerPath}`);
@@ -37,7 +34,6 @@ async function resolveFfmpeg(): Promise<{ binPath: string | null; source: string
     diag.push(`@ffmpeg-installer import failed: ${(e as Error).message}`);
   }
 
-  // Fallback to ffmpeg-static
   try {
     const staticMod = await import('ffmpeg-static');
     const staticPath = (staticMod as unknown as { default: string }).default
@@ -50,8 +46,6 @@ async function resolveFfmpeg(): Promise<{ binPath: string | null; source: string
     diag.push(`ffmpeg-static import failed: ${(e as Error).message}`);
   }
 
-  // Last resort: system ffmpeg (unlikely on Vercel but just in case)
-  diag.push('Falling back to system PATH /usr/bin/ffmpeg');
   if (existsSync('/usr/bin/ffmpeg')) {
     return { binPath: '/usr/bin/ffmpeg', source: 'system', diag };
   }
@@ -69,9 +63,32 @@ function runFfmpeg(binPath: string, args: string[]): Promise<{ code: number; std
   });
 }
 
+// Extract a single frame at timestamp `t` using HTTP fast seek.
+// Places -ss BEFORE -i so ffmpeg does keyframe-level seek (doesn't decode from start).
+async function extractFrame(
+  binPath: string,
+  videoUrl: string,
+  t: number,
+  outPath: string,
+): Promise<{ ok: boolean; stderr: string }> {
+  const { code, stderr } = await runFfmpeg(binPath, [
+    '-y',
+    '-ss', String(t),           // BEFORE -i = fast keyframe seek
+    '-i', videoUrl,
+    '-frames:v', '1',
+    '-vf',
+      `scale=${SPRITE_FRAME_W}:${SPRITE_FRAME_H}:force_original_aspect_ratio=increase,` +
+      `crop=${SPRITE_FRAME_W}:${SPRITE_FRAME_H}`,
+    '-q:v', '6',
+    outPath,
+  ]);
+  return { ok: code === 0 && existsSync(outPath), stderr };
+}
+
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const steps: string[] = [];
   const step = (msg: string) => { steps.push(msg); console.log('[generate-sprite]', msg); };
+  const startedAt = Date.now();
 
   try {
     const user = await getAuthenticatedUser(request);
@@ -82,102 +99,82 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const db = getAdminDb();
     const doc = await db.collection('assets').doc(assetId).get();
     if (!doc.exists) return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
-    step(`asset fetched: ${assetId}`);
 
     const asset = doc.data() as any;
     if (!asset.gcsPath || asset.type !== 'video') {
       return NextResponse.json({ error: 'Not a video asset' }, { status: 400 });
     }
 
-    // Return cached sprite if already generated WITH THE CURRENT VERSION (v2 = 16:9 crop)
-    // Old sprites with deformed aspect (pre-v2) get regenerated.
+    // Cached?
     if (asset.spriteStripGcsPath && asset.spriteStripGcsPath.includes('sprite-v2.jpg')) {
       const signedUrl = await generateReadSignedUrl(asset.spriteStripGcsPath, 720);
       return NextResponse.json({ spriteStripUrl: signedUrl, cached: true });
     }
-    step(`gcsPath: ${asset.gcsPath}, duration: ${asset.duration}`);
+    step(`duration: ${asset.duration}`);
 
-    // Resolve ffmpeg binary BEFORE any heavy work
     const { binPath, source, diag } = await resolveFfmpeg();
     if (!binPath) {
-      return NextResponse.json({
-        error: 'ffmpeg binary not found',
-        diagnostic: diag,
-        steps,
-      }, { status: 500 });
+      return NextResponse.json({ error: 'ffmpeg not found', diagnostic: diag, steps }, { status: 500 });
     }
-    step(`ffmpeg found via ${source}: ${binPath}`);
+    step(`ffmpeg via ${source}`);
+    try { await fs.chmod(binPath, 0o755); } catch {}
 
-    // Make sure the binary is executable (needed on Linux/Vercel)
-    try {
-      await fs.chmod(binPath, 0o755);
-    } catch (e) {
-      step(`chmod warning (non-fatal): ${(e as Error).message}`);
-    }
+    // Get signed URL for the video — ffmpeg will do HTTP range requests
+    // so we ONLY download the bytes needed for each frame's keyframe
+    const videoUrl = await generateReadSignedUrl(asset.gcsPath, 60);
+    step('video signed URL generated');
+
+    const duration = asset.duration && asset.duration > 0 ? asset.duration : 60;
 
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), `sprite-${assetId}-`));
-    const videoPath = path.join(tmpDir, 'input.mp4');
     const spritePath = path.join(tmpDir, 'sprite.jpg');
-    step(`tmpDir: ${tmpDir}`);
 
     try {
-      // Download video from GCS
-      await downloadToFile(asset.gcsPath, videoPath);
-      const videoSize = statSync(videoPath).size;
-      step(`video downloaded: ${videoSize} bytes`);
+      // Compute the 20 timestamps spread across the video (skip first/last 2%)
+      const timestamps = Array.from({ length: SPRITE_FRAMES }, (_, i) => {
+        return duration * (0.02 + (i / (SPRITE_FRAMES - 1)) * 0.96);
+      });
 
-      // Determine duration (either from asset doc or by probing)
-      let duration = asset.duration || 0;
-      if (duration <= 0) {
-        const probed = await probeDuration(binPath, videoPath);
-        if (probed) duration = probed;
-        step(`probed duration: ${duration}`);
+      // Extract all 20 frames IN PARALLEL (each does HTTP range request to GCS)
+      step(`extracting ${SPRITE_FRAMES} frames in parallel`);
+      const frameResults = await Promise.all(
+        timestamps.map((t, i) =>
+          extractFrame(binPath, videoUrl, t, path.join(tmpDir, `frame-${i}.jpg`))
+        )
+      );
+
+      const failed = frameResults.filter((r) => !r.ok);
+      if (failed.length > 0) {
+        return NextResponse.json({
+          error: `${failed.length}/${SPRITE_FRAMES} frames failed`,
+          stderr: failed[0]?.stderr.slice(-500),
+          steps,
+        }, { status: 500 });
       }
-      if (duration <= 0) duration = 10; // last-resort fallback
+      step(`all ${SPRITE_FRAMES} frames extracted in ${Date.now() - startedAt}ms`);
 
-      const fps = SPRITE_FRAMES / duration;
-      step(`running ffmpeg with fps=${fps}`);
-
-      // Scale to cover 160x90 (crop excess), then tile horizontally.
-      // force_original_aspect_ratio=increase + crop = "object-cover" behavior.
-      const vf =
-        `fps=${fps},` +
-        `scale=${SPRITE_FRAME_W}:${SPRITE_FRAME_H}:force_original_aspect_ratio=increase,` +
-        `crop=${SPRITE_FRAME_W}:${SPRITE_FRAME_H},` +
-        `tile=${SPRITE_FRAMES}x1`;
-
-      const { code, stderr } = await runFfmpeg(binPath, [
+      // Tile the 20 frames into a single strip
+      const tileArgs = [
         '-y',
-        '-threads', '0',       // use all available cores
-        '-i', videoPath,
-        '-vf', vf,
+        '-i', path.join(tmpDir, 'frame-%d.jpg'),
+        '-vf', `tile=${SPRITE_FRAMES}x1`,
         '-frames:v', '1',
-        '-q:v', '6',           // slightly lower quality = smaller file
+        '-q:v', '6',
         spritePath,
-      ]);
-
-      if (code !== 0) {
+      ];
+      const tile = await runFfmpeg(binPath, tileArgs);
+      if (tile.code !== 0 || !existsSync(spritePath)) {
         return NextResponse.json({
-          error: `ffmpeg exited ${code}`,
-          stderr: stderr.slice(-1000),
+          error: 'tile step failed',
+          stderr: tile.stderr.slice(-500),
           steps,
         }, { status: 500 });
       }
-
-      if (!existsSync(spritePath)) {
-        return NextResponse.json({
-          error: 'ffmpeg produced no output',
-          stderr: stderr.slice(-500),
-          steps,
-        }, { status: 500 });
-      }
+      step(`tile complete at ${Date.now() - startedAt}ms`);
 
       const spriteBuffer = await fs.readFile(spritePath);
-      step(`sprite size: ${spriteBuffer.length} bytes`);
-
       const spriteGcsPath = `projects/${asset.projectId}/assets/${assetId}/sprite-v2.jpg`;
       await uploadBuffer(spriteGcsPath, spriteBuffer, 'image/jpeg');
-      step('uploaded to gcs');
 
       const publicUrl = getPublicUrl(spriteGcsPath);
       await db.collection('assets').doc(assetId).update({
@@ -185,8 +182,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         spriteStripGcsPath: spriteGcsPath,
       });
 
-      const signedUrl = await generateReadSignedUrl(spriteGcsPath, 720);
-      return NextResponse.json({ spriteStripUrl: signedUrl, spriteStripGcsPath: spriteGcsPath });
+      const signedSpriteUrl = await generateReadSignedUrl(spriteGcsPath, 720);
+      step(`total: ${Date.now() - startedAt}ms`);
+      return NextResponse.json({
+        spriteStripUrl: signedSpriteUrl,
+        spriteStripGcsPath: spriteGcsPath,
+        ms: Date.now() - startedAt,
+      });
     } finally {
       try { await fs.rm(tmpDir, { recursive: true, force: true }); } catch {}
     }
@@ -198,19 +200,4 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       steps,
     }, { status: 500 });
   }
-}
-
-async function probeDuration(binPath: string, videoPath: string): Promise<number | null> {
-  return new Promise((resolve) => {
-    const proc = spawn(binPath, ['-i', videoPath]);
-    let stderr = '';
-    proc.stderr.on('data', (d) => { stderr += d.toString(); });
-    proc.on('close', () => {
-      const match = stderr.match(/Duration: (\d+):(\d+):(\d+\.\d+)/);
-      if (!match) { resolve(null); return; }
-      const h = parseInt(match[1]), m = parseInt(match[2]), s = parseFloat(match[3]);
-      resolve(h * 3600 + m * 60 + s);
-    });
-    proc.on('error', () => resolve(null));
-  });
 }
