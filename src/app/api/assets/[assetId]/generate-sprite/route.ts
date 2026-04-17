@@ -13,6 +13,7 @@ export const maxDuration = 60;
 
 const SPRITE_FRAMES = 20;
 const SPRITE_FRAME_W = 160;
+const SPRITE_FRAME_H = 90; // 16:9 — matches grid card aspect (aspect-video)
 
 interface RouteParams {
   params: { assetId: string };
@@ -88,8 +89,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Not a video asset' }, { status: 400 });
     }
 
-    // Return cached sprite if already generated
-    if (asset.spriteStripGcsPath) {
+    // Return cached sprite if already generated WITH THE CURRENT VERSION (v2 = 16:9 crop)
+    // Old sprites with deformed aspect (pre-v2) get regenerated.
+    if (asset.spriteStripGcsPath && asset.spriteStripGcsPath.includes('sprite-v2.jpg')) {
       const signedUrl = await generateReadSignedUrl(asset.spriteStripGcsPath, 720);
       return NextResponse.json({ spriteStripUrl: signedUrl, cached: true });
     }
@@ -136,12 +138,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const fps = SPRITE_FRAMES / duration;
       step(`running ffmpeg with fps=${fps}`);
 
+      // Scale to cover 160x90 (crop excess), then tile horizontally.
+      // force_original_aspect_ratio=increase + crop = "object-cover" behavior.
+      const vf =
+        `fps=${fps},` +
+        `scale=${SPRITE_FRAME_W}:${SPRITE_FRAME_H}:force_original_aspect_ratio=increase,` +
+        `crop=${SPRITE_FRAME_W}:${SPRITE_FRAME_H},` +
+        `tile=${SPRITE_FRAMES}x1`;
+
       const { code, stderr } = await runFfmpeg(binPath, [
         '-y',
+        '-threads', '0',       // use all available cores
         '-i', videoPath,
-        '-vf', `fps=${fps},scale=${SPRITE_FRAME_W}:-1,tile=${SPRITE_FRAMES}x1`,
+        '-vf', vf,
         '-frames:v', '1',
-        '-q:v', '5',
+        '-q:v', '6',           // slightly lower quality = smaller file
         spritePath,
       ]);
 
@@ -164,7 +175,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const spriteBuffer = await fs.readFile(spritePath);
       step(`sprite size: ${spriteBuffer.length} bytes`);
 
-      const spriteGcsPath = `projects/${asset.projectId}/assets/${assetId}/sprite-strip.jpg`;
+      const spriteGcsPath = `projects/${asset.projectId}/assets/${assetId}/sprite-v2.jpg`;
       await uploadBuffer(spriteGcsPath, spriteBuffer, 'image/jpeg');
       step('uploaded to gcs');
 

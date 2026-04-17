@@ -65,7 +65,9 @@ export async function GET(request: NextRequest) {
           asset.gcsPath
             ? generateDownloadSignedUrl(asset.gcsPath, asset.name).catch(() => undefined)
             : Promise.resolve(undefined),
-          asset.spriteStripGcsPath ? generateReadSignedUrl(asset.spriteStripGcsPath, 120) : Promise.resolve(undefined),
+          asset.spriteStripGcsPath && asset.spriteStripGcsPath.includes('sprite-v2.jpg')
+            ? generateReadSignedUrl(asset.spriteStripGcsPath, 120)
+            : Promise.resolve(undefined),
         ]);
         if (signedUrl !== undefined) asset.signedUrl = signedUrl;
         if (thumbnailSignedUrl !== undefined) asset.thumbnailSignedUrl = thumbnailSignedUrl;

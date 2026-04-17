@@ -365,6 +365,13 @@ export const AssetCard = memo(function AssetCard({
           </div>
         )}
 
+        {/* Loading indicator while sprite is generating */}
+        {asset.type === 'video' && isHovering && generatingSprite && !spriteLoaded && (
+          <div className="absolute bottom-1 right-1 z-[2] bg-black/70 backdrop-blur-sm rounded-full p-1">
+            <div className="w-3 h-3 border-2 border-frame-accent border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+
         {/* Selection checkbox */}
         {onToggleSelect && !isUploading && (
           <div
