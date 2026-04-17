@@ -227,7 +227,7 @@ function InspectPanel({
               { label: 'Comments', enabled: link.allowComments, icon: MessageSquare },
               { label: 'Downloads', enabled: !!link.allowDownloads, icon: Download },
               { label: 'Approvals', enabled: !!link.allowApprovals, icon: CheckCircle2 },
-              { label: 'Password protected', enabled: !!link.password, icon: Shield },
+              { label: 'Password protected', enabled: !!(link as any).hasPassword || !!link.password, icon: Shield },
             ].map(({ label, enabled, icon: Icon }) => (
               <div key={label} className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs text-frame-textSecondary">
@@ -414,7 +414,7 @@ export default function ReviewLinksPage() {
                       <div className="flex items-center gap-2.5 min-w-0">
                         <LinkIcon className="w-4 h-4 text-frame-accent flex-shrink-0" />
                         <span className="text-sm font-medium text-white truncate">{link.name}</span>
-                        {link.password && (
+                        {((link as any).hasPassword || link.password) && (
                           <span title="Password protected" className="flex-shrink-0">
                             <Lock className="w-3 h-3 text-yellow-400" />
                           </span>

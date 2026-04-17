@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { deleteFile } from '@/lib/gcs';
 import { Timestamp } from 'firebase-admin/firestore';
 
 interface RouteParams {
@@ -78,8 +79,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // Cascade delete: remove all folders, assets, comments, and review links
-    // that reference this project. Prevents orphaned records that could be
-    // exposed if a projectId collides in the future.
+    // that reference this project. Also delete GCS blobs (videos, thumbnails,
+    // sprites) so we don't leak storage costs. Non-fatal errors logged.
     const BATCH = 400;
     const deleteInBatches = async (collection: string) => {
       const snap = await db.collection(collection).where('projectId', '==', params.projectId).get();
@@ -91,11 +92,27 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return snap.size;
     };
 
+    // First: find all assets so we can delete their GCS blobs, THEN delete the docs
+    const assetsSnap = await db.collection('assets').where('projectId', '==', params.projectId).get();
+    const blobPaths: string[] = [];
+    for (const d of assetsSnap.docs) {
+      const a = d.data() as any;
+      if (a.gcsPath) blobPaths.push(a.gcsPath);
+      if (a.thumbnailGcsPath) blobPaths.push(a.thumbnailGcsPath);
+      if (a.spriteStripGcsPath) blobPaths.push(a.spriteStripGcsPath);
+    }
+    // Delete blobs in parallel chunks to avoid hammering GCS
+    const CHUNK = 20;
+    for (let i = 0; i < blobPaths.length; i += CHUNK) {
+      await Promise.all(blobPaths.slice(i, i + CHUNK).map((p) => deleteFile(p).catch(console.error)));
+    }
+
     const counts = {
       folders: await deleteInBatches('folders'),
       assets: await deleteInBatches('assets'),
       comments: await deleteInBatches('comments'),
       reviewLinks: await deleteInBatches('reviewLinks'),
+      blobsDeleted: blobPaths.length,
     };
 
     await db.collection('projects').doc(params.projectId).delete();

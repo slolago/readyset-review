@@ -139,14 +139,28 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const hasAccess = await canAccessProject(user.id, asset.projectId);
     if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    // Delete from GCS
-    if (asset.gcsPath) {
-      await deleteFile(asset.gcsPath).catch(console.error);
+    // Delete all associated GCS blobs — file, thumbnail, sprite — in parallel.
+    // Errors logged but non-fatal so orphaned Firestore records don't persist.
+    await Promise.all([
+      asset.gcsPath ? deleteFile(asset.gcsPath).catch(console.error) : null,
+      asset.thumbnailGcsPath ? deleteFile(asset.thumbnailGcsPath).catch(console.error) : null,
+      asset.spriteStripGcsPath ? deleteFile(asset.spriteStripGcsPath).catch(console.error) : null,
+    ]);
+
+    // Cascade: delete all comments attached to this asset so they don't
+    // orphan in Firestore. Use batched deletes (max 500 per commit).
+    const commentsSnap = await db.collection('comments').where('assetId', '==', params.assetId).get();
+    const BATCH_LIMIT = 400;
+    for (let i = 0; i < commentsSnap.docs.length; i += BATCH_LIMIT) {
+      const batch = db.batch();
+      commentsSnap.docs.slice(i, i + BATCH_LIMIT).forEach((d) => batch.delete(d.ref));
+      await batch.commit();
     }
 
     await db.collection('assets').doc(params.assetId).delete();
-    return NextResponse.json({ success: true });
-  } catch {
+    return NextResponse.json({ success: true, commentsDeleted: commentsSnap.size });
+  } catch (err) {
+    console.error('Asset delete error:', err);
     return NextResponse.json({ error: 'Failed to delete asset' }, { status: 500 });
   }
 }
