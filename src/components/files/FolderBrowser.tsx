@@ -59,6 +59,27 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
   const { assets, loading: assetsLoading, refetch: refetchAssets } = useAssets(projectId, folderId);
   const { uploads, uploadFile, clearCompleted, cancelUpload } = useUpload();
 
+  // Surface a summary toast when a batch of uploads finishes (all reached a
+  // terminal state). Only fires when the last active upload settles.
+  const prevActiveRef = useRef(0);
+  useEffect(() => {
+    const active = uploads.filter((u) => u.status === 'uploading' || u.status === 'pending').length;
+    const total = uploads.length;
+    if (total > 0 && prevActiveRef.current > 0 && active === 0) {
+      const done = uploads.filter((u) => u.status === 'complete').length;
+      const failed = uploads.filter((u) => u.status === 'error').length;
+      const cancelled = uploads.filter((u) => u.status === 'cancelled').length;
+      if (failed === 0 && cancelled === 0) {
+        toast.success(done === 1 ? 'Upload complete' : `Uploaded ${done} files`);
+      } else if (done === 0) {
+        toast.error(failed > 0 ? `All ${total} uploads failed` : `All ${total} uploads cancelled`);
+      } else {
+        toast(`Uploaded ${done} of ${total}${failed ? ` — ${failed} failed` : ''}${cancelled ? ` — ${cancelled} cancelled` : ''}`);
+      }
+    }
+    prevActiveRef.current = active;
+  }, [uploads]);
+
   const [folders, setFolders] = useState<FolderType[]>([]);
   const [currentFolder, setCurrentFolder] = useState<FolderType | null>(null);
   const [ancestorFolders, setAncestorFolders] = useState<FolderType[]>([]);

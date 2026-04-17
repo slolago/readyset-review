@@ -1,16 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useProjects } from '@/hooks/useProject';
 import { ProjectGrid } from '@/components/projects/ProjectGrid';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { Button } from '@/components/ui/Button';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 
 export default function ProjectsPage() {
   const { projects, loading, refetch } = useProjects();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [search, setSearch] = useState('');
+
+  // Open create modal from deep link (e.g., /projects?create=1)
+  useEffect(() => {
+    if (searchParams.get('create') === '1') {
+      setShowCreate(true);
+      router.replace('/projects', { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const filtered = projects.filter(
     (p) =>
@@ -45,8 +56,17 @@ export default function ProjectsPage() {
             placeholder="Search projects..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-frame-card border border-frame-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-frame-textMuted focus:outline-none focus:border-frame-accent transition-colors"
+            className={`w-full bg-frame-card border border-frame-border rounded-xl pl-9 py-2.5 text-sm text-white placeholder-frame-textMuted focus:outline-none focus:border-frame-accent transition-colors ${search ? 'pr-10' : 'pr-4'}`}
           />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              title="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-frame-border text-frame-textMuted hover:text-white transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         <ProjectGrid

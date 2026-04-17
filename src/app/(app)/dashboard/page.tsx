@@ -120,7 +120,7 @@ export default function DashboardPage() {
                 Create your first project to get started.
               </p>
               <Link
-                href="/projects"
+                href="/projects?create=1"
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-frame-accent hover:bg-frame-accentHover text-white text-sm font-semibold rounded-xl transition-colors shadow-lg shadow-frame-accent/20"
               >
                 Create project
