@@ -20,6 +20,7 @@ interface ContentsData {
   assets: any[];
   folders: any[];
   projectId: string;
+  canEdit: boolean;
 }
 
 interface ReviewLinkRow {
@@ -286,13 +287,15 @@ function InspectPanel({
         <div className="px-5 py-4 border-b border-frame-border space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Contents</h4>
-            <button
-              onClick={() => setShowAddFromProject(true)}
-              className="flex items-center gap-1 text-xs text-frame-accent hover:text-frame-accentHover font-medium transition-colors"
-            >
-              <Plus className="w-3 h-3" />
-              Add from project
-            </button>
+            {contents?.canEdit && (
+              <button
+                onClick={() => setShowAddFromProject(true)}
+                className="flex items-center gap-1 text-xs text-frame-accent hover:text-frame-accentHover font-medium transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+                Add from project
+              </button>
+            )}
           </div>
 
           {contentsLoading ? (
@@ -317,14 +320,16 @@ function InspectPanel({
                   <span className="text-xs text-white truncate flex-1">
                     {f._deleted ? <span className="text-frame-textMuted italic">Deleted folder</span> : f.name}
                   </span>
-                  <button
-                    onClick={() => handleRemove({ folderId: f.id })}
-                    disabled={mutating === f.id}
-                    title="Remove folder from link"
-                    className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                  {contents?.canEdit && (
+                    <button
+                      onClick={() => handleRemove({ folderId: f.id })}
+                      disabled={mutating === f.id}
+                      title="Remove folder from link"
+                      className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               ))}
               {/* Assets */}
@@ -350,14 +355,16 @@ function InspectPanel({
                     <span className="text-xs text-white truncate flex-1">
                       {a._deleted ? <span className="text-frame-textMuted italic">Deleted asset</span> : a.name}
                     </span>
-                    <button
-                      onClick={() => handleRemove({ assetId: a.id })}
-                      disabled={mutating === a.id}
-                      title="Remove asset from link"
-                      className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                    {contents?.canEdit && (
+                      <button
+                        onClick={() => handleRemove({ assetId: a.id })}
+                        disabled={mutating === a.id}
+                        title="Remove asset from link"
+                        className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 );
               })}

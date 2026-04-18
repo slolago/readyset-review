@@ -24,7 +24,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const snap = await db.collection('reviewLinks').doc(params.token).get();
     if (!snap.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const link = snap.data() as any;
-    if (link.createdBy !== uid) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    // Anyone with project access can read raw contents; only the creator can PATCH.
+    const projectDoc = await db.collection('projects').doc(link.projectId).get();
+    const project = projectDoc.exists ? (projectDoc.data() as any) : null;
+    const isCollaborator = !!project && (
+      project.ownerId === uid ||
+      (Array.isArray(project.collaborators) && project.collaborators.some((c: any) => c.userId === uid))
+    );
+    if (link.createdBy !== uid && !isCollaborator) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const assetIds: string[] = Array.isArray(link.assetIds) ? link.assetIds : [];
     const folderIds: string[] = Array.isArray(link.folderIds) ? link.folderIds : [];
@@ -35,18 +45,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       ? folderIds
       : (link.folderId ? [link.folderId] : []);
 
-    // Resolve folder names (chunk for 'in' query cap of 30)
+    // Resolve folder names via parallel direct doc gets
+    const folderDocs = await Promise.all(
+      effectiveFolderIds.map((id) => db.collection('folders').doc(id).get())
+    );
     const folders: any[] = [];
-    for (let i = 0; i < effectiveFolderIds.length; i += 30) {
-      const chunk = effectiveFolderIds.slice(i, i + 30);
-      if (!chunk.length) break;
-      const fs = await db.collection('folders').where('__name__', 'in', chunk).get();
-      for (const d of fs.docs) folders.push({ id: d.id, ...d.data() });
-    }
-    // Preserve missing ones as tombstones
-    const gotFolderIds = new Set(folders.map((f) => f.id));
-    for (const id of effectiveFolderIds) {
-      if (!gotFolderIds.has(id)) folders.push({ id, _deleted: true });
+    for (let i = 0; i < folderDocs.length; i++) {
+      const d = folderDocs[i];
+      const id = effectiveFolderIds[i];
+      if (d.exists) folders.push({ id, ...d.data() });
+      else folders.push({ id, _deleted: true });
     }
 
     // Resolve assets (name, thumbnail only — no full signed URLs needed for editor)
@@ -70,6 +78,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       assets,
       folders,
       projectId: link.projectId,
+      canEdit: link.createdBy === uid,
     });
   } catch (err) {
     console.error('review-link contents GET error:', err);

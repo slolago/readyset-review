@@ -47,6 +47,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       : (link.folderId ? [link.folderId] : []);
     const isProjectScoped = editableRoots.length === 0 && !(Array.isArray(link.assetIds) && link.assetIds.length);
 
+    // Auto-drill: if the link's root is exactly ONE folder and no loose assets, treat it
+    // as if the guest had requested that folder directly. Avoids the "one folder card"
+    // dead-end UX and matches the familiar "share a folder" behavior.
+    const looseAssetCount = Array.isArray(link.assetIds) ? link.assetIds.length : 0;
+    const effectiveFolderRequest = requestedFolderId
+      ?? (editableRoots.length === 1 && looseAssetCount === 0 ? editableRoots[0] : null);
+
     const folderIsAccessible = async (folderId: string): Promise<boolean> => {
       // Walk up parentId chain (max depth 20). Allowed if we hit a root, or if the
       // link is project-scoped and the folder belongs to this project.
@@ -100,27 +107,27 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       });
     };
 
-    // If ?folder=X is requested, serve direct children of that folder (after accessibility check)
-    if (requestedFolderId) {
-      const ok = await folderIsAccessible(requestedFolderId);
+    // If ?folder=X is requested (or we auto-drilled), serve direct children of that folder
+    if (effectiveFolderRequest) {
+      const ok = await folderIsAccessible(effectiveFolderRequest);
       if (!ok) return NextResponse.json({ error: 'Folder not available in this review link' }, { status: 403 });
 
       const assetsSnap = await db.collection('assets')
         .where('projectId', '==', link.projectId)
         .where('status', '==', 'ready')
-        .where('folderId', '==', requestedFolderId)
+        .where('folderId', '==', effectiveFolderRequest)
         .get();
       const decoratedAssets = await Promise.all(assetsSnap.docs.map((d) => decorate({ id: d.id, ...d.data() })));
       const assets = groupByVersion(decoratedAssets, !!link.showAllVersions);
 
       const subfoldersSnap = await db.collection('folders')
         .where('projectId', '==', link.projectId)
-        .where('parentId', '==', requestedFolderId)
+        .where('parentId', '==', effectiveFolderRequest)
         .get();
       const folders = subfoldersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
       const { password: _pw, ...safeLink } = link;
-      return NextResponse.json({ reviewLink: safeLink, assets, folders, projectName, currentFolderId: requestedFolderId });
+      return NextResponse.json({ reviewLink: safeLink, assets, folders, projectName, currentFolderId: effectiveFolderRequest });
     }
 
     // Root view — behavior depends on link type
@@ -145,14 +152,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
 
       if (link.folderIds?.length) {
-        // Resolve folder docs for display
-        for (let i = 0; i < link.folderIds.length; i += 30) {
-          const chunk = link.folderIds.slice(i, i + 30);
-          const snap = await db.collection('folders')
-            .where('projectId', '==', link.projectId)
-            .where('__name__', 'in', chunk)
-            .get();
-          for (const d of snap.docs) folders.push({ id: d.id, ...d.data() });
+        // Resolve folder docs for display (parallel direct doc gets — avoids __name__ IN quirks)
+        const folderDocs = await Promise.all(
+          (link.folderIds as string[]).map((id) => db.collection('folders').doc(id).get())
+        );
+        for (const d of folderDocs) {
+          if (!d.exists) continue;
+          const f = d.data() as any;
+          if (f?.projectId === link.projectId) folders.push({ id: d.id, ...f });
         }
       }
 
