@@ -12,6 +12,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const db = getAdminDb();
     const { searchParams } = new URL(request.url);
     const providedPassword = searchParams.get('password');
+    const requestedFolderId = searchParams.get('folder') || null;
 
     // Find the review link — use direct doc lookup (token IS the doc ID)
     const doc = await db.collection('reviewLinks').doc(params.token).get();
@@ -39,111 +40,153 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const projectDoc = await db.collection('projects').doc(link.projectId).get();
     const projectName = projectDoc.exists ? (projectDoc.data() as any).name : 'Unknown Project';
 
-    // Get assets — branch on selection-scoped vs folder/project-scoped
+    // Determine the link's allowed folder roots. A requested ?folder=X is accepted if
+    // it IS a root or descends (via parentId chain) from one.
+    const editableRoots: string[] = Array.isArray(link.folderIds) && link.folderIds.length
+      ? link.folderIds
+      : (link.folderId ? [link.folderId] : []);
+    const isProjectScoped = editableRoots.length === 0 && !(Array.isArray(link.assetIds) && link.assetIds.length);
+
+    const folderIsAccessible = async (folderId: string): Promise<boolean> => {
+      // Walk up parentId chain (max depth 20). Allowed if we hit a root, or if the
+      // link is project-scoped and the folder belongs to this project.
+      let current: string | null = folderId;
+      const seen = new Set<string>();
+      for (let depth = 0; depth < 20 && current; depth++) {
+        if (seen.has(current)) return false; // cycle guard
+        seen.add(current);
+        if (editableRoots.includes(current)) return true;
+        const fs = await db.collection('folders').doc(current).get();
+        if (!fs.exists) return false;
+        const f = fs.data() as any;
+        if (f.projectId !== link.projectId) return false;
+        if (isProjectScoped) return true; // project-scoped allows any folder in project
+        current = (f.parentId as string | null) ?? null;
+      }
+      return false;
+    };
+
+    // Attach signed URLs on a raw asset doc
+    const decorate = async (asset: any) => {
+      if (asset.gcsPath) {
+        try { asset.signedUrl = await generateReadSignedUrl(asset.gcsPath); } catch {}
+      }
+      if (asset.thumbnailGcsPath) {
+        try { asset.thumbnailSignedUrl = await generateReadSignedUrl(asset.thumbnailGcsPath); } catch {}
+      }
+      if (asset.gcsPath && link.allowDownloads) {
+        try { asset.downloadUrl = await generateDownloadSignedUrl(asset.gcsPath, asset.name); } catch {}
+      }
+      return asset;
+    };
+
+    // Version grouping helper — shared across paths
+    const groupByVersion = (list: any[], showAll: boolean): any[] => {
+      const groups = new Map<string, any[]>();
+      for (const asset of list) {
+        const groupId = asset.versionGroupId || asset.id;
+        if (!groups.has(groupId)) groups.set(groupId, []);
+        groups.get(groupId)!.push(asset);
+      }
+      if (showAll) {
+        return Array.from(groups.values()).flatMap((group) => {
+          const sorted = group.sort((a, b) => (b.version || 1) - (a.version || 1));
+          return sorted.map((v) => ({ ...v, _versionCount: group.length }));
+        });
+      }
+      return Array.from(groups.values()).map((group) => {
+        const sorted = group.sort((a, b) => (b.version || 1) - (a.version || 1));
+        return { ...sorted[0], _versionCount: group.length };
+      });
+    };
+
+    // If ?folder=X is requested, serve direct children of that folder (after accessibility check)
+    if (requestedFolderId) {
+      const ok = await folderIsAccessible(requestedFolderId);
+      if (!ok) return NextResponse.json({ error: 'Folder not available in this review link' }, { status: 403 });
+
+      const assetsSnap = await db.collection('assets')
+        .where('projectId', '==', link.projectId)
+        .where('status', '==', 'ready')
+        .where('folderId', '==', requestedFolderId)
+        .get();
+      const decoratedAssets = await Promise.all(assetsSnap.docs.map((d) => decorate({ id: d.id, ...d.data() })));
+      const assets = groupByVersion(decoratedAssets, !!link.showAllVersions);
+
+      const subfoldersSnap = await db.collection('folders')
+        .where('projectId', '==', link.projectId)
+        .where('parentId', '==', requestedFolderId)
+        .get();
+      const folders = subfoldersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      const { password: _pw, ...safeLink } = link;
+      return NextResponse.json({ reviewLink: safeLink, assets, folders, projectName, currentFolderId: requestedFolderId });
+    }
+
+    // Root view — behavior depends on link type
     let assets: any[];
     let folders: any[] = [];
 
-    if (link.assetIds && link.assetIds.length > 0) {
-      // Selection-scoped link — fetch by individual doc IDs (Firestore `in` capped at 30)
-      const docs = await Promise.all(
-        (link.assetIds as string[]).map((id: string) => db.collection('assets').doc(id).get())
-      );
-      assets = (
-        await Promise.all(
-          docs.map(async (d) => {
-            if (!d.exists) return { id: d.id, _deleted: true };
-            const asset = { id: d.id, ...d.data() } as any;
-            if (asset.status !== 'ready') return null;
-            if (asset.gcsPath) {
-              try { asset.signedUrl = await generateReadSignedUrl(asset.gcsPath); } catch {}
-            }
-            if (asset.thumbnailGcsPath) {
-              try { asset.thumbnailSignedUrl = await generateReadSignedUrl(asset.thumbnailGcsPath); } catch {}
-            }
-            if (asset.gcsPath && link.allowDownloads) {
-              try { asset.downloadUrl = await generateDownloadSignedUrl(asset.gcsPath, asset.name); } catch {}
-            }
-            return asset;
-          })
-        )
-      ).filter(Boolean);
-      // If showAllVersions, expand selection to include all versions in each asset's group
-      if (link.showAllVersions) {
-        const groupIds = new Set<string>();
-        for (const a of assets) {
-          if (a.versionGroupId) groupIds.add(a.versionGroupId);
-        }
-        if (groupIds.size > 0) {
-          const groupAssets = await Promise.all(
-            Array.from(groupIds).map(async (gid) => {
-              const snap = await db.collection('assets')
-                .where('versionGroupId', '==', gid)
-                .where('status', '==', 'ready')
-                .get();
-              return Promise.all(snap.docs.map(async (d) => {
-                const a = { id: d.id, ...d.data() } as any;
-                if (a.gcsPath) { try { a.signedUrl = await generateReadSignedUrl(a.gcsPath); } catch {} }
-                if (a.thumbnailGcsPath) { try { a.thumbnailSignedUrl = await generateReadSignedUrl(a.thumbnailGcsPath); } catch {} }
-                if (a.gcsPath && link.allowDownloads) { try { a.downloadUrl = await generateDownloadSignedUrl(a.gcsPath, a.name); } catch {} }
-                return a;
-              }));
-            })
-          );
-          const existing = new Set(assets.map((a: any) => a.id));
-          for (const group of groupAssets) {
-            for (const a of group) {
-              if (!existing.has(a.id)) { assets.push(a); existing.add(a.id); }
-            }
-          }
+    const hasArrays = (link.folderIds && link.folderIds.length) || (link.assetIds && link.assetIds.length);
+
+    if (hasArrays) {
+      // Editable link — show folderIds[] as navigable folder cards + assetIds[] as loose assets.
+      // Guests click into a folder to load its contents via ?folder=X.
+      const assetMap = new Map<string, any>();
+      const missingAssetIds: string[] = [];
+
+      if (link.assetIds?.length) {
+        const docs = await Promise.all((link.assetIds as string[]).map((id) => db.collection('assets').doc(id).get()));
+        for (const d of docs) {
+          if (!d.exists) { missingAssetIds.push(d.id); continue; }
+          const a = { id: d.id, ...d.data() } as any;
+          if (a.status === 'ready') assetMap.set(a.id, a);
         }
       }
-      // folders stays []
+
+      if (link.folderIds?.length) {
+        // Resolve folder docs for display
+        for (let i = 0; i < link.folderIds.length; i += 30) {
+          const chunk = link.folderIds.slice(i, i + 30);
+          const snap = await db.collection('folders')
+            .where('projectId', '==', link.projectId)
+            .where('__name__', 'in', chunk)
+            .get();
+          for (const d of snap.docs) folders.push({ id: d.id, ...d.data() });
+        }
+      }
+
+      let decorated = await Promise.all(Array.from(assetMap.values()).map(decorate));
+
+      if (link.showAllVersions) {
+        // Expand loose-asset selections to include every sibling version
+        const groupIds = new Set<string>();
+        for (const a of decorated) if (a.versionGroupId) groupIds.add(a.versionGroupId);
+        for (const gid of Array.from(groupIds)) {
+          const snap = await db.collection('assets')
+            .where('versionGroupId', '==', gid)
+            .where('status', '==', 'ready')
+            .get();
+          for (const d of snap.docs) {
+            if (!assetMap.has(d.id)) assetMap.set(d.id, { id: d.id, ...d.data() });
+          }
+        }
+        decorated = await Promise.all(Array.from(assetMap.values()).map(decorate));
+      }
+
+      assets = groupByVersion(decorated, !!link.showAllVersions);
+      // Surface deleted-asset placeholders so owner-side editors can detect stale refs
+      for (const id of missingAssetIds) assets.push({ id, _deleted: true });
     } else {
-      // Existing folder/project-scoped path
+      // Legacy folder-scoped or full-project: show contents of the scope root at top level
       let assetsQuery = db.collection('assets').where('projectId', '==', link.projectId).where('status', '==', 'ready');
       if (link.folderId) {
         assetsQuery = assetsQuery.where('folderId', '==', link.folderId) as any;
       }
       const assetsSnap = await assetsQuery.get();
-      const assetsWithUrls = await Promise.all(
-        assetsSnap.docs.map(async (d) => {
-          const asset = { id: d.id, ...d.data() } as any;
-          if (asset.gcsPath) {
-            try { asset.signedUrl = await generateReadSignedUrl(asset.gcsPath); } catch {}
-          }
-          if (asset.thumbnailGcsPath) {
-            try { asset.thumbnailSignedUrl = await generateReadSignedUrl(asset.thumbnailGcsPath); } catch {}
-          }
-          if (asset.gcsPath && link.allowDownloads) {
-            try { asset.downloadUrl = await generateDownloadSignedUrl(asset.gcsPath, asset.name); } catch {}
-          }
-          return asset;
-        })
-      );
+      const decorated = await Promise.all(assetsSnap.docs.map((d) => decorate({ id: d.id, ...d.data() })));
+      assets = groupByVersion(decorated, !!link.showAllVersions);
 
-      // Group by versionGroupId
-      const groups = new Map<string, any[]>();
-      for (const asset of assetsWithUrls) {
-        const groupId = asset.versionGroupId || asset.id;
-        if (!groups.has(groupId)) groups.set(groupId, []);
-        groups.get(groupId)!.push(asset);
-      }
-
-      if (link.showAllVersions) {
-        // Show every version as its own card, sorted newest-first within each group
-        assets = Array.from(groups.values()).flatMap((group) => {
-          const sorted = group.sort((a, b) => (b.version || 1) - (a.version || 1));
-          return sorted.map((v) => ({ ...v, _versionCount: group.length }));
-        });
-      } else {
-        // Default: only latest version per group
-        assets = Array.from(groups.values()).map((group) => {
-          const sorted = group.sort((a, b) => (b.version || 1) - (a.version || 1));
-          return { ...sorted[0], _versionCount: group.length };
-        });
-      }
-
-      // Get folders for folder/project-scoped links
       let foldersQuery = db.collection('folders').where('projectId', '==', link.projectId);
       if (link.folderId) {
         foldersQuery = foldersQuery.where('parentId', '==', link.folderId) as any;
@@ -162,6 +205,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       assets,
       folders,
       projectName,
+      currentFolderId: null,
     });
   } catch (error) {
     console.error('Review link error:', error);

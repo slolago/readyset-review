@@ -95,8 +95,9 @@ export interface ReviewLink {
   id: string;
   token: string;
   projectId: string;
-  folderId: string | null;
-  assetIds?: string[];
+  folderId: string | null;          // legacy single-folder scope (kept for backward compat)
+  folderIds?: string[];             // editable: multiple folders included in the link
+  assetIds?: string[];              // editable: individual assets included in the link
   name: string;
   createdBy: string;
   expiresAt: Timestamp | null;

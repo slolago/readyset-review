@@ -45,11 +45,12 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { name, projectId, folderId, allowComments, password, expiresAt,
+    const { name, projectId, folderId, folderIds, allowComments, password, expiresAt,
             allowDownloads, allowApprovals, showAllVersions, assetIds } = await request.json();
 
     if (!name || !projectId) return NextResponse.json({ error: 'name and projectId required' }, { status: 400 });
-    if (assetIds && assetIds.length > 50) return NextResponse.json({ error: 'Maximum 50 assets per selection link' }, { status: 400 });
+    if (assetIds && assetIds.length > 200) return NextResponse.json({ error: 'Maximum 200 assets per link' }, { status: 400 });
+    if (folderIds && folderIds.length > 50) return NextResponse.json({ error: 'Maximum 50 folders per link' }, { status: 400 });
 
     const hasAccess = await canAccessProject(user.id, projectId);
     if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -58,12 +59,18 @@ export async function POST(request: NextRequest) {
     const token = generateShortToken();
     const db = getAdminDb();
 
+    // New links use folderIds[]/assetIds[] arrays (editable). folderId (legacy) is only set
+    // when the caller passes a single folderId and no arrays — preserves backward compat.
+    const cleanAssetIds: string[] | null = Array.isArray(assetIds) && assetIds.length ? assetIds.filter((x: unknown) => typeof x === 'string') : null;
+    const cleanFolderIds: string[] | null = Array.isArray(folderIds) && folderIds.length ? folderIds.filter((x: unknown) => typeof x === 'string') : null;
+
     const data: Record<string, unknown> = {
       token,
       name,
       projectId,
-      folderId: assetIds?.length ? null : (folderId || null),
-      assetIds: assetIds?.length ? assetIds : null,
+      folderId: (cleanAssetIds || cleanFolderIds) ? null : (folderId || null),
+      folderIds: cleanFolderIds,
+      assetIds: cleanAssetIds,
       createdBy: user.id,
       allowComments: allowComments !== false,
       allowDownloads: allowDownloads === true,

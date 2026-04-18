@@ -25,6 +25,7 @@ interface AssetCardProps {
   onDuplicated?: () => void;
   onRequestMove?: () => void;
   onCreateReviewLink?: () => void;
+  onAddToReviewLink?: () => void;
   isSelected?: boolean;
   onToggleSelect?: (e: React.MouseEvent) => void;
   onDragStart?: (e: React.DragEvent) => void;
@@ -37,7 +38,7 @@ interface AssetCardProps {
 
 export const AssetCard = memo(function AssetCard({
   asset, onClick, onDeleted, onVersionUploaded, onCopied, onDuplicated,
-  onRequestMove, onCreateReviewLink, isSelected, onToggleSelect, onDragStart, hideActions,
+  onRequestMove, onCreateReviewLink, onAddToReviewLink, isSelected, onToggleSelect, onDragStart, hideActions,
   onDragOver, onDragLeave, onDrop, isDropTarget
 }: AssetCardProps) {
   const { getIdToken } = useAuth();
@@ -603,6 +604,7 @@ export const AssetCard = memo(function AssetCard({
             { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: handleDownload },
             { label: 'Get link', icon: <LinkIcon className="w-4 h-4" />, onClick: handleGetLink },
             ...(onCreateReviewLink ? [{ label: 'Create review link', icon: <LinkIcon className="w-4 h-4" />, onClick: onCreateReviewLink }] : []),
+            ...(onAddToReviewLink ? [{ label: 'Add to review link\u2026', icon: <LinkIcon className="w-4 h-4" />, onClick: onAddToReviewLink }] : []),
             { label: 'Approved', icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" />, onClick: () => handleSetStatus('approved'), dividerBefore: true },
             { label: 'Needs Revision', icon: <AlertCircle className="w-4 h-4 text-yellow-400" />, onClick: () => handleSetStatus('needs_revision') },
             { label: 'In Review', icon: <Clock className="w-4 h-4 text-blue-400" />, onClick: () => handleSetStatus('in_review') },

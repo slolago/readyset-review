@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { Film, Lock, AlertCircle, ChevronLeft, Download } from 'lucide-react';
+import { Film, Lock, AlertCircle, ChevronLeft, Download, Folder as FolderIcon, Home, ChevronRight } from 'lucide-react';
 import type { ReviewLink, Asset, Folder, Comment } from '@/types';
 import { forceDownload } from '@/lib/utils';
 import { AssetCard } from '@/components/files/AssetCard';
@@ -19,6 +19,7 @@ interface ReviewData {
   assets: Asset[];
   folders: Folder[];
   projectName: string;
+  currentFolderId?: string | null;
 }
 
 export default function ReviewPage() {
@@ -38,6 +39,9 @@ export default function ReviewPage() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [currentTime, setCurrentTime] = useState(0);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [folderCrumbs, setFolderCrumbs] = useState<Array<{ id: string | null; name: string }>>([{ id: null, name: 'All' }]);
+  const [passwordValue, setPasswordValue] = useState<string | null>(null); // remembered after unlock
 
   // Annotation state — same pattern as the internal asset viewer
   const videoRef = useRef<VideoPlayerHandle>(null);
@@ -50,16 +54,19 @@ export default function ReviewPage() {
 
   const { user, loading: authLoading } = useAuth();
 
-  const fetchReview = async (pwd?: string) => {
+  const fetchReview = async (pwd?: string, folderId?: string | null) => {
     try {
       const qs = new URLSearchParams();
-      if (pwd) qs.set('password', pwd);
+      const effectivePwd = pwd ?? passwordValue ?? undefined;
+      if (effectivePwd) qs.set('password', effectivePwd);
+      if (folderId) qs.set('folder', folderId);
       const res = await fetch(`/api/review-links/${token}?${qs}`);
       if (res.status === 401) { setPasswordError(true); setLoading(false); return; }
       if (!res.ok) throw new Error('Review link not found or expired');
       const json = await res.json();
       setData(json);
       setPasswordError(false);
+      if (pwd !== undefined) setPasswordValue(pwd);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load review');
     } finally {
@@ -69,6 +76,23 @@ export default function ReviewPage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchReview(); }, [token]);
+
+  const handleEnterFolder = async (folder: Folder) => {
+    setLoading(true);
+    setSelectedAsset(null);
+    setCurrentFolderId(folder.id);
+    setFolderCrumbs((prev) => [...prev, { id: folder.id, name: folder.name }]);
+    await fetchReview(undefined, folder.id);
+  };
+
+  const handleJumpToCrumb = async (index: number) => {
+    const crumb = folderCrumbs[index];
+    setLoading(true);
+    setSelectedAsset(null);
+    setCurrentFolderId(crumb.id);
+    setFolderCrumbs(folderCrumbs.slice(0, index + 1));
+    await fetchReview(undefined, crumb.id);
+  };
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -353,44 +377,101 @@ export default function ReviewPage() {
           /* Asset grid */
           <div className="flex-1 overflow-y-auto p-8">
             <h2 className="text-lg font-semibold text-white mb-1">{data.reviewLink.name}</h2>
-            <p className="text-sm text-frame-textSecondary mb-6">{data.projectName}</p>
+            <p className="text-sm text-frame-textSecondary mb-4">{data.projectName}</p>
 
-            {data.assets.length === 0 ? (
+            {/* Folder breadcrumbs */}
+            {folderCrumbs.length > 1 && (
+              <div className="flex items-center gap-1 text-sm mb-6 flex-wrap">
+                {folderCrumbs.map((crumb, i) => (
+                  <div key={`${crumb.id ?? 'root'}-${i}`} className="flex items-center gap-1">
+                    <button
+                      onClick={() => i < folderCrumbs.length - 1 && handleJumpToCrumb(i)}
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
+                        i === folderCrumbs.length - 1
+                          ? 'text-white font-medium'
+                          : 'text-frame-textSecondary hover:text-white hover:bg-frame-cardHover'
+                      }`}
+                    >
+                      {i === 0 && <Home className="w-3.5 h-3.5" />}
+                      {crumb.name}
+                    </button>
+                    {i < folderCrumbs.length - 1 && <ChevronRight className="w-3 h-3 text-frame-textMuted" />}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {data.assets.length === 0 && (!data.folders || data.folders.length === 0) ? (
               <div className="text-center py-16">
                 <Film className="w-12 h-12 text-frame-textMuted mx-auto mb-3" />
-                <p className="text-frame-textSecondary">No assets in this review link</p>
+                <p className="text-frame-textSecondary">
+                  {currentFolderId ? 'This folder is empty' : 'No assets in this review link'}
+                </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {data.assets.map((asset: any) =>
-                  asset._deleted ? (
-                    <div
-                      key={asset.id}
-                      className="aspect-video bg-frame-card border border-dashed border-frame-border/50 rounded-xl flex flex-col items-center justify-center gap-2 opacity-40"
-                    >
-                      <Film className="w-8 h-8 text-frame-textMuted" />
-                      <p className="text-xs text-frame-textMuted">Asset removed</p>
-                    </div>
-                  ) : (
-                    <div key={asset.id} className="relative group">
-                      <AssetCard asset={asset} onClick={() => handleSelectAsset(asset)} hideActions />
-                      {data.reviewLink.allowDownloads && ((asset as any).downloadUrl ?? (asset as any).signedUrl) && (
+              <>
+                {/* Folders */}
+                {data.folders && data.folders.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider mb-3">
+                      Folders ({data.folders.length})
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {data.folders.map((folder) => (
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const url = ((asset as any).downloadUrl ?? (asset as any).signedUrl) as string;
-                            forceDownload(url, asset.name);
-                          }}
-                          className="absolute bottom-14 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-frame-card/90 backdrop-blur-sm border border-frame-border rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 text-xs text-white hover:bg-frame-cardHover"
+                          key={folder.id}
+                          onClick={() => handleEnterFolder(folder)}
+                          className="group bg-frame-card hover:bg-frame-cardHover border border-frame-border hover:border-frame-borderLight rounded-xl p-4 transition-all text-left"
                         >
-                          <Download className="w-3.5 h-3.5" />
-                          Download
+                          <FolderIcon className="w-8 h-8 text-frame-accent mb-2" />
+                          <p className="text-sm font-medium text-white truncate">{folder.name}</p>
                         </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Assets */}
+                {data.assets.length > 0 && (
+                  <>
+                    {data.folders && data.folders.length > 0 && (
+                      <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider mb-3">
+                        Assets ({data.assets.filter((a: any) => !a._deleted).length})
+                      </h3>
+                    )}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {data.assets.map((asset: any) =>
+                        asset._deleted ? (
+                          <div
+                            key={asset.id}
+                            className="aspect-video bg-frame-card border border-dashed border-frame-border/50 rounded-xl flex flex-col items-center justify-center gap-2 opacity-40"
+                          >
+                            <Film className="w-8 h-8 text-frame-textMuted" />
+                            <p className="text-xs text-frame-textMuted">Asset removed</p>
+                          </div>
+                        ) : (
+                          <div key={asset.id} className="relative group">
+                            <AssetCard asset={asset} onClick={() => handleSelectAsset(asset)} hideActions />
+                            {data.reviewLink.allowDownloads && ((asset as any).downloadUrl ?? (asset as any).signedUrl) && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const url = ((asset as any).downloadUrl ?? (asset as any).signedUrl) as string;
+                                  forceDownload(url, asset.name);
+                                }}
+                                className="absolute bottom-14 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-frame-card/90 backdrop-blur-sm border border-frame-border rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 text-xs text-white hover:bg-frame-cardHover"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                Download
+                              </button>
+                            )}
+                          </div>
+                        )
                       )}
                     </div>
-                  )
+                  </>
                 )}
-              </div>
+              </>
             )}
           </div>
         )}

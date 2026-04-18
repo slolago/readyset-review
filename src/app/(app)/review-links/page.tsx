@@ -6,11 +6,21 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   Link as LinkIcon, Lock, ExternalLink, Copy, Trash2, ChevronRight,
   MessageSquare, Folder, Layers, X, Check, Users, Shield,
-  Download, CheckCircle2, Sparkles, Eye,
+  Download, CheckCircle2, Sparkles, Eye, Plus, Film, Image as ImageIcon,
 } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/utils';
 import { Spinner } from '@/components/ui/Spinner';
+import { AddFromProjectModal } from '@/components/review/AddFromProjectModal';
 import toast from 'react-hot-toast';
+
+interface ContentsData {
+  assetIds: string[];
+  folderIds: string[];
+  legacyFolderId: string | null;
+  assets: any[];
+  folders: any[];
+  projectId: string;
+}
 
 interface ReviewLinkRow {
   id: string;
@@ -37,11 +47,15 @@ interface Viewer {
   lastSeen: any;
 }
 
-function parseDate(raw: any): Date {
-  if (!raw) return new Date(0);
+function parseDate(raw: any): Date | null {
+  if (!raw) return null;
   if (typeof raw.toDate === 'function') return raw.toDate();
   if (raw._seconds) return new Date(raw._seconds * 1000);
-  return new Date(0);
+  return null;
+}
+
+function parseDateOrEpoch(raw: any): Date {
+  return parseDate(raw) ?? new Date(0);
 }
 
 function ScopeLabel({ link }: { link: ReviewLinkRow }) {
@@ -101,6 +115,53 @@ function InspectPanel({
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [contents, setContents] = useState<ContentsData | null>(null);
+  const [contentsLoading, setContentsLoading] = useState(true);
+  const [showAddFromProject, setShowAddFromProject] = useState(false);
+  const [mutating, setMutating] = useState<string | null>(null); // id being removed
+
+  const loadContents = useCallback(async () => {
+    setContentsLoading(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch(`/api/review-links/${link.token}/contents`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setContents(data);
+      }
+    } catch { /* non-fatal */ }
+    finally { setContentsLoading(false); }
+  }, [link.token, getIdToken]);
+
+  useEffect(() => { loadContents(); }, [loadContents]);
+
+  const handleRemove = async (opts: { assetId?: string; folderId?: string }) => {
+    const id = opts.assetId ?? opts.folderId!;
+    setMutating(id);
+    try {
+      const token = await getIdToken();
+      const res = await fetch(`/api/review-links/${link.token}/contents`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          removeAssetIds: opts.assetId ? [opts.assetId] : [],
+          removeFolderIds: opts.folderId ? [opts.folderId] : [],
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || 'Failed to remove');
+      }
+      await loadContents();
+      toast.success('Removed');
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setMutating(null);
+    }
+  };
 
   const reviewUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/review/${link.token}`;
 
@@ -153,7 +214,7 @@ function InspectPanel({
     }
   };
 
-  const date = parseDate(link.createdAt);
+  const date = parseDateOrEpoch(link.createdAt);
 
   return (
     <div className="flex flex-col h-full">
@@ -221,6 +282,89 @@ function InspectPanel({
           </div>
         </div>
 
+        {/* Contents */}
+        <div className="px-5 py-4 border-b border-frame-border space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Contents</h4>
+            <button
+              onClick={() => setShowAddFromProject(true)}
+              className="flex items-center gap-1 text-xs text-frame-accent hover:text-frame-accentHover font-medium transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              Add from project
+            </button>
+          </div>
+
+          {contentsLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Spinner size="sm" />
+            </div>
+          ) : !contents || (contents.assets.length === 0 && contents.folders.length === 0) ? (
+            <div className="text-center py-4">
+              <p className="text-xs text-frame-textMuted">
+                {contents?.projectId ? 'No items yet — this link shows the whole project. Add items to curate it.' : 'No items'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {/* Folders */}
+              {contents.folders.map((f: any) => (
+                <div
+                  key={`f-${f.id}`}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-frame-cardHover group transition-colors"
+                >
+                  <Folder className="w-3.5 h-3.5 text-frame-accent flex-shrink-0" />
+                  <span className="text-xs text-white truncate flex-1">
+                    {f._deleted ? <span className="text-frame-textMuted italic">Deleted folder</span> : f.name}
+                  </span>
+                  <button
+                    onClick={() => handleRemove({ folderId: f.id })}
+                    disabled={mutating === f.id}
+                    title="Remove folder from link"
+                    className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {/* Assets */}
+              {contents.assets.map((a: any) => {
+                const thumb = a.thumbnailSignedUrl as string | undefined;
+                return (
+                  <div
+                    key={`a-${a.id}`}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-frame-cardHover group transition-colors"
+                  >
+                    <div className="w-8 h-6 rounded overflow-hidden bg-frame-bg flex-shrink-0 flex items-center justify-center">
+                      {a._deleted ? (
+                        <X className="w-3 h-3 text-frame-textMuted" />
+                      ) : thumb ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={thumb} alt="" className="w-full h-full object-cover" />
+                      ) : a.type === 'video' ? (
+                        <Film className="w-3 h-3 text-frame-textMuted" />
+                      ) : (
+                        <ImageIcon className="w-3 h-3 text-frame-textMuted" />
+                      )}
+                    </div>
+                    <span className="text-xs text-white truncate flex-1">
+                      {a._deleted ? <span className="text-frame-textMuted italic">Deleted asset</span> : a.name}
+                    </span>
+                    <button
+                      onClick={() => handleRemove({ assetId: a.id })}
+                      disabled={mutating === a.id}
+                      title="Remove asset from link"
+                      className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Permissions */}
         <div className="px-5 py-4 border-b border-frame-border space-y-3">
           <h4 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Permissions</h4>
@@ -274,7 +418,7 @@ function InspectPanel({
                   <div className="flex-shrink-0 text-right">
                     <p className="text-xs text-frame-accent font-medium">{v.commentCount} comment{v.commentCount !== 1 ? 's' : ''}</p>
                     <p className="text-xs text-frame-textMuted">
-                      {v.lastSeen ? formatRelativeTime(parseDate(v.lastSeen)) : ''}
+                      {v.lastSeen ? formatRelativeTime(parseDateOrEpoch(v.lastSeen)) : ''}
                     </p>
                   </div>
                 </div>
@@ -315,6 +459,17 @@ function InspectPanel({
           )}
         </div>
       </div>
+
+      {showAddFromProject && contents && (
+        <AddFromProjectModal
+          projectId={contents.projectId}
+          token={link.token}
+          existingAssetIds={new Set(contents.assetIds)}
+          existingFolderIds={new Set(contents.folderIds)}
+          onClose={() => setShowAddFromProject(false)}
+          onSaved={loadContents}
+        />
+      )}
     </div>
   );
 }
@@ -405,7 +560,7 @@ export default function ReviewLinksPage() {
                 </div>
 
                 {links.map(link => {
-                  const date = parseDate(link.createdAt);
+                  const date = parseDateOrEpoch(link.createdAt);
                   const isInspecting = inspecting?.token === link.token;
                   return (
                     <div

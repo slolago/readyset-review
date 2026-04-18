@@ -17,6 +17,7 @@ interface AssetGridProps {
   onAssetDragStart?: (assetId: string, e: React.DragEvent) => void;
   onRequestMove?: (assetId: string) => void;
   onCreateReviewLink?: (assetId: string) => void;
+  onAddToReviewLink?: (assetId: string) => void;
   dragOverAssetId?: string | null;
   onAssetDragOver?: (assetId: string, e: React.DragEvent) => void;
   onAssetDragLeave?: (assetId: string, e: React.DragEvent) => void;
@@ -35,6 +36,7 @@ export const AssetGrid = React.memo(function AssetGrid({
   onAssetDragStart,
   onRequestMove,
   onCreateReviewLink,
+  onAddToReviewLink,
   dragOverAssetId,
   onAssetDragOver,
   onAssetDragLeave,
@@ -64,6 +66,7 @@ export const AssetGrid = React.memo(function AssetGrid({
             onDragStart={onAssetDragStart ? (e) => onAssetDragStart(asset.id, e) : undefined}
             onRequestMove={onRequestMove ? () => onRequestMove(asset.id) : undefined}
             onCreateReviewLink={onCreateReviewLink ? () => onCreateReviewLink(asset.id) : undefined}
+            onAddToReviewLink={onAddToReviewLink ? () => onAddToReviewLink(asset.id) : undefined}
             isDropTarget={dragOverAssetId === asset.id}
             onDragOver={onAssetDragOver ? (e) => onAssetDragOver(asset.id, e) : undefined}
             onDragLeave={onAssetDragLeave ? (e) => onAssetDragLeave(asset.id, e) : undefined}

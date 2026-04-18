@@ -44,6 +44,7 @@ import { ContextMenu } from '@/components/ui/ContextMenu';
 import type { MenuItem } from '@/components/ui/ContextMenu';
 import toast from 'react-hot-toast';
 import { CreateReviewLinkModal } from '@/components/review/CreateReviewLinkModal';
+import { AddToReviewLinkModal } from '@/components/review/AddToReviewLinkModal';
 import { AssetCompareModal } from './AssetCompareModal';
 
 interface FolderBrowserProps {
@@ -90,6 +91,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectionReviewIds, setSelectionReviewIds] = useState<string[] | null>(null);
   const [folderReviewTarget, setFolderReviewTarget] = useState<string | null>(null);
+  const [addToLinkTarget, setAddToLinkTarget] = useState<{ assetIds?: string[]; folderIds?: string[] } | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [allFolders, setAllFolders] = useState<FolderType[]>([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
@@ -1108,6 +1110,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
                   onDragLeave={(e) => handleFolderDragLeave(folder.id, e)}
                   onDrop={(e) => handleFolderDrop(folder.id, e)}
                   onCreateReviewLink={() => setFolderReviewTarget(folder.id)}
+                  onAddToReviewLink={() => setAddToLinkTarget({ folderIds: [folder.id] })}
                   onRequestMove={() => handleRequestMoveItem(folder.id)}
                 />
               ))}
@@ -1147,6 +1150,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
             onAssetDragStart={handleItemDragStart}
             onRequestMove={handleRequestMoveItem}
             onCreateReviewLink={(assetId) => { setSelectionReviewIds([assetId]); setShowReviewModal(true); }}
+            onAddToReviewLink={(assetId) => setAddToLinkTarget({ assetIds: [assetId] })}
             dragOverAssetId={dragOverAssetId}
             onAssetDragOver={handleAssetDragOver}
             onAssetDragLeave={handleAssetDragLeave}
@@ -1221,6 +1225,19 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
               </button>
             );
           })()}
+          <button
+            onClick={() => {
+              const assetOnlyIds = Array.from(selectedIds).filter(id => assets.some(a => a.id === id));
+              const folderOnlyIds = Array.from(selectedIds).filter(id => folders.some(f => f.id === id));
+              if (!assetOnlyIds.length && !folderOnlyIds.length) return;
+              setAddToLinkTarget({ assetIds: assetOnlyIds, folderIds: folderOnlyIds });
+            }}
+            title="Add selection to an existing review link"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-frame-border hover:bg-frame-borderLight rounded-lg transition-colors"
+          >
+            <LinkIcon className="w-3.5 h-3.5" />
+            Add to link
+          </button>
           {(() => {
             const selectedAssets = assets.filter(a => selectedIds.has(a.id));
             const sharedStatus = selectedAssets.length > 0 && selectedAssets.every(a => a.reviewStatus === selectedAssets[0].reviewStatus)
@@ -1354,6 +1371,28 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
         />
       )}
 
+      {addToLinkTarget && (
+        <AddToReviewLinkModal
+          projectId={projectId}
+          assetIds={addToLinkTarget.assetIds}
+          folderIds={addToLinkTarget.folderIds}
+          onClose={() => setAddToLinkTarget(null)}
+          onCreateNew={() => {
+            // Fall back to the create-link modal with the same items pre-selected
+            const a = addToLinkTarget.assetIds ?? [];
+            setAddToLinkTarget(null);
+            if (a.length) {
+              setSelectionReviewIds(a);
+              setShowReviewModal(true);
+            } else {
+              // No assets, only folders — current create modal doesn't support folder arrays.
+              // Open generic modal at project scope; user can add folders from contents editor afterward.
+              setShowReviewModal(true);
+            }
+          }}
+        />
+      )}
+
       {showMoveModal && (
         <MoveModal
           folders={allFolders}
@@ -1408,6 +1447,7 @@ const FolderCard = React.memo(function FolderCard({
   onDragLeave,
   onDrop,
   onCreateReviewLink,
+  onAddToReviewLink,
   onRequestMove,
 }: {
   folder: FolderType;
@@ -1422,6 +1462,7 @@ const FolderCard = React.memo(function FolderCard({
   onBeforeCopyTo?: () => Promise<void>;
   onCopyTo?: (targetParentId: string | null) => void;
   onDuplicate?: () => void;
+  onAddToReviewLink?: () => void;
   onDragStart?: (e: React.DragEvent) => void;
   onDragOver?: (e: React.DragEvent) => void;
   onDragLeave?: (e: React.DragEvent) => void;
@@ -1529,6 +1570,7 @@ const FolderCard = React.memo(function FolderCard({
               { label: 'Move to', icon: <Move className="w-4 h-4" />, onClick: () => onRequestMove?.() },
               { label: 'Duplicate', icon: <CopyPlus className="w-4 h-4" />, onClick: onDuplicate ?? (() => {}) },
               { label: 'Create review link', icon: <LinkIcon className="w-4 h-4" />, onClick: onCreateReviewLink ?? (() => {}), divider: true },
+              { label: 'Add to review link…', icon: <LinkIcon className="w-4 h-4" />, onClick: onAddToReviewLink ?? (() => {}) },
               { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: onDelete, danger: true, divider: true },
             ]}
           />
@@ -1574,6 +1616,7 @@ const FolderCard = React.memo(function FolderCard({
             { label: 'Copy to', icon: <Copy className="w-4 h-4" />, onClick: handleOpenCopyModal },
             { label: 'Move to', icon: <Move className="w-4 h-4" />, onClick: () => onRequestMove?.() },
             { label: 'Create review link', icon: <LinkIcon className="w-4 h-4" />, onClick: onCreateReviewLink ?? (() => {}) },
+            { label: 'Add to review link…', icon: <LinkIcon className="w-4 h-4" />, onClick: onAddToReviewLink ?? (() => {}) },
             { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: onDelete, danger: true, dividerBefore: true },
           ]}
         />
