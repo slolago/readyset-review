@@ -35,13 +35,17 @@ const DB_RANGE = MAX_DB - MIN_DB;
 const DB_MARKS = [0, -3, -6, -9, -12, -18, -24, -40, -60] as const;
 
 // Peak-hold ballistics: instantaneous rise, slow decay after a hold window.
-const PEAK_HOLD_MS  = 1500;
-const PEAK_DECAY_DB = 0.18; // dB per frame after hold window
+const PEAK_HOLD_MS  = 1200;
+const PEAK_DECAY_DB = 0.25; // dB per frame after hold window
 
-// RMS ballistics (VU-style): fast attack so peaks show, slower release.
-// Applied in dB domain as an exponential IIR.
-const RMS_ATTACK_ALPHA  = 0.85;  // respond within ~2 frames (~33ms)
-const RMS_RELEASE_ALPHA = 0.12;  // gentle decay so meter settles smoothly
+// Bar ballistics (PPM-style): near-instant attack so peaks actually show,
+// moderate release so the eye can read the level.
+const BAR_ATTACK_ALPHA  = 1.0;   // bar rises to peak immediately
+const BAR_RELEASE_ALPHA = 0.15;  // fall rate — ~400ms to drop 20dB visually
+
+// RMS smoothing for optional RMS-tick overlay
+const RMS_ATTACK_ALPHA  = 0.85;
+const RMS_RELEASE_ALPHA = 0.12;
 
 // Canvas layout (pixels — rendered at 2× for crispness)
 const LABEL_W = 40;
@@ -93,8 +97,9 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
     const rafRef      = useRef(0);
 
     // Display state (dB domain)
-    const rmsSmoothed = useRef<[number, number]>([MIN_DB, MIN_DB]);
-    const peakDisp    = useRef<[number, number]>([MIN_DB, MIN_DB]);
+    const barLevel    = useRef<[number, number]>([MIN_DB, MIN_DB]);  // what the filled bar shows
+    const rmsSmoothed = useRef<[number, number]>([MIN_DB, MIN_DB]);  // RMS overlay
+    const peakDisp    = useRef<[number, number]>([MIN_DB, MIN_DB]);  // peak-hold marker
     const peakTime    = useRef<[number, number]>([0, 0]);
 
     // ── Public handle ────────────────────────────────────────────────────────
@@ -194,6 +199,7 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
       activeRef.current = activeIndex;
       applyGains();
       // Reset display so the meter doesn't show stale peaks from the other source
+      barLevel.current    = [MIN_DB, MIN_DB];
       rmsSmoothed.current = [MIN_DB, MIN_DB];
       peakDisp.current    = [MIN_DB, MIN_DB];
       peakTime.current    = [0, 0];
@@ -211,8 +217,9 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
         cancelAnimationFrame(rafRef.current);
         c.clearRect(0, 0, canvas.width, canvas.height);
         drawStatic(c, canvas.width, canvas.height);
-        drawBar(c, MIN_DB, MIN_DB, L_X, barWidth(canvas.width), canvas.height);
-        drawBar(c, MIN_DB, MIN_DB, rXOf(canvas.width), barWidth(canvas.width), canvas.height);
+        drawBar(c, MIN_DB, MIN_DB, MIN_DB, L_X, barWidth(canvas.width), canvas.height);
+        drawBar(c, MIN_DB, MIN_DB, MIN_DB, rXOf(canvas.width), barWidth(canvas.width), canvas.height);
+        barLevel.current    = [MIN_DB, MIN_DB];
         rmsSmoothed.current = [MIN_DB, MIN_DB];
         peakDisp.current    = [MIN_DB, MIN_DB];
         peakTime.current    = [0, 0];
@@ -230,17 +237,22 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
         const L = analyse(g?.analyserL ?? null, g?.bufL ?? new Float32Array(2048));
         const R = analyse(g?.analyserR ?? null, g?.bufR ?? new Float32Array(2048));
 
-        // RMS smoothing (VU ballistics)
-        for (let ch = 0; ch < 2; ch++) {
-          const raw = ch === 0 ? L.rmsDb : R.rmsDb;
-          const prev = rmsSmoothed.current[ch];
-          const alpha = raw > prev ? RMS_ATTACK_ALPHA : RMS_RELEASE_ALPHA;
-          rmsSmoothed.current[ch] = raw * alpha + prev * (1 - alpha);
-        }
-
-        // True peak with hold + decay
         for (let ch = 0; ch < 2; ch++) {
           const truePeak = ch === 0 ? L.peakDb : R.peakDb;
+          const rms      = ch === 0 ? L.rmsDb  : R.rmsDb;
+
+          // Bar tracks TRUE PEAK with near-instant attack, gentle release.
+          // This is what you see "full" — no gap between the bar and the peak marker.
+          const prevBar = barLevel.current[ch];
+          const barAlpha = truePeak > prevBar ? BAR_ATTACK_ALPHA : BAR_RELEASE_ALPHA;
+          barLevel.current[ch] = truePeak * barAlpha + prevBar * (1 - barAlpha);
+
+          // RMS overlay (a subtle inner tick showing integrated level)
+          const prevRms = rmsSmoothed.current[ch];
+          const rmsAlpha = rms > prevRms ? RMS_ATTACK_ALPHA : RMS_RELEASE_ALPHA;
+          rmsSmoothed.current[ch] = rms * rmsAlpha + prevRms * (1 - rmsAlpha);
+
+          // Peak hold: bright line at max-recent peak, decays after hold window
           if (truePeak >= peakDisp.current[ch]) {
             peakDisp.current[ch] = truePeak;
             peakTime.current[ch] = now;
@@ -251,8 +263,8 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
 
         c.clearRect(0, 0, w, h);
         drawStatic(c, w, h);
-        drawBar(c, rmsSmoothed.current[0], peakDisp.current[0], L_X, barW, h);
-        drawBar(c, rmsSmoothed.current[1], peakDisp.current[1], rX, barW, h);
+        drawBar(c, barLevel.current[0], rmsSmoothed.current[0], peakDisp.current[0], L_X, barW, h);
+        drawBar(c, barLevel.current[1], rmsSmoothed.current[1], peakDisp.current[1], rX, barW, h);
       };
 
       rafRef.current = requestAnimationFrame(draw);
@@ -316,15 +328,18 @@ function drawStatic(c: CanvasRenderingContext2D, w: number, h: number) {
 
 function drawBar(
   c: CanvasRenderingContext2D,
-  rmsDb: number,
-  peakDb: number,
+  barDb: number,      // fills up to here (near-instant peak)
+  rmsDb: number,      // subtle inner tick
+  peakHoldDb: number, // peak-hold marker
   x: number,
   barW: number,
   h: number,
 ) {
-  const levelY = dbToY(rmsDb, h);
+  const levelY = dbToY(barDb, h);
 
-  if (levelY < h) {
+  if (levelY < h - 0.5) {
+    // Gradient fills the active region. Same color zones as before but now the
+    // bar's top always equals the current peak — no visible gap vs the peak marker.
     const grad = c.createLinearGradient(0, 0, 0, h);
     const y0  = dbToY(MAX_DB, h) / h;
     const y3  = dbToY(0,   h) / h;
@@ -336,17 +351,41 @@ function drawBar(
     grad.addColorStop(y20, '#eab308');
     grad.addColorStop(1,   '#22c55e');
 
+    // Rounded top for a softer look
+    const radius = Math.min(3, barW / 2);
     c.fillStyle = grad;
-    c.fillRect(x, levelY, barW, h - levelY);
+    c.beginPath();
+    c.moveTo(x, levelY + radius);
+    c.quadraticCurveTo(x, levelY, x + radius, levelY);
+    c.lineTo(x + barW - radius, levelY);
+    c.quadraticCurveTo(x + barW, levelY, x + barW, levelY + radius);
+    c.lineTo(x + barW, h);
+    c.lineTo(x, h);
+    c.closePath();
+    c.fill();
+
+    // Subtle highlight line at the very top of the bar to define the edge
+    c.fillStyle = 'rgba(255,255,255,0.35)';
+    c.fillRect(x + radius / 2, levelY, barW - radius, 1);
   }
 
-  if (peakDb > MIN_DB + 2) {
-    const pkY = dbToY(peakDb, h);
-    c.fillStyle = peakDb >= 0
-      ? '#ef4444'
-      : peakDb >= -6
-      ? '#f97316'
+  // RMS inner tick — thin dark line showing integrated level (inside the filled bar)
+  if (rmsDb > MIN_DB + 2) {
+    const rmsY = dbToY(rmsDb, h);
+    if (rmsY < h - 1) {
+      c.fillStyle = 'rgba(0,0,0,0.35)';
+      c.fillRect(x + 1, rmsY, barW - 2, 1);
+    }
+  }
+
+  // Peak hold marker — colored line sitting at the max recent peak
+  if (peakHoldDb > MIN_DB + 2) {
+    const pkY = dbToY(peakHoldDb, h);
+    c.fillStyle = peakHoldDb >= 0
+      ? '#ffffff'
+      : peakHoldDb >= -6
+      ? 'rgba(255,255,255,0.95)'
       : 'rgba(255,255,255,0.85)';
-    c.fillRect(x, pkY, barW, 3);
+    c.fillRect(x, pkY - 1, barW, 2);
   }
 }

@@ -233,34 +233,55 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
     </div>
   );
 
+  // Stable positioning: videos live at a fixed spot in the DOM so the VUMeter's
+  // MediaElementAudioSourceNode stays connected across src changes + viewMode toggles.
+  // Only CSS (clip-path or left/right) changes between modes.
+  const videoStyleA: React.CSSProperties = viewMode === 'slider'
+    ? { clipPath: clipA, left: 0, right: 0 }
+    : { clipPath: 'inset(0 50% 0 0)', left: 0, right: 0 };
+  const videoStyleB: React.CSSProperties = viewMode === 'slider'
+    ? { clipPath: clipB, left: 0, right: 0 }
+    : { clipPath: 'inset(0 0 0 50%)', left: 0, right: 0 };
+
   return (
     <div className="flex flex-col h-full w-full bg-black">
-      {/* Viewer + VU meter strip on right (only for video) */}
       <div className="flex-1 min-h-0 flex">
-      <div className="relative flex-1 min-h-0 overflow-hidden select-none" ref={viewMode === 'slider' ? containerRef : undefined}>
+      <div className="relative flex-1 min-h-0 overflow-hidden select-none" ref={containerRef}>
         <ViewToggle />
 
-        {viewMode === 'slider' ? (
+        {/* Media — always rendered in the same position so refs stay stable.
+            Mode switches only re-style, never remount. */}
+        {isVideo ? (
           <>
-            {isVideo ? (
-              <>
-                <video key={`b-${selectedIdB}-slider`} ref={videoBRef} src={urlB}
-                  className="absolute inset-0 w-full h-full object-contain"
-                  style={{ clipPath: clipB }} muted={activeSide !== 'B' || muted} playsInline preload="auto" />
-                <video key={`a-${selectedIdA}-slider`} ref={videoARef} src={urlA}
-                  className="absolute inset-0 w-full h-full object-contain"
-                  style={{ clipPath: clipA }} muted={activeSide !== 'A' || muted} playsInline preload="auto" />
-              </>
-            ) : (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={urlB} alt={`V${assetB?.version}`} className="absolute inset-0 w-full h-full object-contain" style={{ clipPath: clipB }} draggable={false} />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={urlA} alt={`V${assetA?.version}`} className="absolute inset-0 w-full h-full object-contain" style={{ clipPath: clipA }} draggable={false} />
-              </>
-            )}
+            <video
+              ref={videoBRef}
+              src={urlB}
+              className="absolute top-0 bottom-0 w-full h-full object-contain"
+              style={videoStyleB}
+              playsInline
+              preload="auto"
+            />
+            <video
+              ref={videoARef}
+              src={urlA}
+              className="absolute top-0 bottom-0 w-full h-full object-contain"
+              style={videoStyleA}
+              playsInline
+              preload="auto"
+            />
+          </>
+        ) : (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={urlB} alt={`V${assetB?.version}`} className="absolute top-0 bottom-0 w-full h-full object-contain" style={videoStyleB} draggable={false} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={urlA} alt={`V${assetA?.version}`} className="absolute top-0 bottom-0 w-full h-full object-contain" style={videoStyleA} draggable={false} />
+          </>
+        )}
 
-            {/* Divider */}
+        {/* Slider handle — only in slider mode */}
+        {viewMode === 'slider' && (
+          <>
             <div className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg pointer-events-none" style={{ left: `${sliderPos * 100}%` }} />
             <div
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-white rounded-full shadow-xl flex items-center justify-center cursor-ew-resize z-10"
@@ -272,54 +293,21 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
                 <div className="w-0.5 h-4 bg-gray-400 rounded" />
               </div>
             </div>
-
-            {/* Labels — same position as side-by-side: top-14 to clear the toggle */}
-            <div className="absolute top-14 left-3 z-10 pointer-events-auto">
-              {assetA && <VersionLabel side="A" asset={assetA} />}
-            </div>
-            <div className="absolute top-14 right-3 z-10 pointer-events-auto">
-              {assetB && <VersionLabel side="B" asset={assetB} />}
-            </div>
           </>
-        ) : (
-          /* Side by side — two panels, labels float at same top-14 position */
-          <div className="absolute inset-0 flex divide-x divide-white/10">
-            {/* Panel A */}
-            <div className="relative flex-1 flex items-center justify-center bg-black overflow-hidden">
-              <div className="absolute top-14 left-3 z-10 pointer-events-auto">
-                {assetA && <VersionLabel side="A" asset={assetA} />}
-              </div>
-              {isVideo ? (
-                <video key={`a-${selectedIdA}-sbs`} ref={videoARef} src={urlA}
-                  className="max-w-full max-h-full object-contain"
-                  muted={activeSide !== 'A' || muted} playsInline preload="auto"
-                  onTimeUpdate={() => { if (videoARef.current) { setCurrentTime(videoARef.current.currentTime); syncVideos(); } }}
-                  onLoadedMetadata={() => { if (videoARef.current) setDuration(videoARef.current.duration); }}
-                  onEnded={() => setIsPlaying(false)}
-                />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={urlA} alt={`V${assetA?.version}`} className="max-w-full max-h-full object-contain" draggable={false} />
-              )}
-            </div>
-
-            {/* Panel B */}
-            <div className="relative flex-1 flex items-center justify-center bg-black overflow-hidden">
-              <div className="absolute top-14 right-3 z-10 pointer-events-auto">
-                {assetB && <VersionLabel side="B" asset={assetB} />}
-              </div>
-              {isVideo ? (
-                <video key={`b-${selectedIdB}-sbs`} ref={videoBRef} src={urlB}
-                  className="max-w-full max-h-full object-contain"
-                  muted={activeSide !== 'B' || muted} playsInline preload="auto"
-                />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={urlB} alt={`V${assetB?.version}`} className="max-w-full max-h-full object-contain" draggable={false} />
-              )}
-            </div>
-          </div>
         )}
+
+        {/* Vertical divider line for side-by-side */}
+        {viewMode === 'side-by-side' && (
+          <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-white/10 pointer-events-none" />
+        )}
+
+        {/* Labels */}
+        <div className="absolute top-14 left-3 z-10 pointer-events-auto">
+          {assetA && <VersionLabel side="A" asset={assetA} />}
+        </div>
+        <div className="absolute top-14 right-3 z-10 pointer-events-auto">
+          {assetB && <VersionLabel side="B" asset={assetB} />}
+        </div>
       </div>
 
       {/* VU Meter strip — right side, stereo, follows active audio source */}

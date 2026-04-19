@@ -646,31 +646,51 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     dropDragCounter.current = 0;
     setIsDragActive(false);
 
-    const items = Array.from(e.dataTransfer.items);
-    const entries = items
-      .map((item) => (item as any).webkitGetAsEntry() as FileSystemEntry | null)
-      .filter((entry): entry is FileSystemEntry => entry !== null);
+    // Internal item drags set this custom type — ignore here, they have their own handlers
+    if (e.dataTransfer.types.includes('application/x-frame-move')) return;
+    if (e.dataTransfer.types.includes('application/x-frame-version-stack')) return;
 
-    if (!entries.length) return;
+    // Capture BOTH items and files synchronously. DataTransfer becomes invalid
+    // after any await; some browsers populate only .files for regular file drops.
+    const itemsList = e.dataTransfer.items ? Array.from(e.dataTransfer.items) : [];
+    const filesList = e.dataTransfer.files ? Array.from(e.dataTransfer.files) : [];
+
+    // Try the entries path first (supports dropping whole folders)
+    const entries = itemsList
+      .map((item) => {
+        const getEntry = (item as any).webkitGetAsEntry;
+        return typeof getEntry === 'function'
+          ? ((item as any).webkitGetAsEntry() as FileSystemEntry | null)
+          : null;
+      })
+      .filter((entry): entry is FileSystemEntry => entry !== null);
 
     const hasDirectory = entries.some((entry) => entry.isDirectory);
     if (hasDirectory) {
       await Promise.all(entries.map((entry) => processEntry(entry, folderId)));
       fetchFolders();
       refetchAssets();
-    } else {
-      const files = items
-        .map((item) => item.getAsFile())
-        .filter((f): f is File => f !== null)
-        .filter((f) => f.type.startsWith('video/') || f.type.startsWith('image/'));
-      if (files.length) {
-        const results = await Promise.all(files.map((f) => uploadFile(f, projectId, folderId)));
-        if (results.some((r) => r !== null)) refetchAssets();
-      }
+      return;
     }
+
+    // Plain file drop — prefer dataTransfer.files which is the most reliable API
+    const files = (filesList.length
+      ? filesList
+      : itemsList
+          .map((i) => i.getAsFile())
+          .filter((f): f is File => f !== null)
+    ).filter((f) => f.type.startsWith('video/') || f.type.startsWith('image/'));
+
+    if (!files.length) {
+      toast.error('Drop at least one video or image file');
+      return;
+    }
+    const results = await Promise.all(files.map((f) => uploadFile(f, projectId, folderId)));
+    if (results.some((r) => r !== null)) refetchAssets();
   };
 
   const handleFileInputChange = useCallback(
