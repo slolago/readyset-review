@@ -72,9 +72,19 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   useImperativeHandle(ref, () => ({
     seekTo: (time: number) => {
-      if (!videoRef.current) return;
-      videoRef.current.currentTime = time;
-      setCurrentTime(time);
+      const v = videoRef.current;
+      if (!v) return;
+      // Guard against NaN/infinity and against seeks before metadata has loaded,
+      // which otherwise throw on some browsers.
+      if (!Number.isFinite(time)) return;
+      const clamped = Math.max(0, v.duration ? Math.min(time, v.duration) : time);
+      if (v.readyState < 1) {
+        const once = () => { v.currentTime = clamped; v.removeEventListener('loadedmetadata', once); };
+        v.addEventListener('loadedmetadata', once);
+      } else {
+        v.currentTime = clamped;
+      }
+      setCurrentTime(clamped);
     },
     pause: () => { videoRef.current?.pause(); setPlaying(false); },
     getCurrentTime: () => videoRef.current?.currentTime ?? 0,
@@ -438,7 +448,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
       {/* VU Meter — right side strip */}
       <div className="flex-shrink-0 w-24 flex flex-col bg-[#0a0a0a] border-l border-white/5">
-        <VUMeter ref={vuMeterRef} videoRef={videoRef} isPlaying={playing} />
+        <VUMeter ref={vuMeterRef} videoRefs={[videoRef]} isPlaying={playing} />
       </div>
 
       </div>{/* end flex-row */}

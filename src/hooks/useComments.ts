@@ -35,6 +35,9 @@ export function useComments(assetId?: string, reviewToken?: string) {
   }, [assetId, reviewToken, getIdToken]);
 
   useEffect(() => {
+    // Clear existing comments immediately so the previous asset's thread doesn't
+    // flash while the new fetch is in flight (happens when switching versions).
+    setComments([]);
     // Abort in-flight request if assetId changes — prevents setState on
     // unmounted component and ensures stale responses don't overwrite new data.
     const ctrl = new AbortController();

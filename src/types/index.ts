@@ -8,6 +8,7 @@ export interface User {
   role: 'admin' | 'manager' | 'editor' | 'viewer';
   createdAt: Timestamp;
   invited?: boolean;
+  disabled?: boolean;   // suspended accounts cannot establish a session
 }
 
 export interface Collaborator {

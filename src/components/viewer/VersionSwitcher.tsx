@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Layers, GitCompare, ChevronDown, Check } from 'lucide-react';
+import { formatBytes } from '@/lib/utils';
 import type { Asset } from '@/types';
 
 interface VersionSwitcherProps {
@@ -82,9 +83,11 @@ export function VersionSwitcher({
               >
                 <div className="flex flex-col items-start min-w-0">
                   <span className="truncate font-medium">V{v.version} — {v.name}</span>
-                  {formatVersionDate(v.createdAt) && (
-                    <span className="text-frame-textMuted text-[10px]">{formatVersionDate(v.createdAt)}</span>
-                  )}
+                  <span className="text-frame-textMuted text-[10px]">
+                    {[formatVersionDate(v.createdAt), (v as any).fileSize ? formatBytes((v as any).fileSize) : null]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
                 </div>
                 {v.id === activeVersionId && !compareMode && (
                   <Check className="w-3.5 h-3.5 flex-shrink-0" />

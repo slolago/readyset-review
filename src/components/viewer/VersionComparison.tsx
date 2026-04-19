@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX, ChevronDown, Columns2, SplitSquareHorizontal, AudioLines } from 'lucide-react';
 import { formatDuration } from '@/lib/utils';
+import { VUMeter, type VUMeterHandle } from './VUMeter';
 import type { Asset } from '@/types';
 
 type ViewMode = 'slider' | 'side-by-side';
@@ -12,8 +13,26 @@ interface VersionComparisonProps {
 }
 
 export function VersionComparison({ versions }: VersionComparisonProps) {
-  const [selectedIdA, setSelectedIdA] = useState(versions[versions.length - 2]?.id ?? '');
-  const [selectedIdB, setSelectedIdB] = useState(versions[versions.length - 1]?.id ?? '');
+  // Persist last-chosen pair per version-group so re-entering compare keeps the user's selection.
+  const groupKey = versions[0] ? (versions[0].versionGroupId || versions[0].id) : 'unknown';
+  const storageKey = `compare-versions-${groupKey}`;
+  const loadSaved = (): { a: string; b: string } | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  };
+  const saved = loadSaved();
+  const savedA = saved?.a && versions.some((v) => v.id === saved.a) ? saved.a : null;
+  const savedB = saved?.b && versions.some((v) => v.id === saved.b) ? saved.b : null;
+  const [selectedIdA, setSelectedIdA] = useState(savedA ?? versions[versions.length - 2]?.id ?? '');
+  const [selectedIdB, setSelectedIdB] = useState(savedB ?? versions[versions.length - 1]?.id ?? '');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try { localStorage.setItem(storageKey, JSON.stringify({ a: selectedIdA, b: selectedIdB })); } catch {}
+  }, [selectedIdA, selectedIdB, storageKey]);
   const [viewMode, setViewMode] = useState<ViewMode>('slider');
   const [pickerSide, setPickerSide] = useState<'A' | 'B' | null>(null);
 
@@ -26,11 +45,15 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
 
   const videoARef = useRef<HTMLVideoElement>(null);
   const videoBRef = useRef<HTMLVideoElement>(null);
+  const vuRef = useRef<VUMeterHandle>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [activeSide, setActiveSide] = useState<'A' | 'B'>('A');
   const [muted, setMuted] = useState(false);
+
+  // Keep VU meter gain in sync with mute state (the meter owns volume — video.muted is ignored)
+  useEffect(() => { vuRef.current?.setMuted(muted); }, [muted]);
 
   const isVideo = assetA?.type === 'video';
   const urlA = assetA ? ((assetA as any).signedUrl || assetA.url) : '';
@@ -64,6 +87,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
     if (!vA || !vB) return;
     if (vA.paused) {
       vB.currentTime = vA.currentTime;
+      vuRef.current?.resume(); // unlock AudioContext inside user gesture
       Promise.all([vA.play(), vB.play()]).catch(() => {});
       setIsPlaying(true);
     } else {
@@ -211,7 +235,8 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
 
   return (
     <div className="flex flex-col h-full w-full bg-black">
-      {/* Viewer — same height as normal player, overlays don't affect layout */}
+      {/* Viewer + VU meter strip on right (only for video) */}
+      <div className="flex-1 min-h-0 flex">
       <div className="relative flex-1 min-h-0 overflow-hidden select-none" ref={viewMode === 'slider' ? containerRef : undefined}>
         <ViewToggle />
 
@@ -297,7 +322,23 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
         )}
       </div>
 
-      {/* Video controls — same as before, only structural row */}
+      {/* VU Meter strip — right side, stereo, follows active audio source */}
+      {isVideo && (
+        <div className="flex-shrink-0 w-24 flex flex-col bg-[#0a0a0a] border-l border-white/5">
+          <VUMeter
+            ref={vuRef}
+            videoRefs={[videoARef, videoBRef]}
+            activeIndex={activeSide === 'A' ? 0 : 1}
+            isPlaying={isPlaying}
+          />
+          <div className="flex-shrink-0 border-t border-white/5 px-2 py-1.5 text-[10px] uppercase tracking-wider text-white/50 text-center">
+            Audio: V{activeSide === 'A' ? assetA?.version : assetB?.version}
+          </div>
+        </div>
+      )}
+      </div>{/* end viewer+meter row */}
+
+      {/* Video controls */}
       {isVideo && (
         <div className="flex-shrink-0 bg-black/80 border-t border-white/10 px-4 py-3 flex items-center gap-3">
           <button onClick={togglePlay} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
@@ -306,7 +347,33 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
           <span className="text-xs text-white/60 font-mono w-12 text-right flex-shrink-0">{formatDuration(currentTime)}</span>
           <input type="range" min={0} max={duration || 0} step={0.01} value={currentTime} onChange={handleSeek} className="flex-1 h-1 accent-frame-accent" />
           <span className="text-xs text-white/60 font-mono w-12 flex-shrink-0">{formatDuration(duration)}</span>
-          <button onClick={() => setMuted((m) => !m)} className="text-white/60 hover:text-white transition-colors">
+
+          {/* Audio source selector — explicit A/B toggle so user always knows which audio is live */}
+          <div className="flex items-center gap-1.5 pl-2 border-l border-white/10 ml-1">
+            <AudioLines className="w-3.5 h-3.5 text-white/50 flex-shrink-0" />
+            <div className="flex bg-white/5 rounded-md p-0.5">
+              <button
+                onClick={() => setActiveSide('A')}
+                title={`Listen to V${assetA?.version}`}
+                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  activeSide === 'A' ? 'bg-frame-accent text-white' : 'text-white/50 hover:text-white'
+                }`}
+              >
+                V{assetA?.version ?? 'A'}
+              </button>
+              <button
+                onClick={() => setActiveSide('B')}
+                title={`Listen to V${assetB?.version}`}
+                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  activeSide === 'B' ? 'bg-frame-accent text-white' : 'text-white/50 hover:text-white'
+                }`}
+              >
+                V{assetB?.version ?? 'B'}
+              </button>
+            </div>
+          </div>
+
+          <button onClick={() => setMuted((m) => !m)} title={muted ? 'Unmute' : 'Mute'} className="text-white/60 hover:text-white transition-colors">
             {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </button>
         </div>

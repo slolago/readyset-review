@@ -72,6 +72,10 @@ export async function POST(request: NextRequest) {
       }
     } else {
       userData = userDoc.data()!;
+      // Block suspended accounts from establishing a session
+      if (userData.disabled === true) {
+        return NextResponse.json({ error: 'Account suspended. Contact your administrator.' }, { status: 403 });
+      }
       // Update name/avatar from Google profile if changed
       await userRef.update({
         name: name || userData.name,

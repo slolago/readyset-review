@@ -13,6 +13,7 @@ interface UserTableProps {
   loading: boolean;
   onRoleChange: (userId: string, role: 'admin' | 'manager' | 'editor' | 'viewer') => Promise<void>;
   onDelete: (userId: string) => Promise<void>;
+  onInspect?: (userId: string) => void;
 }
 
 const ROLE_STYLES: Record<string, string> = {
@@ -36,11 +37,13 @@ function UserRow({
   isSelf,
   onRoleChange,
   onDelete,
+  onInspect,
 }: {
   u: User;
   isSelf: boolean;
   onRoleChange: (userId: string, role: 'admin' | 'manager' | 'editor' | 'viewer') => Promise<void>;
   onDelete: (userId: string) => Promise<void>;
+  onInspect?: (userId: string) => void;
 }) {
   const [roleLoading, setRoleLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -68,7 +71,10 @@ function UserRow({
   };
 
   return (
-    <tr className="border-b border-frame-border/50 hover:bg-white/[0.02] transition-colors group">
+    <tr
+      onClick={() => onInspect?.(u.id)}
+      className={`border-b border-frame-border/50 hover:bg-white/[0.02] transition-colors group ${onInspect ? 'cursor-pointer' : ''}`}
+    >
       {/* User */}
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
@@ -86,6 +92,11 @@ function UserRow({
                   Pending
                 </span>
               )}
+              {(u as any).disabled && (
+                <span className="text-[10px] bg-red-500/15 text-red-400 border border-red-400/20 px-1.5 py-0.5 rounded-full font-normal">
+                  Suspended
+                </span>
+              )}
             </p>
             <p className="text-xs text-frame-textMuted">{u.email}</p>
           </div>
@@ -93,7 +104,7 @@ function UserRow({
       </td>
 
       {/* Role */}
-      <td className="px-6 py-4">
+      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
         {isSelf ? (
           <RoleBadge role={u.role} />
         ) : (
@@ -125,7 +136,7 @@ function UserRow({
       </td>
 
       {/* Actions */}
-      <td className="px-6 py-4">
+      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
         {!isSelf && (
           confirmDelete ? (
             <div className="flex items-center gap-2">
@@ -159,7 +170,7 @@ function UserRow({
   );
 }
 
-export function UserTable({ users, loading, onRoleChange, onDelete }: UserTableProps) {
+export function UserTable({ users, loading, onRoleChange, onDelete, onInspect }: UserTableProps) {
   const { user: currentUser } = useAuth();
 
   if (loading) {
@@ -197,6 +208,7 @@ export function UserTable({ users, loading, onRoleChange, onDelete }: UserTableP
               isSelf={u.id === currentUser?.id}
               onRoleChange={onRoleChange}
               onDelete={onDelete}
+              onInspect={onInspect}
             />
           ))}
         </tbody>

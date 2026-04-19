@@ -316,15 +316,36 @@ function InspectPanel({
                   key={`f-${f.id}`}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-frame-cardHover group transition-colors"
                 >
-                  <Folder className="w-3.5 h-3.5 text-frame-accent flex-shrink-0" />
-                  <span className="text-xs text-white truncate flex-1">
-                    {f._deleted ? <span className="text-frame-textMuted italic">Deleted folder</span> : f.name}
-                  </span>
-                  {contents?.canEdit && (
+                  {f._deleted ? (
+                    <>
+                      <Folder className="w-3.5 h-3.5 text-frame-textMuted flex-shrink-0" />
+                      <span className="text-xs text-frame-textMuted italic truncate flex-1">Deleted folder</span>
+                    </>
+                  ) : (
+                    <Link
+                      href={`/projects/${contents.projectId}/folders/${f.id}`}
+                      title="Open folder in project"
+                      className="flex items-center gap-2 min-w-0 flex-1 group/name"
+                    >
+                      <Folder className="w-3.5 h-3.5 text-frame-accent flex-shrink-0" />
+                      <span className="text-xs text-white truncate group-hover/name:text-frame-accent transition-colors">{f.name}</span>
+                    </Link>
+                  )}
+                  {contents?.canEdit && !f._deleted && (
                     <button
                       onClick={() => handleRemove({ folderId: f.id })}
                       disabled={mutating === f.id}
                       title="Remove folder from link"
+                      className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                  {contents?.canEdit && f._deleted && (
+                    <button
+                      onClick={() => handleRemove({ folderId: f.id })}
+                      disabled={mutating === f.id}
+                      title="Remove broken reference"
                       className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
                     >
                       <X className="w-3 h-3" />
@@ -335,11 +356,8 @@ function InspectPanel({
               {/* Assets */}
               {contents.assets.map((a: any) => {
                 const thumb = a.thumbnailSignedUrl as string | undefined;
-                return (
-                  <div
-                    key={`a-${a.id}`}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-frame-cardHover group transition-colors"
-                  >
+                const body = (
+                  <>
                     <div className="w-8 h-6 rounded overflow-hidden bg-frame-bg flex-shrink-0 flex items-center justify-center">
                       {a._deleted ? (
                         <X className="w-3 h-3 text-frame-textMuted" />
@@ -352,14 +370,36 @@ function InspectPanel({
                         <ImageIcon className="w-3 h-3 text-frame-textMuted" />
                       )}
                     </div>
-                    <span className="text-xs text-white truncate flex-1">
-                      {a._deleted ? <span className="text-frame-textMuted italic">Deleted asset</span> : a.name}
+                    <span className="text-xs truncate flex-1">
+                      {a._deleted ? (
+                        <span className="text-frame-textMuted italic">Deleted asset</span>
+                      ) : (
+                        <span className="text-white group-hover/name:text-frame-accent transition-colors">{a.name}</span>
+                      )}
                     </span>
+                  </>
+                );
+                return (
+                  <div
+                    key={`a-${a.id}`}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-frame-cardHover group transition-colors"
+                  >
+                    {a._deleted ? (
+                      <div className="flex items-center gap-2 min-w-0 flex-1">{body}</div>
+                    ) : (
+                      <Link
+                        href={`/projects/${contents.projectId}/assets/${a.id}`}
+                        title="Open asset"
+                        className="flex items-center gap-2 min-w-0 flex-1 group/name"
+                      >
+                        {body}
+                      </Link>
+                    )}
                     {contents?.canEdit && (
                       <button
                         onClick={() => handleRemove({ assetId: a.id })}
                         disabled={mutating === a.id}
-                        title="Remove asset from link"
+                        title={a._deleted ? 'Remove broken reference' : 'Remove asset from link'}
                         className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
                       >
                         <X className="w-3 h-3" />
@@ -572,7 +612,8 @@ export default function ReviewLinksPage() {
                   return (
                     <div
                       key={link.token}
-                      className={`grid grid-cols-[1fr_160px_120px_80px_100px_120px] gap-4 px-5 py-3.5 border-b border-frame-border/50 hover:bg-frame-cardHover transition-colors ${isInspecting ? 'bg-frame-accent/5 border-l-2 border-l-frame-accent' : ''}`}
+                      onClick={() => setInspecting(isInspecting ? null : link)}
+                      className={`grid grid-cols-[1fr_160px_120px_80px_100px_120px] gap-4 px-5 py-3.5 border-b border-frame-border/50 hover:bg-frame-cardHover transition-colors cursor-pointer ${isInspecting ? 'bg-frame-accent/5 border-l-2 border-l-frame-accent' : ''}`}
                     >
                       {/* Name */}
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -631,7 +672,7 @@ export default function ReviewLinksPage() {
                       </div>
 
                       {/* Actions */}
-                      <div className="self-center flex items-center gap-1 justify-end">
+                      <div className="self-center flex items-center gap-1 justify-end" onClick={e => e.stopPropagation()}>
                         <button
                           onClick={() => handleCopyLink(link)}
                           title="Copy link"
@@ -645,7 +686,6 @@ export default function ReviewLinksPage() {
                           rel="noopener noreferrer"
                           title="Open review"
                           className="p-1.5 rounded-lg text-frame-textMuted hover:text-white hover:bg-frame-border transition-colors"
-                          onClick={e => e.stopPropagation()}
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>

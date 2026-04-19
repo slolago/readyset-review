@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { UserTable } from '@/components/admin/UserTable';
 import { ProjectsTable } from '@/components/admin/ProjectsTable';
 import { CreateUserModal } from '@/components/admin/CreateUserModal';
+import { UserDrawer } from '@/components/admin/UserDrawer';
 import type { User } from '@/types';
 import { Shield, UserPlus, Users, FolderOpen, LayoutGrid } from 'lucide-react';
 import { SafeZonesManager } from '@/components/admin/SafeZonesManager';
@@ -21,6 +22,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'users' | 'projects' | 'safezones'>('users');
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
+  const [inspectingUserId, setInspectingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && user.role !== 'admin') router.replace('/dashboard');
@@ -203,6 +205,7 @@ export default function AdminPage() {
             loading={loading}
             onRoleChange={handleRoleChange}
             onDelete={handleDelete}
+            onInspect={setInspectingUserId}
           />
         </div>
       )}
@@ -217,7 +220,7 @@ export default function AdminPage() {
               </p>
             )}
           </div>
-          <ProjectsTable projects={projects} loading={projectsLoading} />
+          <ProjectsTable projects={projects} loading={projectsLoading} onChanged={fetchProjects} />
         </div>
       )}
 
@@ -239,6 +242,15 @@ export default function AdminPage() {
         <CreateUserModal
           onClose={() => setShowCreate(false)}
           onCreated={handleCreated}
+          getIdToken={getIdToken}
+        />
+      )}
+
+      {inspectingUserId && (
+        <UserDrawer
+          userId={inspectingUserId}
+          onClose={() => setInspectingUserId(null)}
+          onChanged={fetchUsers}
           getIdToken={getIdToken}
         />
       )}

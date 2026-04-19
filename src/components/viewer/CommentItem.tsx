@@ -182,7 +182,7 @@ export function CommentItem({
                   Edit
                 </button>
               )}
-              {onReply && !comment.parentId && (
+              {onReply && !comment.parentId && !comment.resolved && (
                 <button
                   onClick={() => onReply(comment.id)}
                   className="flex items-center gap-1 text-xs text-frame-textMuted hover:text-white transition-colors"
@@ -191,7 +191,7 @@ export function CommentItem({
                   Reply
                 </button>
               )}
-              {canDelete && onDelete && (
+              {canDelete && onDelete && !comment.resolved && (
                 <button
                   onClick={() => onDelete(comment.id)}
                   className="flex items-center gap-1 text-xs text-frame-textMuted hover:text-red-400 transition-colors ml-auto"
