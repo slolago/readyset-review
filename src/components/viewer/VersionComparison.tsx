@@ -81,13 +81,15 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
     if (Math.abs(vA.currentTime - vB.currentTime) > 0.1) vB.currentTime = vA.currentTime;
   }, []);
 
-  const togglePlay = useCallback(() => {
+  const togglePlay = useCallback(async () => {
     const vA = videoARef.current;
     const vB = videoBRef.current;
     if (!vA || !vB) return;
     if (vA.paused) {
       vB.currentTime = vA.currentTime;
-      vuRef.current?.resume(); // unlock AudioContext inside user gesture
+      // Unlock AudioContext *before* starting playback. Must happen inside this
+      // user-gesture call stack or Chrome leaves the context suspended → silence.
+      await vuRef.current?.resume();
       Promise.all([vA.play(), vB.play()]).catch(() => {});
       setIsPlaying(true);
     } else {
@@ -233,15 +235,21 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
     </div>
   );
 
-  // Stable positioning: videos live at a fixed spot in the DOM so the VUMeter's
-  // MediaElementAudioSourceNode stays connected across src changes + viewMode toggles.
-  // Only CSS (clip-path or left/right) changes between modes.
+  // Stable positioning: media elements live at a fixed spot in the DOM so the
+  // VUMeter's MediaElementAudioSourceNode stays connected across src changes +
+  // viewMode toggles.
+  //   - Slider mode: both fill the container, clip-path reveals left/right halves.
+  //   - Side-by-side mode: each element occupies half the container (left:0-right:50%
+  //     and left:50%-right:0), no clip-path — object-contain fits the full frame
+  //     within each half.
+  // NOTE: relying on inline left/right/top/bottom, NOT w-full/h-full, so the
+  // positional constraints actually apply in both modes.
   const videoStyleA: React.CSSProperties = viewMode === 'slider'
-    ? { clipPath: clipA, left: 0, right: 0 }
-    : { clipPath: 'inset(0 50% 0 0)', left: 0, right: 0 };
+    ? { top: 0, bottom: 0, left: 0, right: 0, clipPath: clipA }
+    : { top: 0, bottom: 0, left: 0, right: '50%', clipPath: 'none' };
   const videoStyleB: React.CSSProperties = viewMode === 'slider'
-    ? { clipPath: clipB, left: 0, right: 0 }
-    : { clipPath: 'inset(0 0 0 50%)', left: 0, right: 0 };
+    ? { top: 0, bottom: 0, left: 0, right: 0, clipPath: clipB }
+    : { top: 0, bottom: 0, left: '50%', right: 0, clipPath: 'none' };
 
   return (
     <div className="flex flex-col h-full w-full bg-black">
@@ -250,22 +258,28 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
         <ViewToggle />
 
         {/* Media — always rendered in the same position so refs stay stable.
-            Mode switches only re-style, never remount. */}
+            Mode switches only re-style, never remount.
+            Audio source selection: video.muted gates each video's audio independently.
+            When a video is muted, its MediaElementSource emits silence (per Web Audio spec),
+            so the user hears only the active side. The VUMeter's gain nodes all stay at
+            volume=1; we don't gate audibility through them. */}
         {isVideo ? (
           <>
             <video
               ref={videoBRef}
               src={urlB}
-              className="absolute top-0 bottom-0 w-full h-full object-contain"
+              className="absolute object-contain"
               style={videoStyleB}
+              muted={activeSide !== 'B' || muted}
               playsInline
               preload="auto"
             />
             <video
               ref={videoARef}
               src={urlA}
-              className="absolute top-0 bottom-0 w-full h-full object-contain"
+              className="absolute object-contain"
               style={videoStyleA}
+              muted={activeSide !== 'A' || muted}
               playsInline
               preload="auto"
             />
@@ -273,9 +287,9 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
         ) : (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={urlB} alt={`V${assetB?.version}`} className="absolute top-0 bottom-0 w-full h-full object-contain" style={videoStyleB} draggable={false} />
+            <img src={urlB} alt={`V${assetB?.version}`} className="absolute object-contain" style={videoStyleB} draggable={false} />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={urlA} alt={`V${assetA?.version}`} className="absolute top-0 bottom-0 w-full h-full object-contain" style={videoStyleA} draggable={false} />
+            <img src={urlA} alt={`V${assetA?.version}`} className="absolute object-contain" style={videoStyleA} draggable={false} />
           </>
         )}
 

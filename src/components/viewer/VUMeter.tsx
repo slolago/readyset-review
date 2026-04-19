@@ -14,7 +14,7 @@ import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo }
  * the meter's own GainNodes (don't also set video.muted — the meter owns volume).
  */
 export interface VUMeterHandle {
-  resume: () => void;
+  resume: () => Promise<void>;
   setVolume: (v: number) => void;
   setMuted: (m: boolean) => void;
 }
@@ -103,17 +103,23 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
     const peakTime    = useRef<[number, number]>([0, 0]);
 
     // ── Public handle ────────────────────────────────────────────────────────
+    // Each source has its own gain node connected to destination. For multi-source
+    // (compare), audibility is gated by video.muted (which silences the source's
+    // output per Web Audio spec). Volume/mute here is a global user control.
     const applyGains = useCallback(() => {
       const effective = mutedRef.current ? 0 : volumeRef.current;
-      graphsRef.current.forEach((g, i) => {
+      graphsRef.current.forEach((g) => {
         if (!g) return;
-        g.gain.gain.value = i === activeRef.current ? effective : 0;
+        g.gain.gain.value = effective;
       });
     }, []);
 
-    const resume = useCallback(() => {
+    const resume = useCallback(async () => {
       const ctx = ctxRef.current;
-      if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+      if (!ctx) return;
+      if (ctx.state !== 'running') {
+        try { await ctx.resume(); } catch (e) { console.warn('[VUMeter] AudioContext resume failed', e); }
+      }
     }, []);
 
     const setVolume = useCallback((v: number) => {
@@ -126,8 +132,9 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
     const setMuted = useCallback((m: boolean) => {
       mutedRef.current = m;
       applyGains();
-      videoRefs.forEach((r) => { if (r.current) { r.current.muted = false; r.current.volume = 1; } });
-    }, [videoRefs, applyGains]);
+      // Note: video.muted is managed by the parent via props (it gates audibility
+      // of each source independently). We don't touch it here.
+    }, [applyGains]);
 
     useImperativeHandle(ref, () => ({ resume, setVolume, setMuted }), [resume, setVolume, setMuted]);
 
@@ -167,9 +174,12 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
           splitter.connect(aL, 0);
           splitter.connect(aR, 1);
 
-          gain.gain.value = 0; // will be set by applyGains()
+          gain.gain.value = 1;
           video.volume = 1;
-          video.muted  = false;
+          // Do NOT force video.muted here. For single-source usage the meter sets
+          // muted=false so the source isn't silenced. For multi-source (compare),
+          // the parent sets muted via declarative props per video.
+          if (videoRefs.length === 1) video.muted = false;
 
           return {
             source, gain, analyserL: aL, analyserR: aR,
