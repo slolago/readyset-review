@@ -13,7 +13,12 @@ interface VersionComparisonProps {
 }
 
 export function VersionComparison({ versions }: VersionComparisonProps) {
-  // Persist last-chosen pair per version-group so re-entering compare keeps the user's selection.
+  // Persist last-chosen pair per version-group. Only restored if side B still
+  // equals the current latest version — that way, uploading a new version
+  // automatically resets the default to "latest vs previous" instead of sticking
+  // to a stale pair from before the upload.
+  const latestId = versions[versions.length - 1]?.id ?? '';
+  const previousId = versions[versions.length - 2]?.id ?? '';
   const groupKey = versions[0] ? (versions[0].versionGroupId || versions[0].id) : 'unknown';
   const storageKey = `compare-versions-${groupKey}`;
   const loadSaved = (): { a: string; b: string } | null => {
@@ -24,10 +29,23 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
     } catch { return null; }
   };
   const saved = loadSaved();
-  const savedA = saved?.a && versions.some((v) => v.id === saved.a) ? saved.a : null;
-  const savedB = saved?.b && versions.some((v) => v.id === saved.b) ? saved.b : null;
-  const [selectedIdA, setSelectedIdA] = useState(savedA ?? versions[versions.length - 2]?.id ?? '');
-  const [selectedIdB, setSelectedIdB] = useState(savedB ?? versions[versions.length - 1]?.id ?? '');
+  const savedIsFresh =
+    saved?.b === latestId &&
+    versions.some((v) => v.id === saved?.a) &&
+    versions.some((v) => v.id === saved?.b);
+  const initialA = savedIsFresh && saved ? saved.a : previousId;
+  const initialB = savedIsFresh && saved ? saved.b : latestId;
+  const [selectedIdA, setSelectedIdA] = useState(initialA);
+  const [selectedIdB, setSelectedIdB] = useState(initialB);
+
+  // If the versions list grew (new upload) after mount, snap to latest-vs-previous
+  // so the user doesn't stay stuck on an outdated pair.
+  useEffect(() => {
+    if (latestId && selectedIdB !== latestId && !versions.some((v) => v.id === selectedIdB)) {
+      setSelectedIdA(previousId);
+      setSelectedIdB(latestId);
+    }
+  }, [latestId, previousId, versions, selectedIdB]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
