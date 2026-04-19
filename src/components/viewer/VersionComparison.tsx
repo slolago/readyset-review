@@ -238,22 +238,50 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
     </div>
   );
 
-  // Share a single letterbox/pillarbox frame between both videos. The frame's
-  // aspect ratio comes from the LARGER of the two natural aspect ratios (or a
-  // sane default until metadata loads) — this guarantees both videos fit inside
-  // the same visible rect, so the slider split and side-by-side layout line up
-  // properly even when V1 and V3 have different native dimensions.
+  // Compute a shared display rect for both videos so slider + side-by-side
+  // line up even when V1 and V3 have different native aspect ratios. Frame
+  // aspect = max(aspectA, aspectB) fits the wider of the two; each video
+  // then object-contain's inside, so both letterbox to the exact same rect.
+  //
+  // Dimensions are computed in JS (not via CSS aspect-ratio + maxW/maxH,
+  // which collapses to 0 if the flex parent doesn't provide intrinsic size)
+  // using a ResizeObserver on the container.
   const aspectA = dimsA ? dimsA.w / dimsA.h : null;
   const aspectB = dimsB ? dimsB.w / dimsB.h : null;
   const sharedAspect =
     aspectA && aspectB ? Math.max(aspectA, aspectB) : aspectA ?? aspectB ?? 16 / 9;
 
+  const [frameSize, setFrameSize] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const compute = () => {
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      if (!cw || !ch) return;
+      const containerAspect = cw / ch;
+      let fw: number, fh: number;
+      if (sharedAspect >= containerAspect) {
+        // Frame is wider than container → width-constrained
+        fw = cw; fh = cw / sharedAspect;
+      } else {
+        // Frame is taller → height-constrained
+        fh = ch; fw = ch * sharedAspect;
+      }
+      setFrameSize({ w: fw, h: fh });
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [sharedAspect]);
+
   const videoStyleA: React.CSSProperties = viewMode === 'slider'
-    ? { position: 'absolute', inset: 0, clipPath: clipA }
-    : { position: 'absolute', top: 0, bottom: 0, left: 0, right: '50%' };
+    ? { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', clipPath: clipA }
+    : { position: 'absolute', top: 0, left: 0, width: '50%', height: '100%' };
   const videoStyleB: React.CSSProperties = viewMode === 'slider'
-    ? { position: 'absolute', inset: 0, clipPath: clipB }
-    : { position: 'absolute', top: 0, bottom: 0, left: '50%', right: 0 };
+    ? { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', clipPath: clipB }
+    : { position: 'absolute', top: 0, left: '50%', width: '50%', height: '100%' };
 
   const handleMetaA = () => {
     const v = videoARef.current;
@@ -271,29 +299,27 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
       <div className="relative flex-1 min-h-0 overflow-hidden select-none flex items-center justify-center" ref={containerRef}>
         <ViewToggle />
 
-        {/* Shared frame — sized to fit the container while matching sharedAspect.
-            Both videos render absolutely inside, guaranteeing the same visible rect. */}
+        {/* Shared display rect — explicit pixel dimensions via JS so slider
+            clip-path and side-by-side halves always line up. Both videos fill
+            this rect absolutely; object-contain letterboxes each to preserve
+            its native aspect while both occupy the same outer box. */}
         <div
           ref={frameRef}
           className="relative"
           style={{
-            aspectRatio: `${sharedAspect}`,
-            maxWidth: '100%',
-            maxHeight: '100%',
-            width: viewMode === 'side-by-side' ? '100%' : undefined,
-            height: viewMode === 'side-by-side' ? '100%' : undefined,
+            width: frameSize?.w ?? '100%',
+            height: frameSize?.h ?? '100%',
           }}
         >
-          {/* Media — always rendered in the same position so refs stay stable.
-              Audio source selection: video.muted gates each video's audio independently.
-              When a video is muted, its MediaElementSource emits silence, so the user
-              hears only the active side. VUMeter gain nodes stay at volume=1. */}
+          {/* Media — stable DOM position so VUMeter's MediaElementSource survives
+              viewMode + version switches. Audio: video.muted per side controls
+              audibility (the muted one's source emits silence). */}
           {isVideo ? (
             <>
               <video
                 ref={videoBRef}
                 src={urlB}
-                className="object-contain w-full h-full"
+                className="object-contain"
                 style={videoStyleB}
                 muted={activeSide !== 'B' || muted}
                 playsInline
@@ -303,7 +329,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
               <video
                 ref={videoARef}
                 src={urlA}
-                className="object-contain w-full h-full"
+                className="object-contain"
                 style={videoStyleA}
                 muted={activeSide !== 'A' || muted}
                 playsInline
@@ -314,13 +340,13 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
           ) : (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={urlB} alt={`V${assetB?.version}`} className="object-contain w-full h-full" style={videoStyleB} draggable={false} onLoad={(e) => { const t = e.currentTarget; if (t.naturalWidth) setDimsB({ w: t.naturalWidth, h: t.naturalHeight }); }} />
+              <img src={urlB} alt={`V${assetB?.version}`} className="object-contain" style={videoStyleB} draggable={false} onLoad={(e) => { const t = e.currentTarget; if (t.naturalWidth) setDimsB({ w: t.naturalWidth, h: t.naturalHeight }); }} />
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={urlA} alt={`V${assetA?.version}`} className="object-contain w-full h-full" style={videoStyleA} draggable={false} onLoad={(e) => { const t = e.currentTarget; if (t.naturalWidth) setDimsA({ w: t.naturalWidth, h: t.naturalHeight }); }} />
+              <img src={urlA} alt={`V${assetA?.version}`} className="object-contain" style={videoStyleA} draggable={false} onLoad={(e) => { const t = e.currentTarget; if (t.naturalWidth) setDimsA({ w: t.naturalWidth, h: t.naturalHeight }); }} />
             </>
           )}
 
-          {/* Slider handle — only in slider mode, positioned over the shared frame */}
+          {/* Slider handle — only in slider mode, positioned over the frame */}
           {viewMode === 'slider' && (
             <>
               <div className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg pointer-events-none" style={{ left: `${sliderPos * 100}%` }} />
