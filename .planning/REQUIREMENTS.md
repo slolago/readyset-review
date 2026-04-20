@@ -87,32 +87,32 @@ Which phases cover which requirements. Populated by gsd-roadmapper during roadma
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STACK-01 | — | Pending |
-| STACK-02 | — | Pending |
-| STACK-03 | — | Pending |
-| STACK-04 | — | Pending |
-| PROJ-01 | — | Pending |
-| ACCESS-01 | — | Pending |
-| ACCESS-02 | — | Pending |
-| ACCESS-03 | — | Pending |
-| ACCESS-04 | — | Pending |
-| ACCESS-05 | — | Pending |
-| ACCESS-06 | — | Pending |
-| ACCESS-07 | — | Pending |
-| CMT-01 | — | Pending |
-| CMT-02 | — | Pending |
-| CMT-03 | — | Pending |
-| EXPORT-01 | — | Pending |
-| EXPORT-02 | — | Pending |
-| EXPORT-03 | — | Pending |
-| UX-01 | — | Pending |
-| PLAY-01 | — | Pending |
+| STACK-01 | Phase 43 | Pending |
+| STACK-02 | Phase 43 | Pending |
+| STACK-03 | Phase 43 | Pending |
+| STACK-04 | Phase 43 | Pending |
+| PROJ-01 | Phase 45 | Pending |
+| ACCESS-01 | Phase 44 | Pending |
+| ACCESS-02 | Phase 44 | Pending |
+| ACCESS-03 | Phase 44 | Pending |
+| ACCESS-04 | Phase 45 | Pending |
+| ACCESS-05 | Phase 45 | Pending |
+| ACCESS-06 | Phase 45 | Pending |
+| ACCESS-07 | Phase 44 | Pending |
+| CMT-01 | Phase 46 | Pending |
+| CMT-02 | Phase 46 | Pending |
+| CMT-03 | Phase 46 | Pending |
+| EXPORT-01 | Phase 47 | Pending |
+| EXPORT-02 | Phase 47 | Pending |
+| EXPORT-03 | Phase 47 | Pending |
+| UX-01 | Phase 48 | Pending |
+| PLAY-01 | Phase 48 | Pending |
 
 **Coverage:**
 - v1.7 requirements: 20 total
-- Mapped to phases: 0 (pending roadmapper)
-- Unmapped: 20
+- Mapped to phases: 20 (100%)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-20*
-*Last updated: 2026-04-20 — awaiting roadmapper to populate traceability*
+*Last updated: 2026-04-20 — roadmapper populated traceability (phases 43–48)*

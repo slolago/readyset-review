@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Review UX & Access Rewrite
 status: active
-stopped_at: Defining requirements
+stopped_at: Roadmap created — Phase 43 (version-stack-rewrite) ready for /gsd:plan-phase 43
 last_updated: "2026-04-20T00:00:00.000Z"
 last_activity: 2026-04-20
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-20)
 
 **Core value:** Fast, accurate video review — frame-level precision, rich metadata, and fluid version management
-**Current focus:** v1.7 Review UX & Access Rewrite — defining requirements
+**Current focus:** v1.7 Review UX & Access Rewrite — Phase 43 (version-stack-rewrite) not started
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 43 (version-stack-rewrite) — Not started
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-20 — Milestone v1.7 started (supersedes v1.6)
+Status: Roadmap created, awaiting /gsd:plan-phase 43
+Last activity: 2026-04-20 — v1.7 roadmap written (6 phases, 43–48; 20 requirements; 100% coverage)
 
-Progress: [░░░░░░░░░░] 0% (0/0 phases)
+Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
 ## Performance Metrics
 
@@ -59,6 +59,9 @@ Progress: [░░░░░░░░░░] 0% (0/0 phases)
 - requireAdmin is strict equality, not role-rank — managers can't admin (confirmed 2026-04-20)
 - Session endpoint now rejects uninvited Google signins (2026-04-20 security fix); first-admin bootstrap preserved via _system/first-admin guard doc
 - Player bg color picker + VU-meter toggle persist in localStorage (keys: player-bg, player-vumeter)
+- v1.7 roadmap: PROJ-01 grouped with admin UI (Phase 45) because project rename is an owner/admin surface and the collision logic lives near project management
+- v1.7 roadmap: ACCESS split into two phases — Phase 44 (model + enforcement + tests) and Phase 45 (admin UI + suspension + orphan cleanup + project rename); the first is server/test-heavy, the second is UI-heavy
+- v1.7 roadmap: PLAY-01 paired with UX-01 in Phase 48 as the capstone polish phase; loop depends on in/out markers which land with range comments in Phase 46
 
 ### Recently Shipped (ad-hoc, outside GSD phases)
 
@@ -69,15 +72,15 @@ Progress: [░░░░░░░░░░] 0% (0/0 phases)
 
 ### Pending Todos
 
-None (queued for v1.7 planning).
+None — ready for /gsd:plan-phase 43.
 
 ### Blockers/Concerns
 
 - BUG-05: Compare slider freezes — superseded by v1.5 Phase 42 compare rewrite; verify no regressions in v1.7 PLAY-01
-- Uninvited users from pre-fix window may still be in Firestore with role='viewer' — manual audit needed; see ACCESS-0x requirements
+- Uninvited users from pre-fix window may still be in Firestore with role='viewer' — manual audit needed; addressed by ACCESS-06 in Phase 45
 
 ## Session Continuity
 
 Last session: 2026-04-20
-Stopped at: v1.7 milestone scaffolded; about to write REQUIREMENTS.md and spawn roadmapper
+Stopped at: v1.7 roadmap written (Phases 43–48, 20/20 requirements mapped); next step `/gsd:plan-phase 43`
 Resume file: None
