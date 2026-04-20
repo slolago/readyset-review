@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { FolderOpen, MoreHorizontal, Trash2, Edit, Users } from 'lucide-react';
 import { Dropdown } from '@/components/ui/Dropdown';
@@ -7,6 +8,7 @@ import { formatRelativeTime, getProjectColor } from '@/lib/utils';
 import type { Project } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
+import { RenameProjectModal } from './RenameProjectModal';
 
 interface ProjectCardProps {
   project: Project;
@@ -17,7 +19,9 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
   const { user, getIdToken } = useAuth();
   const color = getProjectColor(project.color);
   const isOwner = project.ownerId === user?.id;
+  const canRename = isOwner || user?.role === 'admin';
   const updatedAt = project.updatedAt?.toDate?.() || new Date();
+  const [renaming, setRenaming] = useState(false);
 
   const handleDelete = async () => {
     // Require typing the project name to delete — it's a destructive action
@@ -48,10 +52,11 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
   };
 
   const menuItems = [
+    ...(canRename
+      ? [{ label: 'Rename', icon: <Edit className="w-4 h-4" />, onClick: () => setRenaming(true) }]
+      : []),
     ...(isOwner
-      ? [
-          { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDelete, danger: true },
-        ]
+      ? [{ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDelete, danger: true }]
       : []),
   ];
 
@@ -101,6 +106,18 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
           <span className="text-frame-textMuted text-xs">{formatRelativeTime(updatedAt)}</span>
         </div>
       </div>
+
+      {renaming && (
+        <RenameProjectModal
+          project={project}
+          onClose={() => setRenaming(false)}
+          onRenamed={() => {
+            setRenaming(false);
+            // Reuse onDeleted — parent uses it as a generic 'refetch' trigger
+            onDeleted?.();
+          }}
+        />
+      )}
     </div>
   );
 }
