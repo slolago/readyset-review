@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-04-20)
 
 ## Current Position
 
-Phase: Phase 45 (admin-ui-and-project-rename) — Not started
+Phase: Phase 46 (comments-integrity-and-range) — Not started
 Plan: —
-Status: Phase 44 complete (116/116 tests green, passed auto-verify); starting Phase 45
-Last activity: 2026-04-20 — Phase 44 executed (9 tasks); commits 89d43729..555ba9fc pushed
+Status: Phase 45 shipped (8 auto tasks, 1 human-verify checkpoint deferred); starting Phase 46
+Last activity: 2026-04-20 — Phase 45 executed (9 tasks); commits dd2ddad3..e3e0cf28 pushed
 
-Progress: [███░░░░░░░] 33% (2/6 phases)
+Progress: [█████░░░░░] 50% (3/6 phases)
 
 ## Performance Metrics
 
