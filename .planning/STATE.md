@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-04-20)
 
 ## Current Position
 
-Phase: Phase 46 (comments-integrity-and-range) — Not started
+Phase: Phase 47 (video-export-pipeline) — Not started
 Plan: —
-Status: Phase 45 shipped (8 auto tasks, 1 human-verify checkpoint deferred); starting Phase 46
-Last activity: 2026-04-20 — Phase 45 executed (9 tasks); commits dd2ddad3..e3e0cf28 pushed
+Status: Phase 46 shipped (6 auto tasks, 1 human-verify checkpoint deferred); starting Phase 47
+Last activity: 2026-04-20 — Phase 46 executed (7 tasks); commits 751589df..d4754ff7 pushed
 
-Progress: [█████░░░░░] 50% (3/6 phases)
+Progress: [██████░░░░] 67% (4/6 phases)
 
 ## Performance Metrics
 
