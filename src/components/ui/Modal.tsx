@@ -11,6 +11,12 @@ interface ModalProps {
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
+  /**
+   * Suppresses the brand gradient accent line at the top of the card.
+   * Pass `true` for confirm / destructive dialogs where the colored line
+   * reads as an error banner.
+   */
+  hideTopAccent?: boolean;
 }
 
 export function Modal({
@@ -20,6 +26,7 @@ export function Modal({
   children,
   size = 'md',
   className,
+  hideTopAccent = false,
 }: ModalProps) {
   useEffect(() => {
     if (!isOpen) return;
@@ -60,7 +67,9 @@ export function Modal({
         )}
       >
         {/* Subtle gradient top accent */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-rs-gradient rounded-t-2xl opacity-60" />
+        {!hideTopAccent && (
+          <div className="absolute top-0 left-0 right-0 h-px bg-rs-gradient rounded-t-2xl opacity-60" />
+        )}
 
         {title ? (
           <div className="flex items-center justify-between px-6 py-4 border-b border-frame-border">

@@ -58,7 +58,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
       <Modal
         isOpen={!!opts}
         onClose={() => close(false)}
-        size="sm"
+        size="md"
+        hideTopAccent
       >
         {opts && (
           <div className="flex gap-4">
@@ -68,11 +69,16 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-semibold text-white mb-1.5">
+              {/* `break-all` so long filenames (underscores, no spaces)
+                  wrap inside the card instead of pushing the close button
+                  off the edge. `pr-6` reserves space for the absolute-
+                  positioned X in the top-right so the title never collides
+                  with it on its first line. */}
+              <h2 className="text-base font-semibold text-white mb-1.5 break-all pr-6">
                 {opts.title}
               </h2>
               {opts.message && (
-                <div className="text-sm text-frame-textSecondary leading-relaxed whitespace-pre-line">
+                <div className="text-sm text-frame-textSecondary leading-relaxed whitespace-pre-line break-words">
                   {opts.message}
                 </div>
               )}
