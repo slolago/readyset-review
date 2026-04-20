@@ -182,9 +182,9 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
     const setMuted  = useCallback((_m: boolean) => { /* no-op */ }, []);
     useImperativeHandle(ref, () => ({ resume, setVolume, setMuted }), [resume, setVolume, setMuted]);
 
-    // Build analysis graphs per video. Each graph is independent and rebuilt
-    // when its video's src changes (MediaStreamAudioSourceNode is bound to the
-    // audio track present at creation time — it doesn't follow a new src).
+    // Build + maintain analysis graphs per video. One cohesive lifecycle,
+    // event-driven rather than state-driven to avoid the race we had when
+    // activeIndex's effect would tear down a just-built graph on mount.
     useEffect(() => {
       const ctx = getOrCreateAudioContext();
       if (!ctx) return;
@@ -205,28 +205,42 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
         };
 
         const build = () => {
-          if (graphsRef.current[i]) return; // already have one
+          if (graphsRef.current[i]) return; // already have one — don't disturb a working meter
           const g = buildAnalysisGraph(ctx, video);
           if (g) graphsRef.current[i] = g;
         };
 
-        // First attempt — may fail if the audio track isn't ready yet
+        // First attempt — may fail if the audio track isn't exposed yet
         build();
 
-        // Retry on media events. `loadedmetadata` fires once the audio/video
-        // tracks are known; `canplay` fires when enough data is buffered;
-        // `playing` covers browsers that only expose tracks at playback start.
+        // Retry on readiness events. 'loadedmetadata' once tracks are known,
+        // 'canplay' once buffered, 'playing' covers browsers that only expose
+        // tracks at playback start.
         const retryEvents: Array<keyof HTMLMediaElementEventMap> = ['loadedmetadata', 'canplay', 'playing'];
         retryEvents.forEach((ev) => video.addEventListener(ev, build));
 
-        // On src change (new version picked for this side), the stream's
-        // current track ends and a new one takes its place. The source node
-        // won't auto-follow — tear down first so the next media event rebuilds.
+        // Critical: Chrome omits the audio track from captureStream() when
+        // video.muted=true at capture time. In compare, the inactive side is
+        // muted at mount → its first capture has 0 tracks → graph stays null.
+        // When the user switches to that side (React flips video.muted=false),
+        // 'volumechange' fires. We build then — NOT before — so the new
+        // capture runs while the video is audible and actually includes audio.
+        // We only build if no graph yet (never tear down a working one, it
+        // would blink the meter).
+        const onVolumeChange = () => {
+          if (!video.muted && !graphsRef.current[i]) build();
+        };
+        video.addEventListener('volumechange', onVolumeChange);
+
+        // Src change: old track ends, a new one replaces it. The source node
+        // is bound to the old track and won't follow — tear down, rebuild on
+        // the next retry event.
         const onLoadStart = () => { tearDown(); };
         video.addEventListener('loadstart', onLoadStart);
 
         cleanups.push(() => {
           retryEvents.forEach((ev) => video.removeEventListener(ev, build));
+          video.removeEventListener('volumechange', onVolumeChange);
           video.removeEventListener('loadstart', onLoadStart);
           tearDown();
         });
@@ -242,50 +256,15 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Track active source + reset display state so we don't show the other
+    // side's stale peaks. No rebuild here — 'volumechange' on the video handles
+    // the case where the newly active side's graph needs to be built.
     useEffect(() => {
       activeRef.current = activeIndex;
       barLevel.current    = [MIN_DB, MIN_DB];
       rmsSmoothed.current = [MIN_DB, MIN_DB];
       peakDisp.current    = [MIN_DB, MIN_DB];
       peakTime.current    = [0, 0];
-
-      // Force-rebuild the newly active side's analysis graph.
-      //
-      // Why: Chrome drops the audio track from captureStream() when video.muted
-      // is true at capture time. In compare, the inactive side is muted at
-      // mount, so its initial captureStream has zero audio tracks → source node
-      // binds to silence forever. When the user switches to that side (React
-      // unmutes the video), the existing node doesn't pick up the newly
-      // available track. Tearing down and rebuilding while the video is now
-      // unmuted gets us a real audio source.
-      const ctx = sharedCtx;
-      if (!ctx) return;
-      const video = videoRefs[activeIndex]?.current;
-      if (!video) return;
-
-      // React's muted prop update and this effect both run post-commit, so
-      // video.muted should already reflect the new active side. If for some
-      // reason it's still muted, defer to the next paint so the DOM settles.
-      const rebuild = () => {
-        const old = graphsRef.current[activeIndex];
-        if (old) {
-          try { old.source.disconnect(); } catch {}
-        }
-        const fresh = buildAnalysisGraph(ctx, video);
-        graphsRef.current[activeIndex] = fresh;
-      };
-
-      if (video.muted) {
-        // Shouldn't happen — but defer one frame if it does.
-        const id = requestAnimationFrame(rebuild);
-        return () => cancelAnimationFrame(id);
-      }
-      rebuild();
-    // videoRefs is a new array literal on every parent render; including it in
-    // deps would retrigger the rebuild every tick → canvas blink.
-    // The refs themselves are stable, so reading videoRefs[activeIndex].current
-    // at effect time is safe.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeIndex]);
 
     useEffect(() => {
