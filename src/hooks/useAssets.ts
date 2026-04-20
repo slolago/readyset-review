@@ -71,6 +71,47 @@ function snapToStandardFps(raw: number): number {
   return minDelta <= FPS_SNAP_TOLERANCE ? closest : raw;
 }
 
+function extractImageMetadata(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const fallback = () => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const out = { width: img.naturalWidth, height: img.naturalHeight };
+        URL.revokeObjectURL(url);
+        resolve(out.width && out.height ? out : null);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    };
+
+    // Prefer createImageBitmap — reads the ORIGINAL bytes, not a resized canvas.
+    // Respect embedded EXIF orientation where supported so portrait photos report
+    // their displayed orientation (falls back silently on older browsers).
+    if (typeof createImageBitmap === 'function') {
+      const opts: ImageBitmapOptions = { imageOrientation: 'from-image' };
+      createImageBitmap(file, opts)
+        .then((bmp) => {
+          const out = { width: bmp.width, height: bmp.height };
+          bmp.close?.();
+          resolve(out.width && out.height ? out : null);
+        })
+        .catch(() => {
+          // Older browsers may reject the options bag — try without it, then fall back.
+          createImageBitmap(file)
+            .then((bmp) => {
+              const out = { width: bmp.width, height: bmp.height };
+              bmp.close?.();
+              resolve(out.width && out.height ? out : null);
+            })
+            .catch(() => fallback());
+        });
+    } else {
+      fallback();
+    }
+  });
+}
+
 function extractVideoMetadata(file: File): Promise<{ width: number; height: number; duration: number; frameRate?: number } | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
@@ -259,6 +300,10 @@ export function useUpload() {
 
       // Step 1b: Capture thumbnail + extract metadata for videos
       let videoMeta: { width: number; height: number; duration: number; frameRate?: number } | null = null;
+      let imageMeta: { width: number; height: number } | null = null;
+      if (file.type.startsWith('image/')) {
+        imageMeta = await extractImageMetadata(file).catch(() => null);
+      }
       if (file.type.startsWith('video/')) {
         // Run thumbnail capture and metadata extraction in parallel
         const [thumbBlob, meta] = await Promise.all([
@@ -339,6 +384,7 @@ export function useUpload() {
             duration: videoMeta.duration,
             ...(videoMeta.frameRate !== undefined ? { frameRate: videoMeta.frameRate } : {}),
           } : {}),
+          ...(imageMeta ? { width: imageMeta.width, height: imageMeta.height } : {}),
         }),
       });
 
