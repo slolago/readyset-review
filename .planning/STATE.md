@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-04-20)
 
 ## Current Position
 
-Phase: Phase 43 (version-stack-rewrite) — Not started
+Phase: Phase 44 (access-model-enforcement) — Not started
 Plan: —
-Status: Roadmap created, awaiting /gsd:plan-phase 43
-Last activity: 2026-04-20 — v1.7 roadmap written (6 phases, 43–48; 20 requirements; 100% coverage)
+Status: Phase 43 shipped (auto-verify passed, human-verify deferred); starting Phase 44
+Last activity: 2026-04-20 — Phase 43 executed (9 tasks, 8 auto-pass, 1 human-verify); commits 5825d745..dd518476 pushed
 
-Progress: [░░░░░░░░░░] 0% (0/6 phases)
+Progress: [█░░░░░░░░░] 17% (1/6 phases)
 
 ## Performance Metrics
 
