@@ -2,9 +2,19 @@
 
 import Image from 'next/image';
 import { useRef, useCallback, useState, useEffect, memo } from 'react';
-import { Play, Image as ImageIcon, Film, MoreHorizontal, Trash2, Clock, Upload, Layers, Check, Pencil, Copy, CopyPlus, X, ExternalLink, Move as MoveIcon, Download, Link as LinkIcon, MessageSquare, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Play, Image as ImageIcon, Film, MoreHorizontal, Trash2, Clock, Upload, Layers, Check, Pencil, Copy, CopyPlus, X, ExternalLink, Move as MoveIcon, Download, Link as LinkIcon, MessageSquare, CheckCircle2, AlertCircle, FileText, FileCode, FileArchive, Type, Palette } from 'lucide-react';
 import { formatDuration, formatBytes, forceDownload } from '@/lib/utils';
-import { FILE_INPUT_ACCEPT } from '@/lib/file-types';
+import { FILE_INPUT_ACCEPT, TYPE_META, type IconName } from '@/lib/file-types';
+
+const ICON_COMPONENTS: Record<IconName, React.ComponentType<{ className?: string }>> = {
+  Film,
+  Image: ImageIcon,
+  FileText,
+  FileCode,
+  FileArchive,
+  Type,
+  Palette,
+};
 import type { Asset, Folder } from '@/types';
 import type { ReviewStatus } from '@/types';
 import { Dropdown } from '@/components/ui/Dropdown';
@@ -368,6 +378,18 @@ export const AssetCard = memo(function AssetCard({
             className="w-full h-full object-cover"
             onLoadedMetadata={handleVideoMetadata}
           />
+        ) : asset.type !== 'video' && asset.type !== 'image' ? (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-frame-bg gap-2">
+            {(() => {
+              const Icon = ICON_COMPONENTS[TYPE_META[asset.type].iconName];
+              return <Icon className="w-12 h-12 text-frame-textMuted" />;
+            })()}
+            {asset.subtype && (
+              <span className="px-2 py-0.5 bg-frame-card rounded text-[10px] font-mono uppercase text-frame-textSecondary tracking-wide">
+                .{asset.subtype}
+              </span>
+            )}
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-frame-bg">
             {asset.type === 'video' ? (
@@ -444,12 +466,11 @@ export const AssetCard = memo(function AssetCard({
         {/* Type badge */}
         <div className="absolute top-2 left-2 flex items-center gap-1">
           <div className="px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded text-xs text-white flex items-center gap-1">
-            {asset.type === 'video' ? (
-              <Film className="w-3 h-3" />
-            ) : (
-              <ImageIcon className="w-3 h-3" />
-            )}
-            {asset.type}
+            {(() => {
+              const TypeIcon = ICON_COMPONENTS[TYPE_META[asset.type].iconName];
+              return <TypeIcon className="w-3 h-3" />;
+            })()}
+            {TYPE_META[asset.type].label.toLowerCase()}
           </div>
           <div className={`px-1.5 py-0.5 backdrop-blur-sm rounded text-xs text-white flex items-center gap-1 font-medium ${
             versionCount > 1 ? 'bg-frame-accent/80' : 'bg-black/60'

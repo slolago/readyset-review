@@ -6,9 +6,20 @@ import {
   Film, Image as ImageIcon, ChevronUp, ChevronDown, Pencil, Copy, CopyPlus,
   Move, Download, Link as LinkIcon, Trash2, ExternalLink, Check,
   ChevronDown as ChevronDownIcon, Upload, Layers,
+  FileText, FileCode, FileArchive, Type, Palette,
 } from 'lucide-react';
 import { formatBytes, formatRelativeTime, forceDownload } from '@/lib/utils';
-import { FILE_INPUT_ACCEPT } from '@/lib/file-types';
+import { FILE_INPUT_ACCEPT, TYPE_META, type IconName } from '@/lib/file-types';
+
+const ICON_COMPONENTS: Record<IconName, React.ComponentType<{ className?: string }>> = {
+  Film,
+  Image: ImageIcon,
+  FileText,
+  FileCode,
+  FileArchive,
+  Type,
+  Palette,
+};
 import { useUserNames } from '@/hooks/useUserNames';
 import { useAuth } from '@/hooks/useAuth';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
@@ -430,11 +441,10 @@ function AssetListRow({
               <img src={signedUrl} alt={asset.name} className="w-full h-full object-cover" />
             ) : asset.type === 'video' && thumbnailSignedUrl ? (
               <img src={thumbnailSignedUrl} alt={asset.name} className="w-full h-full object-cover" />
-            ) : asset.type === 'video' ? (
-              <Film className="w-5 h-5 text-frame-textMuted" />
-            ) : (
-              <ImageIcon className="w-5 h-5 text-frame-textMuted" />
-            )}
+            ) : (() => {
+              const Icon = ICON_COMPONENTS[TYPE_META[asset.type].iconName];
+              return <Icon className="w-5 h-5 text-frame-textMuted" />;
+            })()}
           </div>
         </td>
 
