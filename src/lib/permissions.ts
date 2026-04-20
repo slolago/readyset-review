@@ -147,6 +147,23 @@ export function canDeleteFolder(user: User, project: Project): boolean {
   return canWriteAsset(user, project);
 }
 
+// Restore + permanent delete share the same write-gate as delete — no new role semantics.
+export function canRestoreAsset(user: User, project: Project): boolean {
+  return canWriteAsset(user, project);
+}
+
+export function canPermanentDeleteAsset(user: User, project: Project): boolean {
+  return canWriteAsset(user, project);
+}
+
+export function canRestoreFolder(user: User, project: Project): boolean {
+  return canWriteAsset(user, project);
+}
+
+export function canPermanentDeleteFolder(user: User, project: Project): boolean {
+  return canWriteAsset(user, project);
+}
+
 // ---------- Review-link scope ----------
 
 export function canCreateReviewLink(user: User, project: Project): boolean {
