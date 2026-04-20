@@ -1,186 +1,62 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, ChevronDown, Columns2, SplitSquareHorizontal, AudioLines } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect, memo } from 'react';
+import { Play, Pause, Volume2, VolumeX, ChevronDown, Columns2, SplitSquareHorizontal, AudioLines, AlertCircle } from 'lucide-react';
 import { formatDuration } from '@/lib/utils';
 import { VUMeter, type VUMeterHandle } from './VUMeter';
 import type { Asset } from '@/types';
 
 type ViewMode = 'slider' | 'side-by-side';
+type Side = 'A' | 'B';
 
 interface VersionComparisonProps {
   versions: Asset[];
 }
 
-export function VersionComparison({ versions }: VersionComparisonProps) {
-  // Always default to "latest vs previous" — the most common comparison. No
-  // localStorage persistence: stale saved pairs were confusing users (if v3
-  // was uploaded, they'd still open on v1/v2 from a previous session).
-  // Assumes versions[] is sorted ascending by version number (API guarantees this).
-  const latestId = versions[versions.length - 1]?.id ?? '';
-  const previousId = versions[versions.length - 2]?.id ?? '';
-  const [selectedIdA, setSelectedIdA] = useState(previousId);
-  const [selectedIdB, setSelectedIdB] = useState(latestId);
+// ── Extracted components (not inlined so they don't remount on every parent render) ──
 
-  // If the versions list changes while mounted (new upload), snap to the new
-  // latest-vs-previous pair.
-  useEffect(() => {
-    if (!latestId) return;
-    setSelectedIdB((cur) => (versions.some((v) => v.id === cur) ? cur : latestId));
-    setSelectedIdA((cur) => (versions.some((v) => v.id === cur) ? cur : previousId));
-  }, [versions, latestId, previousId]);
-  const [viewMode, setViewMode] = useState<ViewMode>('slider');
-  const [pickerSide, setPickerSide] = useState<'A' | 'B' | null>(null);
+const ViewToggle = memo(function ViewToggle({
+  viewMode, onChange,
+}: { viewMode: ViewMode; onChange: (m: ViewMode) => void }) {
+  return (
+    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/70 backdrop-blur-sm border border-white/10 rounded-lg p-1 pointer-events-auto">
+      <button
+        onClick={() => onChange('slider')}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+          viewMode === 'slider' ? 'bg-frame-accent text-white' : 'text-white/60 hover:text-white'
+        }`}
+      >
+        <SplitSquareHorizontal className="w-3.5 h-3.5" />
+        Slider
+      </button>
+      <button
+        onClick={() => onChange('side-by-side')}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+          viewMode === 'side-by-side' ? 'bg-frame-accent text-white' : 'text-white/60 hover:text-white'
+        }`}
+      >
+        <Columns2 className="w-3.5 h-3.5" />
+        Side by side
+      </button>
+    </div>
+  );
+});
 
-  const assetA = versions.find((v) => v.id === selectedIdA) ?? versions[versions.length - 2];
-  const assetB = versions.find((v) => v.id === selectedIdB) ?? versions[versions.length - 1];
-
-  const [sliderPos, setSliderPos] = useState(0.5);
-  const [isDragging, setIsDragging] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const frameRef = useRef<HTMLDivElement>(null);
-
-  const videoARef = useRef<HTMLVideoElement>(null);
-  const videoBRef = useRef<HTMLVideoElement>(null);
-  const vuRef = useRef<VUMeterHandle>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [activeSide, setActiveSide] = useState<'A' | 'B'>('B'); // default: listen to the latest
-  const [muted, setMuted] = useState(false);
-
-  // Track the natural dimensions of video A so both videos can share a single
-  // letterbox/pillarbox rect. This keeps the slider split visually consistent
-  // even when the two versions have different aspect ratios.
-  const [dimsA, setDimsA] = useState<{ w: number; h: number } | null>(null);
-  const [dimsB, setDimsB] = useState<{ w: number; h: number } | null>(null);
-
-  // Keep VU meter gain in sync with mute state (the meter owns volume — video.muted is ignored)
-  useEffect(() => { vuRef.current?.setMuted(muted); }, [muted]);
-
-  const isVideo = assetA?.type === 'video';
-  const urlA = assetA ? ((assetA as any).signedUrl || assetA.url) : '';
-  const urlB = assetB ? ((assetB as any).signedUrl || assetB.url) : '';
-
-  useEffect(() => {
-    setIsPlaying(false);
-    setCurrentTime(0);
-  }, [viewMode, selectedIdA, selectedIdB]);
-
-  // Close picker on outside click
-  useEffect(() => {
-    if (!pickerSide) return;
-    const handler = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('[data-picker]')) setPickerSide(null);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [pickerSide]);
-
-  const syncVideos = useCallback(() => {
-    const vA = videoARef.current;
-    const vB = videoBRef.current;
-    if (!vA || !vB) return;
-    if (Math.abs(vA.currentTime - vB.currentTime) > 0.1) vB.currentTime = vA.currentTime;
-  }, []);
-
-  const togglePlay = useCallback(async () => {
-    const vA = videoARef.current;
-    const vB = videoBRef.current;
-    if (!vA || !vB) return;
-    if (vA.paused) {
-      vB.currentTime = vA.currentTime;
-      // Unlock AudioContext *before* starting playback. Must happen inside this
-      // user-gesture call stack or Chrome leaves the context suspended → silence.
-      await vuRef.current?.resume();
-      Promise.all([vA.play(), vB.play()]).catch(() => {});
-      setIsPlaying(true);
-    } else {
-      vA.pause(); vB.pause(); setIsPlaying(false);
-    }
-  }, []);
-
-  const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const t = parseFloat(e.target.value);
-    if (videoARef.current) videoARef.current.currentTime = t;
-    if (videoBRef.current) videoBRef.current.currentTime = t;
-    setCurrentTime(t);
-  }, []);
-
-  useEffect(() => {
-    const vA = videoARef.current;
-    if (!vA) return;
-    const onTime = () => { setCurrentTime(vA.currentTime); syncVideos(); };
-    const onLoaded = () => setDuration(vA.duration);
-    const onEnded = () => setIsPlaying(false);
-    vA.addEventListener('timeupdate', onTime);
-    vA.addEventListener('loadedmetadata', onLoaded);
-    vA.addEventListener('ended', onEnded);
-    return () => {
-      vA.removeEventListener('timeupdate', onTime);
-      vA.removeEventListener('loadedmetadata', onLoaded);
-      vA.removeEventListener('ended', onEnded);
-    };
-  }, [syncVideos, selectedIdA, viewMode]);
-
-  // Slider drag — mouse
-  const handleMouseDown = useCallback((e: React.MouseEvent) => { e.preventDefault(); setIsDragging(true); }, []);
-  useEffect(() => {
-    if (!isDragging) return;
-    const onMove = (e: MouseEvent) => {
-      const r = frameRef.current?.getBoundingClientRect();
-      if (!r) return;
-      setSliderPos(Math.max(0.02, Math.min(0.98, (e.clientX - r.left) / r.width)));
-    };
-    const onUp = () => setIsDragging(false);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-  }, [isDragging]);
-
-  // Slider drag — touch
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-    const r = frameRef.current?.getBoundingClientRect();
-    if (!r) return;
-    setSliderPos(Math.max(0.02, Math.min(0.98, (e.touches[0].clientX - r.left) / r.width)));
-  }, []);
-  useEffect(() => {
-    if (!isDragging) return;
-    const onMove = (e: TouchEvent) => {
-      const r = frameRef.current?.getBoundingClientRect();
-      if (!r) return;
-      setSliderPos(Math.max(0.02, Math.min(0.98, (e.touches[0].clientX - r.left) / r.width)));
-    };
-    const onEnd = () => setIsDragging(false);
-    window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('touchend', onEnd);
-    return () => { window.removeEventListener('touchmove', onMove); window.removeEventListener('touchend', onEnd); };
-  }, [isDragging]);
-
-  const clipA = `inset(0 ${((1 - sliderPos) * 100).toFixed(2)}% 0 0)`;
-  const clipB = `inset(0 0 0 ${(sliderPos * 100).toFixed(2)}%)`;
-
-  // Version picker button — floats as overlay, no layout impact
-  const VersionLabel = ({ side, asset }: { side: 'A' | 'B'; asset: Asset }) => (
-    <div className="relative flex items-center gap-1.5" data-picker>
-      {isVideo && (
-        <button
-          onClick={(e) => { e.stopPropagation(); setActiveSide(side); }}
-          className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
-            activeSide === side && !muted
-              ? 'bg-frame-accent text-white'
-              : 'bg-black/60 text-white/40 hover:text-white'
-          }`}
-          title={activeSide === side ? 'Audio active' : 'Switch audio here'}
-        >
-          <AudioLines className="w-3.5 h-3.5" />
-        </button>
-      )}
+const VersionLabel = memo(function VersionLabel({
+  side, asset, versions, isOpen, onTogglePicker, onPick,
+}: {
+  side: Side;
+  asset: Asset;
+  versions: Asset[];
+  isOpen: boolean;
+  onTogglePicker: (side: Side) => void;
+  onPick: (side: Side, id: string) => void;
+}) {
+  return (
+    <div className="relative" data-picker>
       <button
         data-picker
-        onClick={() => setPickerSide((p) => (p === side ? null : side))}
+        onClick={() => onTogglePicker(side)}
         className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium max-w-[200px] transition-colors ${
           side === 'B'
             ? 'bg-frame-accent/80 hover:bg-frame-accent text-white'
@@ -190,10 +66,10 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
         <span className="truncate">V{asset.version} — {asset.name}</span>
         <ChevronDown className="w-3 h-3 flex-shrink-0" />
       </button>
-      {pickerSide === side && (
+      {isOpen && (
         <div
           data-picker
-          className={`absolute top-full mt-1 bg-frame-card border border-frame-border rounded-lg shadow-xl overflow-hidden z-30 min-w-[200px] max-w-[280px] ${
+          className={`absolute top-full mt-1 bg-frame-card border border-frame-border rounded-lg shadow-xl overflow-y-auto z-30 min-w-[200px] max-w-[280px] max-h-64 ${
             side === 'B' ? 'right-0' : 'left-0'
           }`}
         >
@@ -201,7 +77,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
             <button
               key={v.id}
               data-picker
-              onClick={() => { side === 'A' ? setSelectedIdA(v.id) : setSelectedIdB(v.id); setPickerSide(null); }}
+              onClick={() => onPick(side, v.id)}
               className={`w-full text-left px-3 py-2 text-xs hover:bg-frame-cardHover transition-colors truncate ${
                 v.id === asset.id ? 'text-frame-accent font-semibold' : 'text-white'
               }`}
@@ -213,39 +89,237 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
       )}
     </div>
   );
+});
 
-  // View mode toggle — floats centered, no layout impact
-  const ViewToggle = () => (
-    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/70 backdrop-blur-sm border border-white/10 rounded-lg p-1 pointer-events-auto">
-      <button
-        onClick={() => setViewMode('slider')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-          viewMode === 'slider' ? 'bg-frame-accent text-white' : 'text-white/60 hover:text-white'
-        }`}
-      >
-        <SplitSquareHorizontal className="w-3.5 h-3.5" />
-        Slider
-      </button>
-      <button
-        onClick={() => setViewMode('side-by-side')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-          viewMode === 'side-by-side' ? 'bg-frame-accent text-white' : 'text-white/60 hover:text-white'
-        }`}
-      >
-        <Columns2 className="w-3.5 h-3.5" />
-        Side by side
-      </button>
-    </div>
-  );
+export function VersionComparison({ versions }: VersionComparisonProps) {
+  // ── Selection state: default latest+previous; no persistence. ──────────────
+  const latestId = versions[versions.length - 1]?.id ?? '';
+  const previousId = versions[versions.length - 2]?.id ?? '';
+  const [selectedIdA, setSelectedIdA] = useState(previousId);
+  const [selectedIdB, setSelectedIdB] = useState(latestId);
+  const [userTouchedSelection, setUserTouchedSelection] = useState(false);
 
-  // Compute a shared display rect for both videos so slider + side-by-side
-  // line up even when V1 and V3 have different native aspect ratios. Frame
-  // aspect = max(aspectA, aspectB) fits the wider of the two; each video
-  // then object-contain's inside, so both letterbox to the exact same rect.
-  //
-  // Dimensions are computed in JS (not via CSS aspect-ratio + maxW/maxH,
-  // which collapses to 0 if the flex parent doesn't provide intrinsic size)
-  // using a ResizeObserver on the container.
+  // Snap to new latest+previous when a new upload arrives — unless the user
+  // explicitly picked a non-default pair (then only snap if the current
+  // selection references a version that no longer exists).
+  useEffect(() => {
+    if (!latestId) return;
+    if (userTouchedSelection) {
+      setSelectedIdB((cur) => (versions.some((v) => v.id === cur) ? cur : latestId));
+      setSelectedIdA((cur) => (versions.some((v) => v.id === cur) ? cur : previousId));
+    } else {
+      setSelectedIdA(previousId);
+      setSelectedIdB(latestId);
+    }
+  }, [versions, latestId, previousId, userTouchedSelection]);
+
+  const [viewMode, setViewMode] = useState<ViewMode>('slider');
+  const [pickerSide, setPickerSide] = useState<Side | null>(null);
+
+  const assetA = versions.find((v) => v.id === selectedIdA) ?? versions[versions.length - 2];
+  const assetB = versions.find((v) => v.id === selectedIdB) ?? versions[versions.length - 1];
+
+  // ── Mixed-type guard: both sides must be the same media type ──────────────
+  const typesMatch = assetA?.type === assetB?.type;
+  const isVideo = typesMatch && assetA?.type === 'video';
+  const isImage = typesMatch && assetA?.type === 'image';
+
+  const urlA = assetA ? ((assetA as any).signedUrl || assetA.url) : '';
+  const urlB = assetB ? ((assetB as any).signedUrl || assetB.url) : '';
+
+  // ── Playback state ─────────────────────────────────────────────────────────
+  const containerRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const videoARef = useRef<HTMLVideoElement>(null);
+  const videoBRef = useRef<HTMLVideoElement>(null);
+  const vuRef = useRef<VUMeterHandle>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [durationA, setDurationA] = useState(0);
+  const [durationB, setDurationB] = useState(0);
+  const [activeSide, setActiveSide] = useState<Side>('B');
+  const [muted, setMuted] = useState(false);
+  const [dimsA, setDimsA] = useState<{ w: number; h: number } | null>(null);
+  const [dimsB, setDimsB] = useState<{ w: number; h: number } | null>(null);
+
+  // Timeline covers the LONGER of the two so the user can scrub anywhere.
+  const duration = Math.max(durationA, durationB);
+
+  // Active side = the master for playback sync (user listens to it).
+  const masterRef = useCallback((): HTMLVideoElement | null => {
+    return activeSide === 'A' ? videoARef.current : videoBRef.current;
+  }, [activeSide]);
+  const slaveRef = useCallback((): HTMLVideoElement | null => {
+    return activeSide === 'A' ? videoBRef.current : videoARef.current;
+  }, [activeSide]);
+
+  // Mute state → VU meter (its analyser stays pre-gain; visual is dimmed on mute via props)
+  useEffect(() => { vuRef.current?.setMuted(muted); }, [muted]);
+
+  // Close picker on outside click
+  useEffect(() => {
+    if (!pickerSide) return;
+    const handler = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('[data-picker]')) setPickerSide(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [pickerSide]);
+
+  // Keep the non-active side synced to the active side's currentTime.
+  // Runs on master's timeupdate so the active side plays smoothly and the
+  // inactive one catches up once per frame.
+  useEffect(() => {
+    const master = masterRef();
+    if (!master) return;
+    const onTime = () => {
+      const slave = slaveRef();
+      setCurrentTime(master.currentTime);
+      if (slave && Math.abs(slave.currentTime - master.currentTime) > 0.1) {
+        // Only seek the slave if the target is within its range; avoids seeks past end.
+        if (slave.duration && master.currentTime <= slave.duration) {
+          slave.currentTime = master.currentTime;
+        }
+      }
+    };
+    const onEnded = () => {
+      // Master ended → pause slave too and update UI
+      const slave = slaveRef();
+      slave?.pause();
+      setIsPlaying(false);
+    };
+    const onPause = () => setIsPlaying(false);
+    const onPlay = () => setIsPlaying(true);
+    master.addEventListener('timeupdate', onTime);
+    master.addEventListener('ended', onEnded);
+    master.addEventListener('pause', onPause);
+    master.addEventListener('play', onPlay);
+    return () => {
+      master.removeEventListener('timeupdate', onTime);
+      master.removeEventListener('ended', onEnded);
+      master.removeEventListener('pause', onPause);
+      master.removeEventListener('play', onPlay);
+    };
+  }, [masterRef, slaveRef]);
+
+  // Track durations from each video independently
+  useEffect(() => {
+    const vA = videoARef.current;
+    if (!vA) return;
+    const onLoaded = () => setDurationA(vA.duration || 0);
+    vA.addEventListener('loadedmetadata', onLoaded);
+    if (vA.readyState >= 1) setDurationA(vA.duration || 0);
+    return () => vA.removeEventListener('loadedmetadata', onLoaded);
+  }, []);
+  useEffect(() => {
+    const vB = videoBRef.current;
+    if (!vB) return;
+    const onLoaded = () => setDurationB(vB.duration || 0);
+    vB.addEventListener('loadedmetadata', onLoaded);
+    if (vB.readyState >= 1) setDurationB(vB.duration || 0);
+    return () => vB.removeEventListener('loadedmetadata', onLoaded);
+  }, []);
+
+  // Play / pause — drives both sides from the master event listeners above.
+  const togglePlay = useCallback(async () => {
+    const vA = videoARef.current;
+    const vB = videoBRef.current;
+    if (!vA || !vB) return;
+    const master = masterRef();
+    if (!master) return;
+
+    if (master.paused) {
+      // Sync slave before starting so they line up
+      const slave = slaveRef();
+      if (slave) slave.currentTime = master.currentTime;
+      await vuRef.current?.resume();
+      try {
+        const results = await Promise.allSettled([vA.play(), vB.play()]);
+        // If either rejected, keep UI honest — don't pretend we're playing.
+        const bothOk = results.every((r) => r.status === 'fulfilled');
+        if (bothOk) setIsPlaying(true);
+        else {
+          setIsPlaying(false);
+          // Pause whichever might have started
+          vA.pause(); vB.pause();
+        }
+      } catch {
+        setIsPlaying(false);
+        vA.pause(); vB.pause();
+      }
+    } else {
+      vA.pause();
+      vB.pause();
+      setIsPlaying(false);
+    }
+  }, [masterRef, slaveRef]);
+
+  const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const t = parseFloat(e.target.value);
+    if (!Number.isFinite(t) || t < 0) return;
+    const vA = videoARef.current;
+    const vB = videoBRef.current;
+    // Clamp per-video to its own duration to avoid seeking past end
+    if (vA && vA.readyState >= 1) vA.currentTime = Math.min(t, vA.duration || t);
+    if (vB && vB.readyState >= 1) vB.currentTime = Math.min(t, vB.duration || t);
+    setCurrentTime(t);
+  }, []);
+
+  // ── Slider drag (robust against lost mouseup) ─────────────────────────────
+  const [sliderPos, setSliderPos] = useState(0.5);
+  const [isDragging, setIsDragging] = useState(false);
+  const handleMouseDown = useCallback((e: React.MouseEvent) => { e.preventDefault(); setIsDragging(true); }, []);
+  useEffect(() => {
+    if (!isDragging) return;
+    const frame = frameRef.current;
+    const onMove = (e: MouseEvent) => {
+      const r = frame?.getBoundingClientRect();
+      if (!r || !r.width) return;
+      setSliderPos(Math.max(0.02, Math.min(0.98, (e.clientX - r.left) / r.width)));
+    };
+    const stop = () => setIsDragging(false);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', stop);
+    window.addEventListener('pointercancel', stop);   // drag ended outside window / tab switch
+    window.addEventListener('blur', stop);             // window lost focus
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', stop);
+      window.removeEventListener('pointercancel', stop);
+      window.removeEventListener('blur', stop);
+    };
+  }, [isDragging]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    const r = frameRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setSliderPos(Math.max(0.02, Math.min(0.98, (e.touches[0].clientX - r.left) / r.width)));
+  }, []);
+  useEffect(() => {
+    if (!isDragging) return;
+    const frame = frameRef.current;
+    const onMove = (e: TouchEvent) => {
+      const r = frame?.getBoundingClientRect();
+      if (!r || !r.width) return;
+      setSliderPos(Math.max(0.02, Math.min(0.98, (e.touches[0].clientX - r.left) / r.width)));
+    };
+    const stop = () => setIsDragging(false);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', stop);
+    window.addEventListener('touchcancel', stop);
+    return () => {
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', stop);
+      window.removeEventListener('touchcancel', stop);
+    };
+  }, [isDragging]);
+
+  const clipA = `inset(0 ${((1 - sliderPos) * 100).toFixed(2)}% 0 0)`;
+  const clipB = `inset(0 0 0 ${(sliderPos * 100).toFixed(2)}%)`;
+
+  // ── Shared display rect (JS-measured) ─────────────────────────────────────
   const aspectA = dimsA ? dimsA.w / dimsA.h : null;
   const aspectB = dimsB ? dimsB.w / dimsB.h : null;
   const sharedAspect =
@@ -262,10 +336,8 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
       const containerAspect = cw / ch;
       let fw: number, fh: number;
       if (sharedAspect >= containerAspect) {
-        // Frame is wider than container → width-constrained
         fw = cw; fh = cw / sharedAspect;
       } else {
-        // Frame is taller → height-constrained
         fh = ch; fw = ch * sharedAspect;
       }
       setFrameSize({ w: fw, h: fh });
@@ -286,150 +358,252 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
   const handleMetaA = () => {
     const v = videoARef.current;
     if (v?.videoWidth) setDimsA({ w: v.videoWidth, h: v.videoHeight });
-    if (v) setDuration(v.duration || 0);
   };
   const handleMetaB = () => {
     const v = videoBRef.current;
     if (v?.videoWidth) setDimsB({ w: v.videoWidth, h: v.videoHeight });
   };
 
+  // ── Selection handlers (mark as user-touched so we don't auto-snap) ───────
+  const handlePickerPick = useCallback((side: Side, id: string) => {
+    setUserTouchedSelection(true);
+    if (side === 'A') setSelectedIdA(id);
+    else setSelectedIdB(id);
+    setPickerSide(null);
+  }, []);
+
+  // ── Keyboard shortcuts (only while compare is mounted) ────────────────────
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Ignore when typing in inputs
+      const target = e.target as HTMLElement;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+        return;
+      }
+      if (e.code === 'KeyM') {
+        e.preventDefault();
+        setMuted((m) => !m);
+        return;
+      }
+      if (e.code === 'Digit1') {
+        e.preventDefault();
+        setActiveSide('A');
+        return;
+      }
+      if (e.code === 'Digit2') {
+        e.preventDefault();
+        setActiveSide('B');
+        return;
+      }
+      if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+        e.preventDefault();
+        const step = e.shiftKey ? 1 / 30 : 5; // frame-advance with shift, else 5s
+        const dir = e.code === 'ArrowLeft' ? -1 : 1;
+        const vA = videoARef.current;
+        const vB = videoBRef.current;
+        const master = masterRef();
+        if (!master) return;
+        const newT = Math.max(0, Math.min(duration, master.currentTime + dir * step));
+        if (vA && vA.readyState >= 1) vA.currentTime = Math.min(newT, vA.duration || newT);
+        if (vB && vB.readyState >= 1) vB.currentTime = Math.min(newT, vB.duration || newT);
+        setCurrentTime(newT);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [togglePlay, masterRef, duration]);
+
+  // ── Render: gate on mismatched types ──────────────────────────────────────
+  if (!assetA || !assetB) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-white/60 text-sm">
+        Select two versions to compare.
+      </div>
+    );
+  }
+  if (!typesMatch) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-white/70 text-sm gap-3 px-8 text-center">
+        <AlertCircle className="w-8 h-8 text-yellow-400" />
+        <div>
+          <p className="font-medium">Can&apos;t compare different media types</p>
+          <p className="text-xs text-white/50 mt-1">V{assetA.version} is {assetA.type}, V{assetB.version} is {assetB.type}. Pick two of the same type.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const audioVersion = activeSide === 'A' ? assetA.version : assetB.version;
+
   return (
     <div className="flex flex-col h-full w-full bg-black">
       <div className="flex-1 min-h-0 flex">
-      <div className="relative flex-1 min-h-0 overflow-hidden select-none flex items-center justify-center" ref={containerRef}>
-        <ViewToggle />
+        <div className="relative flex-1 min-h-0 overflow-hidden select-none flex items-center justify-center" ref={containerRef}>
+          <ViewToggle viewMode={viewMode} onChange={setViewMode} />
 
-        {/* Shared display rect — explicit pixel dimensions via JS so slider
-            clip-path and side-by-side halves always line up. Both videos fill
-            this rect absolutely; object-contain letterboxes each to preserve
-            its native aspect while both occupy the same outer box. */}
-        <div
-          ref={frameRef}
-          className="relative"
-          style={{
-            width: frameSize?.w ?? '100%',
-            height: frameSize?.h ?? '100%',
-          }}
-        >
-          {/* Media — stable DOM position so VUMeter's MediaElementSource survives
-              viewMode + version switches. Audio: video.muted per side controls
-              audibility (the muted one's source emits silence). */}
-          {isVideo ? (
-            <>
-              <video
-                ref={videoBRef}
-                src={urlB}
-                className="object-contain"
-                style={videoStyleB}
-                muted={activeSide !== 'B' || muted}
-                playsInline
-                preload="auto"
-                onLoadedMetadata={handleMetaB}
-              />
-              <video
-                ref={videoARef}
-                src={urlA}
-                className="object-contain"
-                style={videoStyleA}
-                muted={activeSide !== 'A' || muted}
-                playsInline
-                preload="auto"
-                onLoadedMetadata={handleMetaA}
-              />
-            </>
-          ) : (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={urlB} alt={`V${assetB?.version}`} className="object-contain" style={videoStyleB} draggable={false} onLoad={(e) => { const t = e.currentTarget; if (t.naturalWidth) setDimsB({ w: t.naturalWidth, h: t.naturalHeight }); }} />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={urlA} alt={`V${assetA?.version}`} className="object-contain" style={videoStyleA} draggable={false} onLoad={(e) => { const t = e.currentTarget; if (t.naturalWidth) setDimsA({ w: t.naturalWidth, h: t.naturalHeight }); }} />
-            </>
-          )}
+          {/* Shared display rect (see audit doc for why JS-sized) */}
+          <div
+            ref={frameRef}
+            className="relative"
+            style={{
+              width: frameSize?.w ?? '100%',
+              height: frameSize?.h ?? '100%',
+            }}
+          >
+            {isVideo ? (
+              <>
+                <video
+                  ref={videoBRef}
+                  src={urlB}
+                  className="object-contain"
+                  style={videoStyleB}
+                  muted={activeSide !== 'B' || muted}
+                  playsInline
+                  preload="auto"
+                  onLoadedMetadata={handleMetaB}
+                />
+                <video
+                  ref={videoARef}
+                  src={urlA}
+                  className="object-contain"
+                  style={videoStyleA}
+                  muted={activeSide !== 'A' || muted}
+                  playsInline
+                  preload="auto"
+                  onLoadedMetadata={handleMetaA}
+                />
+              </>
+            ) : isImage ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={urlB} alt={`V${assetB.version}`} className="object-contain" style={videoStyleB} draggable={false} onLoad={(e) => { const t = e.currentTarget; if (t.naturalWidth) setDimsB({ w: t.naturalWidth, h: t.naturalHeight }); }} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={urlA} alt={`V${assetA.version}`} className="object-contain" style={videoStyleA} draggable={false} onLoad={(e) => { const t = e.currentTarget; if (t.naturalWidth) setDimsA({ w: t.naturalWidth, h: t.naturalHeight }); }} />
+              </>
+            ) : null}
 
-          {/* Slider handle — only in slider mode, positioned over the frame */}
-          {viewMode === 'slider' && (
-            <>
-              <div className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg pointer-events-none" style={{ left: `${sliderPos * 100}%` }} />
-              <div
-                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-white rounded-full shadow-xl flex items-center justify-center cursor-ew-resize z-10"
-                style={{ left: `${sliderPos * 100}%` }}
-                onMouseDown={handleMouseDown} onTouchStart={handleTouchStart}
-              >
-                <div className="flex gap-0.5">
-                  <div className="w-0.5 h-4 bg-gray-400 rounded" />
-                  <div className="w-0.5 h-4 bg-gray-400 rounded" />
+            {/* Slider handle */}
+            {viewMode === 'slider' && (
+              <>
+                <div className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg pointer-events-none" style={{ left: `${sliderPos * 100}%` }} />
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-white rounded-full shadow-xl flex items-center justify-center cursor-ew-resize z-10"
+                  style={{ left: `${sliderPos * 100}%` }}
+                  onMouseDown={handleMouseDown}
+                  onTouchStart={handleTouchStart}
+                >
+                  <div className="flex gap-0.5">
+                    <div className="w-0.5 h-4 bg-gray-400 rounded" />
+                    <div className="w-0.5 h-4 bg-gray-400 rounded" />
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
 
-          {/* Vertical divider for side-by-side */}
-          {viewMode === 'side-by-side' && (
-            <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-white/15 pointer-events-none" />
-          )}
-        </div>
+            {/* Side-by-side divider */}
+            {viewMode === 'side-by-side' && (
+              <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-white/15 pointer-events-none" />
+            )}
 
-        {/* Labels — placed over the container (outside the shared frame) */}
-        <div className="absolute top-14 left-3 z-10 pointer-events-auto">
-          {assetA && <VersionLabel side="A" asset={assetA} />}
-        </div>
-        <div className="absolute top-14 right-3 z-10 pointer-events-auto">
-          {assetB && <VersionLabel side="B" asset={assetB} />}
-        </div>
-      </div>
-
-      {/* VU Meter strip — right side, stereo, follows active audio source */}
-      {isVideo && (
-        <div className="flex-shrink-0 w-24 flex flex-col bg-[#0a0a0a] border-l border-white/5">
-          <VUMeter
-            ref={vuRef}
-            videoRefs={[videoARef, videoBRef]}
-            activeIndex={activeSide === 'A' ? 0 : 1}
-            isPlaying={isPlaying}
-          />
-          <div className="flex-shrink-0 border-t border-white/5 px-2 py-1.5 text-[10px] uppercase tracking-wider text-white/50 text-center">
-            Audio: V{activeSide === 'A' ? assetA?.version : assetB?.version}
+            {/* Labels — pinned to the FRAME corners (so they stay next to the video even with pillarbox) */}
+            <div className="absolute top-3 left-3 z-10 pointer-events-auto">
+              <VersionLabel
+                side="A"
+                asset={assetA}
+                versions={versions}
+                isOpen={pickerSide === 'A'}
+                onTogglePicker={(s) => setPickerSide((p) => (p === s ? null : s))}
+                onPick={handlePickerPick}
+              />
+            </div>
+            <div className="absolute top-3 right-3 z-10 pointer-events-auto">
+              <VersionLabel
+                side="B"
+                asset={assetB}
+                versions={versions}
+                isOpen={pickerSide === 'B'}
+                onTogglePicker={(s) => setPickerSide((p) => (p === s ? null : s))}
+                onPick={handlePickerPick}
+              />
+            </div>
           </div>
         </div>
-      )}
-      </div>{/* end viewer+meter row */}
 
-      {/* Video controls */}
+        {/* VU meter strip */}
+        {isVideo && (
+          <div className="flex-shrink-0 w-24 flex flex-col bg-[#0a0a0a] border-l border-white/5">
+            <div className={`flex-1 transition-opacity ${muted ? 'opacity-30' : 'opacity-100'}`}>
+              <VUMeter
+                ref={vuRef}
+                videoRefs={[videoARef, videoBRef]}
+                activeIndex={activeSide === 'A' ? 0 : 1}
+                isPlaying={isPlaying && !muted}
+              />
+            </div>
+            <div className="flex-shrink-0 border-t border-white/5 px-2 py-1.5 text-[10px] uppercase tracking-wider text-white/50 text-center">
+              Audio: V{audioVersion}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Controls */}
       {isVideo && (
         <div className="flex-shrink-0 bg-black/80 border-t border-white/10 px-4 py-3 flex items-center gap-3">
-          <button onClick={togglePlay} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
+          <button
+            onClick={togglePlay}
+            title="Play / Pause (Space)"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+          >
             {isPlaying ? <Pause className="w-4 h-4" fill="white" /> : <Play className="w-4 h-4 ml-0.5" fill="white" />}
           </button>
           <span className="text-xs text-white/60 font-mono w-12 text-right flex-shrink-0">{formatDuration(currentTime)}</span>
-          <input type="range" min={0} max={duration || 0} step={0.01} value={currentTime} onChange={handleSeek} className="flex-1 h-1 accent-frame-accent" />
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.01}
+            value={Math.min(currentTime, duration || 0)}
+            onChange={handleSeek}
+            className="flex-1 h-1 accent-frame-accent"
+          />
           <span className="text-xs text-white/60 font-mono w-12 flex-shrink-0">{formatDuration(duration)}</span>
 
-          {/* Audio source selector — explicit A/B toggle so user always knows which audio is live */}
+          {/* Audio source toggle — single source of truth, with keyboard hints */}
           <div className="flex items-center gap-1.5 pl-2 border-l border-white/10 ml-1">
             <AudioLines className="w-3.5 h-3.5 text-white/50 flex-shrink-0" />
             <div className="flex bg-white/5 rounded-md p-0.5">
               <button
                 onClick={() => setActiveSide('A')}
-                title={`Listen to V${assetA?.version}`}
+                title={`Listen to V${assetA.version} (1)`}
                 className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                   activeSide === 'A' ? 'bg-frame-accent text-white' : 'text-white/50 hover:text-white'
                 }`}
               >
-                V{assetA?.version ?? 'A'}
+                V{assetA.version}
               </button>
               <button
                 onClick={() => setActiveSide('B')}
-                title={`Listen to V${assetB?.version}`}
+                title={`Listen to V${assetB.version} (2)`}
                 className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                   activeSide === 'B' ? 'bg-frame-accent text-white' : 'text-white/50 hover:text-white'
                 }`}
               >
-                V{assetB?.version ?? 'B'}
+                V{assetB.version}
               </button>
             </div>
           </div>
 
-          <button onClick={() => setMuted((m) => !m)} title={muted ? 'Unmute' : 'Mute'} className="text-white/60 hover:text-white transition-colors">
+          <button
+            onClick={() => setMuted((m) => !m)}
+            title={`${muted ? 'Unmute' : 'Mute'} (M)`}
+            className="text-white/60 hover:text-white transition-colors"
+          >
             {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </button>
         </div>
