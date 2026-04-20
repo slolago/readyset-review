@@ -289,7 +289,8 @@ export function CommentSidebar({
                 <button
                   type="button"
                   onClick={() => setIncludeTimestamp((v) => !v)}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${includeTimestamp ? 'bg-frame-accent/15 text-frame-accent' : 'text-frame-textMuted hover:text-white'}`}
+                  disabled={inPoint !== undefined && outPoint !== undefined}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${includeTimestamp ? 'bg-frame-accent/15 text-frame-accent' : 'text-frame-textMuted hover:text-white'} disabled:opacity-40 disabled:cursor-not-allowed`}
                 >
                   <Clock className="w-3 h-3" />
                   {includeTimestamp ? formatTimestamp(currentTime) : 'No time'}
@@ -311,9 +312,17 @@ export function CommentSidebar({
                   {inPoint !== undefined && (
                     <button
                       type="button"
-                      onClick={() => setOutPoint(currentTime)}
+                      onClick={() => {
+                        if (currentTime <= inPoint) {
+                          toast.error('Out-point must come after in-point');
+                          return;
+                        }
+                        setOutPoint(currentTime);
+                      }}
                       className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${
-                        outPoint !== undefined ? 'bg-frame-accent/15 text-frame-accent' : 'text-frame-textMuted hover:text-white'
+                        outPoint !== undefined
+                          ? 'bg-frame-accent/15 text-frame-accent'
+                          : 'text-frame-textMuted hover:text-white animate-pulse'
                       }`}
                       title="Mark range end at current time"
                     >
