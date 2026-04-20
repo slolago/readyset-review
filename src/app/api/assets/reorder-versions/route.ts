@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { fetchGroupMembers, resolveGroupId } from '@/lib/version-groups';
 
 export async function POST(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -23,6 +24,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Duplicate-id guard (client bug / replay attack)
+    if (new Set(orderedIds).size !== orderedIds.length) {
+      return NextResponse.json({ error: 'orderedIds must not contain duplicates' }, { status: 400 });
+    }
+
     const db = getAdminDb();
 
     // Fetch first asset to get projectId for auth check (before transaction)
@@ -36,6 +42,28 @@ export async function POST(request: NextRequest) {
     // Auth check outside transaction to avoid complicating retries
     const hasAccess = await canAccessProject(user.id, firstAsset.projectId);
     if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    // Bug 4 completeness check: reject partial reorders BEFORE the transaction.
+    // Without this, a caller passing N-1 of N members would silently renumber
+    // those N-1 and leave the missing member with a colliding/stale version.
+    const groupId = resolveGroupId(firstAsset, orderedIds[0]);
+    const groupMembers = await fetchGroupMembers(db, groupId);
+    const groupMemberIds = new Set(groupMembers.map((m) => m.id));
+
+    if (orderedIds.length !== groupMembers.length) {
+      return NextResponse.json(
+        { error: 'orderedIds must include every member of the stack' },
+        { status: 400 }
+      );
+    }
+    for (const id of orderedIds) {
+      if (!groupMemberIds.has(id)) {
+        return NextResponse.json(
+          { error: `Asset ${id} is not a member of this version stack` },
+          { status: 400 }
+        );
+      }
+    }
 
     // Firestore transaction — guards against stale reads (per STATE.md mandate)
     await db.runTransaction(async (tx) => {
