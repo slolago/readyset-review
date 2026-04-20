@@ -4,7 +4,7 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { canUpload } from '@/lib/permissions';
 import type { Project } from '@/types';
 import { generateUploadSignedUrl, buildGcsPath, getPublicUrl } from '@/lib/gcs';
-import { getAssetType } from '@/lib/utils';
+import { classify, extFromName } from '@/lib/file-types';
 import { Timestamp } from 'firebase-admin/firestore';
 import { randomUUID } from 'crypto';
 
@@ -19,8 +19,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'filename, contentType, projectId required' }, { status: 400 });
     }
 
-    const assetType = getAssetType(contentType);
-    if (!assetType) {
+    const ext = extFromName(filename);
+    const meta = classify(contentType, ext);
+    if (!meta) {
       return NextResponse.json({ error: 'Unsupported file type' }, { status: 400 });
     }
 
@@ -84,7 +85,8 @@ export async function POST(request: NextRequest) {
       projectId,
       folderId: folderId || null,
       name: filename,
-      type: assetType,
+      type: meta.type,
+      subtype: meta.subtype,
       mimeType: contentType,
       url: publicUrl,
       gcsPath,

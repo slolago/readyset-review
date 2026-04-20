@@ -40,6 +40,7 @@ import {
 import type { Folder as FolderType, UploadItem } from '@/types';
 import type { ReviewStatus } from '@/types';
 import { getProjectColor, formatBytes, forceDownload } from '@/lib/utils';
+import { FILE_INPUT_ACCEPT } from '@/lib/file-types';
 import { selectionStyle } from '@/lib/selectionStyle';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { ContextMenu } from '@/components/ui/ContextMenu';
@@ -1024,7 +1025,7 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
       </div>
 
       {/* Hidden file inputs */}
-      <input ref={fileInputRef} type="file" className="hidden" multiple accept="video/*,image/*" onChange={handleFileInputChange} />
+      <input ref={fileInputRef} type="file" className="hidden" multiple accept={FILE_INPUT_ACCEPT} onChange={handleFileInputChange} />
       <input ref={folderInputRef} type="file" className="hidden" {...({ webkitdirectory: '' } as any)} onChange={handleFolderInputChange} />
 
       {/* Content */}

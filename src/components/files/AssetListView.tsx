@@ -8,6 +8,7 @@ import {
   ChevronDown as ChevronDownIcon, Upload, Layers,
 } from 'lucide-react';
 import { formatBytes, formatRelativeTime, forceDownload } from '@/lib/utils';
+import { FILE_INPUT_ACCEPT } from '@/lib/file-types';
 import { useUserNames } from '@/hooks/useUserNames';
 import { useAuth } from '@/hooks/useAuth';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
@@ -391,7 +392,7 @@ function AssetListRow({
 
   return (
     <>
-      <input ref={fileInputRef} type="file" accept="video/*,image/*" className="hidden" onChange={handleFileSelected} />
+      <input ref={fileInputRef} type="file" accept={FILE_INPUT_ACCEPT} className="hidden" onChange={handleFileSelected} />
       <tr
         data-selectable={asset.id}
         draggable={onAssetDragStart ? !isUploading : undefined}

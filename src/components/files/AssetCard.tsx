@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useRef, useCallback, useState, useEffect, memo } from 'react';
 import { Play, Image as ImageIcon, Film, MoreHorizontal, Trash2, Clock, Upload, Layers, Check, Pencil, Copy, CopyPlus, X, ExternalLink, Move as MoveIcon, Download, Link as LinkIcon, MessageSquare, CheckCircle2, AlertCircle } from 'lucide-react';
 import { formatDuration, formatBytes, forceDownload } from '@/lib/utils';
+import { FILE_INPUT_ACCEPT } from '@/lib/file-types';
 import type { Asset, Folder } from '@/types';
 import type { ReviewStatus } from '@/types';
 import { Dropdown } from '@/components/ui/Dropdown';
@@ -312,7 +313,7 @@ export const AssetCard = memo(function AssetCard({
 
   return (
     <>
-      <input ref={fileInputRef} type="file" accept="video/*,image/*" className="hidden" onChange={handleFileSelected} />
+      <input ref={fileInputRef} type="file" accept={FILE_INPUT_ACCEPT} className="hidden" onChange={handleFileSelected} />
     <div
       data-selectable={asset.id}
       draggable={!isUploading}

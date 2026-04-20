@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn, formatBytes } from '@/lib/utils';
+import { DROPZONE_ACCEPT } from '@/lib/file-types';
 import { useUpload } from '@/hooks/useAssets';
 import type { UploadItem } from '@/types';
 
@@ -35,10 +36,7 @@ export function UploadZone({ projectId, folderId, onUploadComplete }: UploadZone
     onDrop,
     onDragEnter: () => setIsDragOver(true),
     onDragLeave: () => setIsDragOver(false),
-    accept: {
-      'video/*': ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v'],
-      'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'],
-    },
+    accept: DROPZONE_ACCEPT,
     multiple: true,
   });
 
@@ -74,7 +72,7 @@ export function UploadZone({ projectId, folderId, onUploadComplete }: UploadZone
               {isDragActive ? 'Drop files here' : 'Upload files'}
             </p>
             <p className="text-xs text-frame-textMuted mt-1">
-              Drag &amp; drop or click — MP4, MOV, JPG, PNG and more
+              Drag &amp; drop or click — video, images, PDF, ZIP, fonts, HTML, design files
             </p>
           </div>
         </div>
