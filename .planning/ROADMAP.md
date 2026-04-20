@@ -385,6 +385,7 @@ Plans:
 | 44. access-model-enforcement | v1.7 | 1/1 | Complete | 2026-04-20 |
 | 45. admin-ui-and-project-rename | v1.7 | 1/1 | Human-verify | 2026-04-20 |
 | 46. comments-integrity-and-range | v1.7 | 1/1 | Human-verify | 2026-04-20 |
+| 47. video-export-pipeline | v1.7 | 1/1 | Human-verify | 2026-04-20 |
 | 44. access-model-enforcement | v1.7 | 0/? | Not started | - |
 | 45. admin-ui-and-project-rename | v1.7 | 0/? | Not started | - |
 | 46. comments-integrity-and-range | v1.7 | 0/? | Not started | - |

@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-04-20)
 
 ## Current Position
 
-Phase: Phase 47 (video-export-pipeline) — Not started
+Phase: Phase 48 (playback-loop-and-selection-hierarchy) — Not started
 Plan: —
-Status: Phase 46 shipped (6 auto tasks, 1 human-verify checkpoint deferred); starting Phase 47
-Last activity: 2026-04-20 — Phase 46 executed (7 tasks); commits 751589df..d4754ff7 pushed
+Status: Phase 47 shipped (7 auto tasks, 1 human-verify checkpoint deferred); starting Phase 48 (final phase)
+Last activity: 2026-04-20 — Phase 47 executed (8 tasks); commits 0e28c4bc..dac121cd pushed
 
-Progress: [██████░░░░] 67% (4/6 phases)
+Progress: [████████░░] 83% (5/6 phases)
 
 ## Performance Metrics
 
