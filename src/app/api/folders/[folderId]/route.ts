@@ -1,16 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, canAccessProject, roleAtLeast } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { canAccessProject, canRenameFolder, canDeleteFolder } from '@/lib/permissions';
+import type { Project } from '@/types';
 
 interface RouteParams {
   params: { folderId: string };
+}
+
+async function loadProject(projectId: string): Promise<Project | null> {
+  const db = getAdminDb();
+  const doc = await db.collection('projects').doc(projectId).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() } as Project;
 }
 
 /** Convert Firestore Timestamps and other non-JSON types to plain values */
 function serializeDoc(data: Record<string, unknown>, id: string): Record<string, unknown> {
   const out: Record<string, unknown> = { id };
   for (const [k, v] of Object.entries(data)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (v !== null && typeof v === 'object' && typeof (v as any).toDate === 'function') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       out[k] = (v as any).toDate().toISOString();
     } else {
       out[k] = v;
@@ -29,8 +40,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const folder = serializeDoc(doc.data()!, doc.id);
-    const hasAccess = await canAccessProject(user.id, folder.projectId as string);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const project = await loadProject(folder.projectId as string);
+    if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!canAccessProject(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Always walk parentId chain — simple, reliable, no dependency on path[] consistency.
     // Typical depth is 3–6 levels so this is only a few sequential reads.
@@ -62,9 +76,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const doc = await db.collection('folders').doc(params.folderId).get();
     if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const folder = doc.data() as any;
-    const hasAccess = await canAccessProject(user.id, folder.projectId);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const project = await loadProject(folder.projectId);
+    if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!canRenameFolder(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const rawUpdates = await request.json();
     // Whitelist: only name and parentId can be changed. Never allow mutating
@@ -81,6 +99,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (typeof updates.parentId === 'string') {
       const newParent = await db.collection('folders').doc(updates.parentId as string).get();
       if (!newParent.exists) return NextResponse.json({ error: 'Parent folder not found' }, { status: 400 });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((newParent.data() as any).projectId !== folder.projectId) {
         return NextResponse.json({ error: 'Cannot move folder to a different project' }, { status: 400 });
       }
@@ -102,10 +121,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const doc = await db.collection('folders').doc(params.folderId).get();
     if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const folder = doc.data() as any;
-    const hasAccess = await canAccessProject(user.id, folder.projectId);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    if (!roleAtLeast(user, 'manager')) return NextResponse.json({ error: 'Forbidden: manager role required' }, { status: 403 });
+    const project = await loadProject(folder.projectId);
+    if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!canDeleteFolder(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Cascade: collect all descendant folder IDs via BFS so we can batch delete.
     // Assets inside these folders are re-parented to null (preserved as unfiled)

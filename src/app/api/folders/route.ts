@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, canAccessProject, roleAtLeast } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
+import { canAccessProject, canCreateFolder } from '@/lib/permissions';
+import type { Project } from '@/types';
+
+async function loadProject(projectId: string): Promise<Project | null> {
+  const db = getAdminDb();
+  const doc = await db.collection('projects').doc(projectId).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() } as Project;
+}
 
 export async function GET(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -14,17 +23,24 @@ export async function GET(request: NextRequest) {
 
   if (!projectId) return NextResponse.json({ error: 'projectId required' }, { status: 400 });
 
-  const hasAccess = await canAccessProject(user.id, projectId);
-  if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const project = await loadProject(projectId);
+  if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!canAccessProject(user, project)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   try {
     const db = getAdminDb();
     const snap = await db.collection('folders').where('projectId', '==', projectId).get();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allFolders = snap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
     const folders = all
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ? allFolders.sort((a: any, b: any) => a.createdAt?.toMillis() - b.createdAt?.toMillis())
       : allFolders
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .filter((f: any) => (f.parentId ?? null) === parentId)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .sort((a: any, b: any) => a.createdAt?.toMillis() - b.createdAt?.toMillis());
 
     return NextResponse.json({ folders });
@@ -42,11 +58,10 @@ export async function POST(request: NextRequest) {
     const { name, projectId, parentId } = await request.json();
     if (!name || !projectId) return NextResponse.json({ error: 'name and projectId required' }, { status: 400 });
 
-    const hasAccess = await canAccessProject(user.id, projectId);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-
-    if (!roleAtLeast(user, 'manager')) {
-      return NextResponse.json({ error: 'Forbidden: manager role required to create folders' }, { status: 403 });
+    const project = await loadProject(projectId);
+    if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!canCreateFolder(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const db = getAdminDb();
@@ -54,6 +69,7 @@ export async function POST(request: NextRequest) {
     if (parentId) {
       const parentDoc = await db.collection('folders').doc(parentId).get();
       if (parentDoc.exists) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const parent = parentDoc.data() as any;
         path = [...(parent.path || []), parentId];
       }

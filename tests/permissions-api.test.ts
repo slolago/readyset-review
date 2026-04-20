@@ -198,6 +198,8 @@ describe('API enforcement — projects', () => {
     expect((await call(DELETE_COLLAB, F.editor, body)).status).toBe(403);
   });
 
+  // NB: folder/asset/upload/review-link/comment suites appended below
+
   it('GET /api/projects lists only accessible projects', async () => {
     const { GET_LIST } = await loadProjectRoutes();
     const req = makeRequest({ url: 'http://localhost/api/projects', headers: authHeader(F.owner) });
@@ -208,3 +210,82 @@ describe('API enforcement — projects', () => {
     expect(json.projects.length).toBeGreaterThanOrEqual(1);
   });
 });
+
+// ---------- Tests: folder endpoints ----------
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+describe('API enforcement — folders', () => {
+  async function callList(handler: any, uid: string | null, url: string, body?: unknown) {
+    const req = makeRequest({
+      url,
+      body: body as any,
+      headers: uid ? authHeader(uid) : {},
+    });
+    return handler(req) as Promise<Response>;
+  }
+
+  async function callId(
+    handler: any,
+    uid: string | null,
+    folderId: string,
+    body?: unknown
+  ): Promise<Response> {
+    const req = makeRequest({ body: body as any, headers: uid ? authHeader(uid) : {} });
+    return handler(req, { params: { folderId } });
+  }
+
+  it('POST /api/folders — create matrix', async () => {
+    const { POST } = await import('@/app/api/folders/route');
+    const body = { name: 'New', projectId: F.projectId };
+    expect((await callList(POST, F.owner, 'http://localhost/api/folders', body)).status).toBe(201);
+    expect((await callList(POST, F.editor, 'http://localhost/api/folders', body)).status).toBe(201);
+    expect((await callList(POST, F.reviewer, 'http://localhost/api/folders', body)).status).toBe(403);
+    // Platform-viewer-owner has project=owner but platform=viewer → blocked
+    expect(
+      (await callList(POST, F.platformViewerOwner, 'http://localhost/api/folders', {
+        name: 'Nope',
+        projectId: 'proj-viewer',
+      })).status
+    ).toBe(403);
+    expect((await callList(POST, F.admin, 'http://localhost/api/folders', body)).status).toBe(201);
+  });
+
+  it('PUT /api/folders/[id] — rename matrix', async () => {
+    const { PUT } = await import('@/app/api/folders/[folderId]/route');
+    const fid = seedFolder(db, { projectId: F.projectId });
+    const body = { name: 'Renamed' };
+    expect((await callId(PUT, F.owner, fid, body)).status).toBe(200);
+    expect((await callId(PUT, F.editor, fid, body)).status).toBe(200);
+    expect((await callId(PUT, F.reviewer, fid, body)).status).toBe(403);
+    expect((await callId(PUT, F.stranger, fid, body)).status).toBe(403);
+    expect((await callId(PUT, F.admin, fid, body)).status).toBe(200);
+  });
+
+  it('DELETE /api/folders/[id] — gap closure: platform-editor project-owner can delete', async () => {
+    const { DELETE } = await import('@/app/api/folders/[folderId]/route');
+    const fid1 = seedFolder(db, { projectId: F.projectId });
+    // OWNER is platform=editor + project=owner → previously blocked by roleAtLeast(manager), now allowed.
+    expect((await callId(DELETE, F.owner, fid1)).status).toBe(200);
+
+    const fid2 = seedFolder(db, { projectId: F.projectId });
+    expect((await callId(DELETE, F.reviewer, fid2)).status).toBe(403);
+
+    const fid3 = seedFolder(db, { projectId: F.projectId });
+    expect((await callId(DELETE, F.stranger, fid3)).status).toBe(403);
+
+    const fid4 = seedFolder(db, { projectId: F.projectId });
+    expect((await callId(DELETE, F.admin, fid4)).status).toBe(200);
+  });
+
+  it('POST /api/folders/copy — matrix', async () => {
+    const { POST } = await import('@/app/api/folders/copy/route');
+    const fid = seedFolder(db, { projectId: F.projectId });
+    const body = { folderId: fid };
+    const req = (uid: string) => makeRequest({ body: body as any, headers: authHeader(uid) });
+    expect((await POST(req(F.owner))).status).toBe(201);
+    expect((await POST(req(F.editor))).status).toBe(201);
+    expect((await POST(req(F.reviewer))).status).toBe(403);
+  });
+});
+/* eslint-enable @typescript-eslint/no-explicit-any */
+

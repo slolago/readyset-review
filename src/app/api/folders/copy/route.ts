@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
+import { canCreateFolder } from '@/lib/permissions';
+import type { Project } from '@/types';
 
 export async function POST(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -15,9 +17,15 @@ export async function POST(request: NextRequest) {
     const doc = await db.collection('folders').doc(folderId).get();
     if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const source = doc.data() as any;
-    const hasAccess = await canAccessProject(user.id, source.projectId);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const projDoc = await db.collection('projects').doc(source.projectId).get();
+    if (!projDoc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const project = { id: projDoc.id, ...projDoc.data() } as Project;
+    // Duplicating a folder is a create-like write — use canCreateFolder.
+    if (!canCreateFolder(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // targetParentId: if omitted default to same parent (Duplicate behaviour)
     const destinationParentId = targetParentId !== undefined ? targetParentId : source.parentId;
@@ -27,6 +35,7 @@ export async function POST(request: NextRequest) {
     if (destinationParentId) {
       const parentDoc = await db.collection('folders').doc(destinationParentId).get();
       if (parentDoc.exists) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const parent = parentDoc.data() as any;
         path = [...(parent.path || []), destinationParentId];
       }
