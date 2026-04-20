@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { fetchGroupMembers, resolveGroupId } from '@/lib/version-groups';
 
 export async function POST(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -28,46 +29,27 @@ export async function POST(request: NextRequest) {
     if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     // Resolve group
-    const groupId: string = asset.versionGroupId || assetId;
+    const groupId = resolveGroupId(asset, assetId);
 
-    // Self-check: if asset is already standalone (groupId === assetId), check for other members
-    if (groupId === assetId) {
-      const standaloneSnap = await db.collection('assets')
-        .where('versionGroupId', '==', assetId)
-        .get();
-      const otherMembers = standaloneSnap.docs.filter((d) => d.id !== assetId);
-      if (otherMembers.length === 0) {
-        return NextResponse.json({ error: 'Asset is not part of a version stack' }, { status: 400 });
-      }
-    }
-
-    // Query all group members
-    const groupSnap = await db.collection('assets')
-      .where('versionGroupId', '==', groupId)
-      .get();
-
-    let members: Array<{ id: string; version: number }> = groupSnap.docs.map((d) => ({
-      id: d.id,
-      version: (d.data() as any).version || 1,
-    }));
-
-    // Root inclusion guard — root asset may not have versionGroupId set
-    if (!members.some((m) => m.id === groupId)) {
-      const rootDoc = await db.collection('assets').doc(groupId).get();
-      if (rootDoc.exists) {
-        members.push({ id: groupId, version: (rootDoc.data() as any).version || 1 });
-      }
-    }
+    // Fetch all group members via shared helper (handles legacy-root inclusion)
+    const members = await fetchGroupMembers(db, groupId);
 
     // Remove the target asset from the members array
     const remaining = members.filter((m) => m.id !== assetId);
 
-    // Guard: should not happen due to self-check above, but protect against edge cases
     if (remaining.length === 0) {
       return NextResponse.json({ error: 'Asset is not part of a version stack' }, { status: 400 });
     }
 
-    // Batch write: detach target and re-compact remaining version numbers 1..N
+    // Bug 2 fix: if the detached asset WAS the original root (assetId === groupId),
+    // remaining members still carry versionGroupId === groupId === assetId. After
+    // we set the detached asset's versionGroupId to its own id, remaining members
+    // would appear as a ghost stack rooted on the now-standalone asset. Re-root
+    // them onto remaining[0].id (first by version ascending).
+    const needsReroot = assetId === groupId;
+    remaining.sort((a, b) => a.version - b.version);
+    const newGroupId = needsReroot ? remaining[0].id : groupId;
+
     const batch = db.batch();
 
     // Detach target — becomes standalone with versionGroupId set to its own id
@@ -76,10 +58,11 @@ export async function POST(request: NextRequest) {
       version: 1,
     });
 
-    // Re-compact remaining 1..N
-    remaining.sort((a, b) => a.version - b.version);
+    // Re-compact remaining 1..N AND re-root versionGroupId when needed
     remaining.forEach((m, i) => {
-      batch.update(db.collection('assets').doc(m.id), { version: i + 1 });
+      const update: Record<string, unknown> = { version: i + 1 };
+      if (needsReroot) update.versionGroupId = newGroupId;
+      batch.update(db.collection('assets').doc(m.id), update);
     });
 
     await batch.commit();
