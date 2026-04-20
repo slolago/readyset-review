@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase-client';
 import type { User } from '@/types';
+import toast from 'react-hot-toast';
 
 interface AuthContextType {
   user: User | null;
@@ -54,9 +55,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (res.ok) {
             const data = await res.json();
             setUser(data.user);
+          } else {
+            // Server refused to establish a session (unauthorized account,
+            // suspended, etc). Sign out of Firebase so we don't leave a
+            // dangling auth state that would loop on reload.
+            const data = await res.json().catch(() => ({} as { error?: string }));
+            await firebaseSignOut(auth);
+            setFirebaseUser(null);
+            setUser(null);
+            toast.error(data.error || 'Your account is not authorized.');
           }
         } catch (error) {
           console.error('Failed to sync user:', error);
+          // Network or unexpected error — don't leave a half-authenticated
+          // Firebase session lying around.
+          try { await firebaseSignOut(auth); } catch {}
+          setFirebaseUser(null);
+          setUser(null);
         }
       } else {
         setUser(null);

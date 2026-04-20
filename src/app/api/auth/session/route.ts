@@ -50,25 +50,38 @@ export async function POST(request: NextRequest) {
         };
         await userRef.set(userData);
       } else {
-        // Brand-new user — first ever becomes admin. Use a transaction with
-        // a guard doc so two concurrent signups can't both claim admin.
+        // No invitation for this email. Two possibilities:
+        //   1. Very first signup on a fresh deployment → bootstrap as admin.
+        //   2. Random Google user trying to log in → REJECT.
+        // The guard doc is our single source of truth for whether bootstrap
+        // already happened; a transaction prevents two cold-start signups
+        // from both claiming admin.
         const guardRef = db.collection('_system').doc('first-admin');
-        userData = await db.runTransaction(async (tx) => {
+        const bootstrap = await db.runTransaction(async (tx) => {
           const guard = await tx.get(guardRef);
-          const isFirstUser = !guard.exists;
+          if (guard.exists) return null; // signal: not the first user → reject
           const data = {
             email: userEmail,
             name: name || decoded.name || userEmail || 'User',
             avatar: avatar || decoded.picture || '',
-            role: isFirstUser ? 'admin' : 'viewer',
+            role: 'admin' as const,
             createdAt: Timestamp.now(),
           };
-          if (isFirstUser) {
-            tx.set(guardRef, { claimedBy: decoded.uid, claimedAt: Timestamp.now() });
-          }
+          tx.set(guardRef, { claimedBy: decoded.uid, claimedAt: Timestamp.now() });
           tx.set(userRef, data);
           return data;
         });
+
+        if (!bootstrap) {
+          // Unauthorized Google account — not invited, not first user.
+          // Do NOT create a Firestore doc. Client is responsible for
+          // signing the user out of Firebase Auth on receiving 403.
+          return NextResponse.json(
+            { error: 'Your account is not authorized. Please ask an administrator to invite you.' },
+            { status: 403 }
+          );
+        }
+        userData = bootstrap;
       }
     } else {
       userData = userDoc.data()!;
