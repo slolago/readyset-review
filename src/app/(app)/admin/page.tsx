@@ -8,9 +8,10 @@ import { ProjectsTable } from '@/components/admin/ProjectsTable';
 import { CreateUserModal } from '@/components/admin/CreateUserModal';
 import { UserDrawer } from '@/components/admin/UserDrawer';
 import type { User } from '@/types';
-import { Shield, UserPlus, Users, FolderOpen, LayoutGrid } from 'lucide-react';
+import { Shield, UserPlus, Users, FolderOpen, LayoutGrid, UserX } from 'lucide-react';
 import { SafeZonesManager } from '@/components/admin/SafeZonesManager';
 import { ProjectPermissionsPanel } from '@/components/admin/ProjectPermissionsPanel';
+import { OrphanUsersPanel } from '@/components/admin/OrphanUsersPanel';
 import { Button } from '@/components/ui/Button';
 import toast from 'react-hot-toast';
 
@@ -20,7 +21,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [activeTab, setActiveTab] = useState<'users' | 'projects' | 'safezones'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'projects' | 'orphans' | 'safezones'>('users');
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [inspectingUserId, setInspectingUserId] = useState<string | null>(null);
@@ -204,6 +205,7 @@ export default function AdminPage() {
         {([
           { key: 'users' as const, label: 'Users', icon: Users },
           { key: 'projects' as const, label: 'All Projects', icon: FolderOpen },
+          { key: 'orphans' as const, label: 'Orphan Users', icon: UserX },
           { key: 'safezones' as const, label: 'Safe Zones', icon: LayoutGrid },
         ]).map(({ key, label, icon: Icon }) => (
           <button
@@ -262,6 +264,12 @@ export default function AdminPage() {
             onChanged={fetchProjects}
             onInspectPermissions={setPermsProjectId}
           />
+        </div>
+      )}
+
+      {activeTab === 'orphans' && (
+        <div className="bg-frame-card border border-frame-border rounded-xl overflow-hidden">
+          <OrphanUsersPanel getIdToken={getIdToken} />
         </div>
       )}
 
