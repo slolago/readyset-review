@@ -6,6 +6,7 @@ import { useUserNames } from '@/hooks/useUserNames';
 import { useAuth } from '@/hooks/useAuth';
 import { RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { formatDate } from '@/lib/format-date';
 
 interface FileInfoPanelProps {
   asset: Asset;
@@ -62,16 +63,6 @@ function formatChannels(n?: number, layout?: string): string {
   return base;
 }
 
-function formatDate(ts: { toDate?: () => Date; toMillis?: () => number } | null | undefined): string {
-  if (!ts) return '—';
-  try {
-    const date = typeof ts.toDate === 'function' ? ts.toDate() : new Date((ts as any).seconds * 1000);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch {
-    return '—';
-  }
-}
-
 function formatCodec(codec?: string, profile?: string, level?: number): string {
   if (!codec) return '—';
   const parts = [codec.toUpperCase()];
@@ -118,8 +109,10 @@ export function FileInfoPanel({ asset }: FileInfoPanelProps) {
     }
   };
 
-  const sections: Section[] = [
-    {
+  const sections: Section[] = [];
+
+  if (asset.type === 'video') {
+    sections.push({
       title: 'File',
       rows: [
         { label: 'Filename', value: asset.name || '—' },
@@ -128,10 +121,7 @@ export function FileInfoPanel({ asset }: FileInfoPanelProps) {
         { label: 'Size', value: asset.size ? formatBytes(asset.size) : '—' },
         { label: 'Overall bitrate', value: asset.bitRate ? formatBitrate(asset.bitRate) : '—' },
       ],
-    },
-  ];
-
-  if (asset.type === 'video') {
+    });
     sections.push({
       title: 'Video',
       rows: [
@@ -163,14 +153,22 @@ export function FileInfoPanel({ asset }: FileInfoPanelProps) {
     }
   }
 
-  if (asset.type === 'image') {
+  if (asset.type !== 'video') {
+    // image (and any future non-video type) — no Container / bitrate / pixel-format
+    sections.push({
+      title: 'File',
+      rows: [
+        { label: 'Filename', value: asset.name || '—' },
+        { label: 'Type', value: asset.mimeType || '—' },
+        { label: 'Size', value: asset.size ? formatBytes(asset.size) : '—' },
+      ],
+    });
     sections.push({
       title: 'Image',
       rows: [
         { label: 'Resolution', value: formatResolution(asset.width, asset.height) },
         { label: 'Aspect ratio', value: formatAspectRatio(asset.width, asset.height) },
-        { label: 'Pixel format', value: asset.pixelFormat || '—' },
-        { label: 'Color space', value: asset.colorSpace || '—' },
+        ...(asset.colorSpace ? [{ label: 'Color space', value: asset.colorSpace }] : []),
       ],
     });
   }
@@ -179,7 +177,7 @@ export function FileInfoPanel({ asset }: FileInfoPanelProps) {
     title: 'Upload',
     rows: [
       { label: 'Uploaded by', value: uploaderLabel },
-      { label: 'Date', value: formatDate(asset.createdAt as any) },
+      { label: 'Date', value: formatDate(asset.createdAt) },
       { label: 'Version', value: asset.version !== undefined ? `v${asset.version}` : '—' },
     ],
   });
@@ -190,18 +188,20 @@ export function FileInfoPanel({ asset }: FileInfoPanelProps) {
         <p className="text-xs uppercase tracking-wide text-frame-textMuted font-semibold">
           File Information
         </p>
-        <button
-          onClick={runProbe}
-          disabled={probing}
-          title={asset.probed ? 'Re-probe metadata with ffprobe' : 'Extract accurate metadata with ffprobe'}
-          className="flex items-center gap-1 text-xs text-frame-textMuted hover:text-frame-accent transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3 h-3 ${probing ? 'animate-spin' : ''}`} />
-          {probing ? 'Probing…' : asset.probed ? 'Re-probe' : 'Probe'}
-        </button>
+        {asset.type === 'video' && (
+          <button
+            onClick={runProbe}
+            disabled={probing}
+            title={asset.probed ? 'Re-probe metadata with ffprobe' : 'Extract accurate metadata with ffprobe'}
+            className="flex items-center gap-1 text-xs text-frame-textMuted hover:text-frame-accent transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3 h-3 ${probing ? 'animate-spin' : ''}`} />
+            {probing ? 'Probing…' : asset.probed ? 'Re-probe' : 'Probe'}
+          </button>
+        )}
       </div>
 
-      {!asset.probed && (
+      {asset.type === 'video' && !asset.probed && (
         <p className="text-[11px] text-frame-textMuted -mt-3 leading-snug">
           Some fields may be inaccurate — client-extracted. Click Probe for server-verified metadata.
         </p>
