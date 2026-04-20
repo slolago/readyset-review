@@ -74,6 +74,16 @@ export function CommentSidebar({
     return () => window.removeEventListener('focus-comment-input', handler);
   }, []);
 
+  // Clear composer-local state when the asset changes so text/range/reply
+  // captured for Asset A cannot leak into Asset B. includeTimestamp (user
+  // preference) and activeTab are intentionally preserved.
+  useEffect(() => {
+    setText('');
+    setInPoint(undefined);
+    setOutPoint(undefined);
+    setReplyTo(null);
+  }, [asset.id]);
+
   // Scroll to + highlight comment when selected via timeline marker
   useEffect(() => {
     if (!selectedCommentId || !listRef.current) return;

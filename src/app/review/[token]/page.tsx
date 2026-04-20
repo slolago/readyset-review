@@ -100,6 +100,16 @@ export default function ReviewPage() {
     }
   }, [authLoading, user]);
 
+  // Clear composer/annotation state whenever the displayed asset changes so a
+  // drawing captured for Asset A cannot leak into Asset B.
+  useEffect(() => {
+    setIsAnnotationMode(false);
+    setPendingAnnotation(null);
+    setActiveAnnotationCommentId(null);
+    setDisplayShapes(null);
+    setSelectedCommentId(null);
+  }, [selectedAsset?.id]);
+
   const fetchComments = useCallback(async (assetId: string) => {
     const res = await fetch(`/api/comments?assetId=${assetId}&reviewToken=${token}`);
     if (res.ok) {

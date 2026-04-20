@@ -50,6 +50,16 @@ export default function AssetViewerPage() {
     if (asset) setActiveVersion(asset);
   }, [asset]);
 
+  // Clear composer/annotation state whenever the displayed asset changes so a
+  // drawing or selection captured for Asset A cannot leak into Asset B.
+  useEffect(() => {
+    setIsAnnotationMode(false);
+    setPendingAnnotation(null);
+    setActiveAnnotationCommentId(null);
+    setDisplayShapes(null);
+    setSelectedCommentId(null);
+  }, [displayAsset?.id]);
+
   const handleRequestAnnotation = useCallback(() => {
     if (displayAsset?.type === 'video') {
       videoRef.current?.pause();
