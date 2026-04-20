@@ -1,6 +1,11 @@
 import { NextRequest } from 'next/server';
 import { getAdminAuth, getAdminDb } from './firebase-admin';
-import type { User } from '@/types';
+import type { User, Project } from '@/types';
+import {
+  canAccessProject as canAccessProjectPure,
+  platformRoleAtLeast,
+  type PlatformRole,
+} from './permissions';
 
 export async function verifyAuthToken(
   request: NextRequest
@@ -30,17 +35,6 @@ export async function getAuthenticatedUser(
   return { id: userDoc.id, ...userDoc.data() } as User;
 }
 
-const ROLE_RANK: Record<string, number> = {
-  viewer: 0,
-  editor: 1,
-  manager: 2,
-  admin: 3,
-};
-
-export function roleAtLeast(user: User, minRole: 'viewer' | 'editor' | 'manager' | 'admin'): boolean {
-  return (ROLE_RANK[user.role] ?? 0) >= (ROLE_RANK[minRole] ?? 0);
-}
-
 export async function requireAdmin(
   request: NextRequest
 ): Promise<User | null> {
@@ -49,6 +43,17 @@ export async function requireAdmin(
   return user;
 }
 
+export function getIdTokenFromRequest(request: NextRequest): string | null {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  return authHeader.slice(7);
+}
+
+/**
+ * @deprecated Use the pure `canAccessProject(user, project)` from '@/lib/permissions'
+ * after loading the project doc yourself. This async wrapper is preserved for
+ * legacy callers that pass (userId, projectId) and expect a DB round-trip.
+ */
 export async function canAccessProject(
   userId: string,
   projectId: string
@@ -58,20 +63,15 @@ export async function canAccessProject(
     db.collection('projects').doc(projectId).get(),
     db.collection('users').doc(userId).get(),
   ]);
-  if (!projectDoc.exists) return false;
-
-  // Admins have access to all projects — matches the pattern used by individual
-  // routes (e.g. DELETE /api/comments/[id]) that check role === 'admin' as an override.
-  if (userDoc.exists && (userDoc.data() as { role?: string }).role === 'admin') return true;
-
-  const project = projectDoc.data()!;
-  if (project.ownerId === userId) return true;
-  if (project.collaborators?.some((c: { userId: string }) => c.userId === userId)) return true;
-  return false;
+  if (!projectDoc.exists || !userDoc.exists) return false;
+  const user = { id: userDoc.id, ...userDoc.data() } as User;
+  const project = { id: projectDoc.id, ...projectDoc.data() } as Project;
+  return canAccessProjectPure(user, project);
 }
 
-export function getIdTokenFromRequest(request: NextRequest): string | null {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  return authHeader.slice(7);
+/**
+ * @deprecated Use `platformRoleAtLeast` from '@/lib/permissions' directly.
+ */
+export function roleAtLeast(user: User, minRole: PlatformRole): boolean {
+  return platformRoleAtLeast(user, minRole);
 }
