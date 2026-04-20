@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // no orderBy — avoids composite index requirement; sorted in-memory below
     const snap = await db.collection('reviewLinks')
       .where('projectId', '==', projectId)
-      .orderBy('createdAt', 'desc')
       .get();
 
     // Strip password field — only indicate whether one is set
@@ -40,8 +40,19 @@ export async function GET(request: NextRequest) {
       const { password, ...safe } = data;
       return { id: d.id, ...safe, hasPassword: !!password };
     });
+
+    // Sort by createdAt desc in memory (supports both _seconds and seconds shapes)
+    links.sort((a, b) => {
+      const ca = (a as any).createdAt;
+      const cb = (b as any).createdAt;
+      const ta = ca?._seconds ?? ca?.seconds ?? 0;
+      const tb = cb?._seconds ?? cb?.seconds ?? 0;
+      return tb - ta;
+    });
+
     return NextResponse.json({ links });
-  } catch {
+  } catch (error) {
+    console.error('review-links GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch review links' }, { status: 500 });
   }
 }
