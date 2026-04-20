@@ -4,6 +4,8 @@ import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { Play, Pause, Volume2, VolumeX, ChevronDown, ChevronLeft, ChevronRight, Columns2, SplitSquareHorizontal, AudioLines, AlertCircle, ZoomIn, ZoomOut, Maximize, Maximize2, Activity } from 'lucide-react';
 import { formatDuration } from '@/lib/utils';
 import { VUMeter, type VUMeterHandle } from './VUMeter';
+import { PlayerBgPicker } from './PlayerBgPicker';
+import { usePlayerBg } from '@/hooks/usePlayerBg';
 import type { Asset } from '@/types';
 
 type ViewMode = 'slider' | 'side-by-side';
@@ -129,6 +131,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
     if (typeof window === 'undefined') return;
     localStorage.setItem('compare-vumeter', showVU ? 'on' : 'off');
   }, [showVU]);
+  const [playerBg, setPlayerBg] = usePlayerBg();
 
   // Ready = both dims known (or skipped for images — onLoad fires quickly).
   // Until ready we render the media at opacity-0 behind a spinner, so the user
@@ -660,7 +663,11 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
   const audioVersion = activeSide === 'A' ? assetA.version : assetB.version;
 
   return (
-    <div ref={wrapperRef} className="flex flex-col h-full w-full bg-black">
+    <div
+      ref={wrapperRef}
+      className="flex flex-col h-full w-full"
+      style={{ backgroundColor: playerBg }}
+    >
       <div className="flex-1 min-h-0 flex">
         <div className="relative flex-1 min-h-0 overflow-hidden select-none flex items-center justify-center" ref={containerRef}>
           {/* Shared display rect (see audit doc for why JS-sized). Wheel zoom and
@@ -968,6 +975,9 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
             >
               <Activity className="w-4 h-4" />
             </button>
+
+            {/* Background color picker */}
+            <PlayerBgPicker value={playerBg} onChange={setPlayerBg} />
 
             {/* Speed */}
             <select

@@ -7,6 +7,8 @@ import { AnnotationToolbar } from './AnnotationToolbar';
 import { SafeZonesOverlay } from './SafeZonesOverlay';
 import { SafeZoneSelector } from './SafeZoneSelector';
 import { VUMeter, type VUMeterHandle } from './VUMeter';
+import { PlayerBgPicker } from './PlayerBgPicker';
+import { usePlayerBg } from '@/hooks/usePlayerBg';
 import { formatDuration } from '@/lib/utils';
 import { Play, Pause, Volume2, VolumeX, ChevronLeft, ChevronRight, Pencil, X, Maximize, Download, Activity } from 'lucide-react';
 import { forceDownload } from '@/lib/utils';
@@ -77,6 +79,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   }, [showVU]);
   const [activeSafeZone, setActiveSafeZone] = useState<string | null>(null);
   const [safeZoneOpacity, setSafeZoneOpacity] = useState(1);
+  const [playerBg, setPlayerBg] = usePlayerBg();
 
   useImperativeHandle(ref, () => ({
     seekTo: (time: number) => {
@@ -356,7 +359,11 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div ref={wrapperRef} className="w-full h-full flex flex-col bg-black select-none">
+    <div
+      ref={wrapperRef}
+      className="w-full h-full flex flex-col select-none"
+      style={{ backgroundColor: playerBg }}
+    >
       {/* Video area + VU meter side strip */}
       <div className="flex-1 flex flex-row overflow-hidden">
       {/* Video area */}
@@ -642,6 +649,9 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           >
             <Activity className="w-4 h-4" />
           </button>
+
+          {/* Background color picker */}
+          <PlayerBgPicker value={playerBg} onChange={setPlayerBg} />
 
           {/* Speed */}
           <select
