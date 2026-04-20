@@ -90,11 +90,12 @@ interface AnalysisGraph {
   stream: MediaStream;
 }
 
-// ── Module-level singletons ──────────────────────────────────────────────────
-// Shared AudioContext (one per page load; reuses across VUMeter mounts).
-// Graphs are cached per video element via WeakMap so remounts don't rebuild.
+// ── Module-level singleton AudioContext ──────────────────────────────────────
+// Shared across all VUMeter instances per page load (Chrome caps contexts at ~6).
+// No graph cache: graphs are instance-owned and rebuilt when video src changes,
+// because MediaStreamAudioSourceNode is bound to the audio track present at
+// creation time — it doesn't automatically follow the video when src flips.
 let sharedCtx: AudioContext | null = null;
-const graphCache = new WeakMap<HTMLVideoElement, AnalysisGraph>();
 
 function getOrCreateAudioContext(): AudioContext | null {
   if (sharedCtx && sharedCtx.state !== 'closed') return sharedCtx;
@@ -109,7 +110,6 @@ function getOrCreateAudioContext(): AudioContext | null {
 }
 
 function captureAudioStream(video: HTMLVideoElement): MediaStream | null {
-  // Try the standard API first, then vendor-prefixed variants.
   const cs = (video as any).captureStream
     || (video as any).mozCaptureStream
     || (video as any).webkitCaptureStream;
@@ -123,13 +123,16 @@ function captureAudioStream(video: HTMLVideoElement): MediaStream | null {
   }
 }
 
-function getOrCreateAnalysisGraph(ctx: AudioContext, video: HTMLVideoElement): AnalysisGraph | null {
-  const cached = graphCache.get(video);
-  if (cached) return cached;
-
+/** Build an analysis graph. Returns null if the video has no audio track yet;
+ *  the caller is expected to retry on later media events. */
+function buildAnalysisGraph(ctx: AudioContext, video: HTMLVideoElement): AnalysisGraph | null {
   const stream = captureAudioStream(video);
   if (!stream) return null;
-
+  // CRITICAL: MediaStreamAudioSourceNode binds to the audio track that exists
+  // at creation time. If we build the source when the stream has zero audio
+  // tracks, it will emit silence forever even after the track appears. So we
+  // only build once tracks are present and ask the caller to retry otherwise.
+  if (stream.getAudioTracks().length === 0) return null;
   try {
     const source = ctx.createMediaStreamSource(stream);
     const splitter = ctx.createChannelSplitter(2);
@@ -137,21 +140,15 @@ function getOrCreateAnalysisGraph(ctx: AudioContext, video: HTMLVideoElement): A
     const aR = ctx.createAnalyser();
     aL.fftSize = 2048; aL.smoothingTimeConstant = 0;
     aR.fftSize = 2048; aR.smoothingTimeConstant = 0;
-
-    // Analysis only — do NOT connect to destination. Native <video> audio path
-    // handles playback; we only tap the stream for metering.
     source.connect(splitter);
     splitter.connect(aL, 0);
     splitter.connect(aR, 1);
-
-    const graph: AnalysisGraph = {
+    return {
       source, analyserL: aL, analyserR: aR,
       bufL: new Float32Array(aL.fftSize),
       bufR: new Float32Array(aR.fftSize),
       stream,
     };
-    graphCache.set(video, graph);
-    return graph;
   } catch (e) {
     console.warn('[VUMeter] analysis graph creation failed', e);
     return null;
@@ -185,52 +182,62 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
     const setMuted  = useCallback((_m: boolean) => { /* no-op */ }, []);
     useImperativeHandle(ref, () => ({ resume, setVolume, setMuted }), [resume, setVolume, setMuted]);
 
-    // Build analysis graphs once per mount. Graphs are cached per video element,
-    // so remounts reuse without re-capturing.
+    // Build analysis graphs per video. Each graph is independent and rebuilt
+    // when its video's src changes (MediaStreamAudioSourceNode is bound to the
+    // audio track present at creation time — it doesn't follow a new src).
     useEffect(() => {
       const ctx = getOrCreateAudioContext();
       if (!ctx) return;
 
-      // captureStream can return an empty-track stream if called before the video
-      // has any decoded data. Retry on canplay/loadedmetadata if the first attempt
-      // yields a graph with no active audio tracks.
-      const tryBuild = () => {
-        graphsRef.current = videoRefs.map((vr) => {
-          const video = vr.current;
-          if (!video) return null;
-          const graph = getOrCreateAnalysisGraph(ctx, video);
-          return graph;
-        });
-      };
-      tryBuild();
+      graphsRef.current = videoRefs.map(() => null);
+      const cleanups: Array<() => void> = [];
 
-      // Also wake the context on mount (harmless if already running).
-      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-
-      // Listen for loadedmetadata on each video — if the first captureStream
-      // happened before metadata, this will retry.
-      const listeners: Array<() => void> = [];
       videoRefs.forEach((vr, i) => {
         const video = vr.current;
         if (!video) return;
-        const handler = () => {
-          if (!graphsRef.current[i]) {
-            const graph = getOrCreateAnalysisGraph(ctx, video);
-            if (graph) graphsRef.current[i] = graph;
+
+        const tearDown = () => {
+          const g = graphsRef.current[i];
+          if (g) {
+            try { g.source.disconnect(); } catch {}
+            graphsRef.current[i] = null;
           }
         };
-        video.addEventListener('loadedmetadata', handler);
-        video.addEventListener('canplay', handler);
-        listeners.push(() => {
-          video.removeEventListener('loadedmetadata', handler);
-          video.removeEventListener('canplay', handler);
+
+        const build = () => {
+          if (graphsRef.current[i]) return; // already have one
+          const g = buildAnalysisGraph(ctx, video);
+          if (g) graphsRef.current[i] = g;
+        };
+
+        // First attempt — may fail if the audio track isn't ready yet
+        build();
+
+        // Retry on media events. `loadedmetadata` fires once the audio/video
+        // tracks are known; `canplay` fires when enough data is buffered;
+        // `playing` covers browsers that only expose tracks at playback start.
+        const retryEvents: Array<keyof HTMLMediaElementEventMap> = ['loadedmetadata', 'canplay', 'playing'];
+        retryEvents.forEach((ev) => video.addEventListener(ev, build));
+
+        // On src change (new version picked for this side), the stream's
+        // current track ends and a new one takes its place. The source node
+        // won't auto-follow — tear down first so the next media event rebuilds.
+        const onLoadStart = () => { tearDown(); };
+        video.addEventListener('loadstart', onLoadStart);
+
+        cleanups.push(() => {
+          retryEvents.forEach((ev) => video.removeEventListener(ev, build));
+          video.removeEventListener('loadstart', onLoadStart);
+          tearDown();
         });
       });
 
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
       return () => {
         cancelAnimationFrame(rafRef.current);
+        cleanups.forEach((fn) => fn());
         graphsRef.current = [];
-        listeners.forEach((fn) => fn());
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
