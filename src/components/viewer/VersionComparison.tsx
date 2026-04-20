@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect, memo } from 'react';
-import { Play, Pause, Volume2, VolumeX, ChevronDown, Columns2, SplitSquareHorizontal, AudioLines, AlertCircle, ZoomIn, ZoomOut, Maximize2, Activity } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, ChevronDown, ChevronLeft, ChevronRight, Columns2, SplitSquareHorizontal, AudioLines, AlertCircle, ZoomIn, ZoomOut, Maximize, Maximize2, Activity } from 'lucide-react';
 import { formatDuration } from '@/lib/utils';
 import { VUMeter, type VUMeterHandle } from './VUMeter';
 import type { Asset } from '@/types';
@@ -14,33 +14,6 @@ interface VersionComparisonProps {
 }
 
 // ── Extracted components (not inlined so they don't remount on every parent render) ──
-
-const ViewToggle = memo(function ViewToggle({
-  viewMode, onChange,
-}: { viewMode: ViewMode; onChange: (m: ViewMode) => void }) {
-  return (
-    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/70 backdrop-blur-sm border border-white/10 rounded-lg p-1 pointer-events-auto">
-      <button
-        onClick={() => onChange('slider')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-          viewMode === 'slider' ? 'bg-frame-accent text-white' : 'text-white/60 hover:text-white'
-        }`}
-      >
-        <SplitSquareHorizontal className="w-3.5 h-3.5" />
-        Slider
-      </button>
-      <button
-        onClick={() => onChange('side-by-side')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-          viewMode === 'side-by-side' ? 'bg-frame-accent text-white' : 'text-white/60 hover:text-white'
-        }`}
-      >
-        <Columns2 className="w-3.5 h-3.5" />
-        Side by side
-      </button>
-    </div>
-  );
-});
 
 const VersionLabel = memo(function VersionLabel({
   side, asset, versions, isOpen, onTogglePicker, onPick,
@@ -128,6 +101,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
   const urlB = assetB ? ((assetB as any).signedUrl || assetB.url) : '';
 
   // ── Playback state ─────────────────────────────────────────────────────────
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const videoARef = useRef<HTMLVideoElement>(null);
@@ -139,6 +113,10 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
   const [durationB, setDurationB] = useState(0);
   const [activeSide, setActiveSide] = useState<Side>('B');
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [scrubbing, setScrubbing] = useState(false);
+  const [timecodeMode, setTimecodeMode] = useState<'mmss' | 'smpte'>('mmss');
   const [dimsA, setDimsA] = useState<{ w: number; h: number } | null>(null);
   const [dimsB, setDimsB] = useState<{ w: number; h: number } | null>(null);
 
@@ -379,6 +357,96 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
   // invokes a fresh closure (master/slave state, etc.)
   useEffect(() => { togglePlayRef.current = togglePlay; }, [togglePlay]);
 
+  // ── Frame stepping (matches VideoPlayer) ──────────────────────────────────
+  const DEFAULT_FPS = 30;
+  const stepFrame = useCallback((dir: 1 | -1) => {
+    const vA = videoARef.current;
+    const vB = videoBRef.current;
+    if (!vA || !vB) return;
+    vA.pause(); vB.pause();
+    setIsPlaying(false);
+    const newT = Math.max(0, Math.min(duration, (masterRef()?.currentTime ?? 0) + dir / DEFAULT_FPS));
+    if (vA.readyState >= 1) vA.currentTime = Math.min(newT, vA.duration || newT);
+    if (vB.readyState >= 1) vB.currentTime = Math.min(newT, vB.duration || newT);
+    setCurrentTime(newT);
+  }, [duration, masterRef]);
+
+  // ── Scrubber (matches VideoPlayer styling + behavior) ─────────────────────
+  const handleSeekClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const t = Math.max(0, Math.min(duration, ((e.clientX - rect.left) / rect.width) * duration));
+    const vA = videoARef.current;
+    const vB = videoBRef.current;
+    if (vA && vA.readyState >= 1) vA.currentTime = Math.min(t, vA.duration || t);
+    if (vB && vB.readyState >= 1) vB.currentTime = Math.min(t, vB.duration || t);
+    setCurrentTime(t);
+  }, [duration]);
+
+  const handleSeekMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    setScrubbing(true);
+    handleSeekClick(e);
+    const trackEl = e.currentTarget;
+    const onMove = (ev: MouseEvent) => {
+      const rect = trackEl.getBoundingClientRect();
+      const t = Math.max(0, Math.min(duration, ((ev.clientX - rect.left) / rect.width) * duration));
+      const vA = videoARef.current;
+      const vB = videoBRef.current;
+      if (vA && vA.readyState >= 1) vA.currentTime = Math.min(t, vA.duration || t);
+      if (vB && vB.readyState >= 1) vB.currentTime = Math.min(t, vB.duration || t);
+      setCurrentTime(t);
+    };
+    const onUp = () => {
+      setScrubbing(false);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [duration, handleSeekClick]);
+
+  // ── Volume (native — applied to both videos, muted one still outputs silence) ─
+  const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseFloat(e.target.value);
+    setVolume(v);
+    if (v === 0) setMuted(true);
+    else setMuted(false);
+    const vA = videoARef.current;
+    const vB = videoBRef.current;
+    if (vA) vA.volume = v;
+    if (vB) vB.volume = v;
+  }, []);
+
+  // Sync volume & playbackRate to both videos reactively
+  useEffect(() => {
+    if (videoARef.current) videoARef.current.volume = volume;
+    if (videoBRef.current) videoBRef.current.volume = volume;
+  }, [volume]);
+  useEffect(() => {
+    if (videoARef.current) videoARef.current.playbackRate = playbackRate;
+    if (videoBRef.current) videoBRef.current.playbackRate = playbackRate;
+  }, [playbackRate]);
+
+  // ── Fullscreen ────────────────────────────────────────────────────────────
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else wrapperRef.current?.requestFullscreen();
+  }, []);
+
+  // ── Display helpers ───────────────────────────────────────────────────────
+  const displayTime = useCallback((t: number): string => {
+    if (timecodeMode === 'smpte') {
+      const totalFrames = Math.floor(t * DEFAULT_FPS);
+      const frames = totalFrames % DEFAULT_FPS;
+      const totalSeconds = Math.floor(t);
+      const mm = Math.floor(totalSeconds / 60);
+      const ss = totalSeconds % 60;
+      return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
+    }
+    return formatDuration(t);
+  }, [timecodeMode]);
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
   const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const t = parseFloat(e.target.value);
     if (!Number.isFinite(t) || t < 0) return;
@@ -536,6 +604,11 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
         setMuted((m) => !m);
         return;
       }
+      if (e.code === 'KeyF') {
+        e.preventDefault();
+        toggleFullscreen();
+        return;
+      }
       if (e.code === 'Digit1') {
         e.preventDefault();
         setActiveSide('A');
@@ -562,7 +635,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [togglePlay, masterRef, duration]);
+  }, [togglePlay, masterRef, duration, toggleFullscreen]);
 
   // ── Render: gate on mismatched types ──────────────────────────────────────
   if (!assetA || !assetB) {
@@ -587,11 +660,9 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
   const audioVersion = activeSide === 'A' ? assetA.version : assetB.version;
 
   return (
-    <div className="flex flex-col h-full w-full bg-black">
+    <div ref={wrapperRef} className="flex flex-col h-full w-full bg-black">
       <div className="flex-1 min-h-0 flex">
         <div className="relative flex-1 min-h-0 overflow-hidden select-none flex items-center justify-center" ref={containerRef}>
-          <ViewToggle viewMode={viewMode} onChange={setViewMode} />
-
           {/* Shared display rect (see audit doc for why JS-sized). Wheel zoom and
               mouse-drag pan live at this level so both videos move in lockstep. */}
           <div
@@ -758,68 +829,166 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
         )}
       </div>
 
-      {/* Controls */}
+      {/* Controls — mirrors VideoPlayer exactly (same bg, same structure) */}
       {isVideo && (
-        <div className="flex-shrink-0 bg-black/80 border-t border-white/10 px-4 py-3 flex items-center gap-3">
-          <button
-            onClick={togglePlay}
-            title="Play / Pause (Space)"
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-          >
-            {isPlaying ? <Pause className="w-4 h-4" fill="white" /> : <Play className="w-4 h-4 ml-0.5" fill="white" />}
-          </button>
-          <span className="text-xs text-white/60 font-mono w-12 text-right flex-shrink-0">{formatDuration(currentTime)}</span>
-          <input
-            type="range"
-            min={0}
-            max={duration || 0}
-            step={0.01}
-            value={Math.min(currentTime, duration || 0)}
-            onChange={handleSeek}
-            className="flex-1 h-1 accent-frame-accent"
-          />
-          <span className="text-xs text-white/60 font-mono w-12 flex-shrink-0">{formatDuration(duration)}</span>
-
-          {/* Audio source toggle — single source of truth, with keyboard hints */}
-          <div className="flex items-center gap-1.5 pl-2 border-l border-white/10 ml-1">
-            <AudioLines className="w-3.5 h-3.5 text-white/50 flex-shrink-0" />
-            <div className="flex bg-white/5 rounded-md p-0.5">
-              <button
-                onClick={() => setActiveSide('A')}
-                title={`Listen to V${assetA.version} (1)`}
-                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                  activeSide === 'A' ? 'bg-frame-accent text-white' : 'text-white/50 hover:text-white'
-                }`}
-              >
-                V{assetA.version}
-              </button>
-              <button
-                onClick={() => setActiveSide('B')}
-                title={`Listen to V${assetB.version} (2)`}
-                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                  activeSide === 'B' ? 'bg-frame-accent text-white' : 'text-white/50 hover:text-white'
-                }`}
-              >
-                V{assetB.version}
-              </button>
+        <div className="flex-shrink-0 bg-[#111] border-t border-white/5 px-4 pt-2 pb-3 space-y-2">
+          {/* Scrubber — same style as single-video player */}
+          <div className="relative">
+            <div
+              className="relative h-2 bg-white/15 rounded-full cursor-pointer group"
+              onMouseDown={handleSeekMouseDown}
+              onClick={handleSeekClick}
+            >
+              <div
+                className="absolute left-0 top-0 h-full bg-frame-accent rounded-full pointer-events-none"
+                style={{ width: `${progress}%` }}
+              />
+              <div
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white rounded-full shadow pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ left: `${progress}%` }}
+              />
             </div>
           </div>
 
-          <button
-            onClick={() => setMuted((m) => !m)}
-            title={`${muted ? 'Unmute' : 'Mute'} (M)`}
-            className="text-white/60 hover:text-white transition-colors"
-          >
-            {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-          </button>
+          {/* Controls row */}
+          <div className="flex items-center gap-3">
+            {/* Play/pause */}
+            <button
+              onClick={togglePlay}
+              title="Play / Pause (Space)"
+              className="w-8 h-8 flex items-center justify-center text-white hover:text-frame-accent transition-colors"
+            >
+              {isPlaying ? <Pause className="w-5 h-5" fill="currentColor" /> : <Play className="w-5 h-5" fill="currentColor" />}
+            </button>
 
-          <button
-            onClick={() => setShowVU((v) => !v)}
-            title={`${showVU ? 'Hide' : 'Show'} VU meter`}
-            className={`transition-colors ${showVU ? 'text-frame-accent hover:text-frame-accentHover' : 'text-white/40 hover:text-white/70'}`}
-          >
-            <Activity className="w-4 h-4" />
-          </button>
+            {/* Frame step */}
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => stepFrame(-1)}
+                title="Previous frame (Shift+←)"
+                className="w-7 h-7 flex items-center justify-center text-white/60 hover:text-white transition-colors rounded"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => stepFrame(1)}
+                title="Next frame (Shift+→)"
+                className="w-7 h-7 flex items-center justify-center text-white/60 hover:text-white transition-colors rounded"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Timecode */}
+            <button
+              onClick={() => setTimecodeMode((m) => m === 'mmss' ? 'smpte' : 'mmss')}
+              title={timecodeMode === 'mmss' ? 'Switch to SMPTE (MM:SS:FF)' : 'Switch to MM:SS'}
+              className="font-mono text-xs tabular-nums flex items-center gap-1 hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors"
+            >
+              <span className="text-white">{displayTime(currentTime)}</span>
+              <span className="text-white/30">/</span>
+              <span className="text-white/50">{displayTime(duration)}</span>
+            </button>
+
+            <div className="flex-1" />
+
+            {/* View mode toggle — compare-specific (slider vs side-by-side) */}
+            <div className="flex bg-white/5 rounded-md p-0.5">
+              <button
+                onClick={() => setViewMode('slider')}
+                title="Slider"
+                className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  viewMode === 'slider' ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white'
+                }`}
+              >
+                <SplitSquareHorizontal className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('side-by-side')}
+                title="Side by side"
+                className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  viewMode === 'side-by-side' ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white'
+                }`}
+              >
+                <Columns2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Audio source selector — the ONE thing that's compare-specific */}
+            <div className="flex items-center gap-1.5">
+              <AudioLines className="w-3.5 h-3.5 text-white/50" />
+              <div className="flex bg-white/5 rounded-md p-0.5">
+                <button
+                  onClick={() => setActiveSide('A')}
+                  title={`Listen to V${assetA.version} (1)`}
+                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                    activeSide === 'A' ? 'bg-frame-accent text-white' : 'text-white/50 hover:text-white'
+                  }`}
+                >
+                  V{assetA.version}
+                </button>
+                <button
+                  onClick={() => setActiveSide('B')}
+                  title={`Listen to V${assetB.version} (2)`}
+                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                    activeSide === 'B' ? 'bg-frame-accent text-white' : 'text-white/50 hover:text-white'
+                  }`}
+                >
+                  V{assetB.version}
+                </button>
+              </div>
+            </div>
+
+            {/* Volume */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => {
+                  const newMuted = !muted;
+                  setMuted(newMuted);
+                }}
+                title={`${muted ? 'Unmute' : 'Mute'} (M)`}
+                className="text-white/60 hover:text-white transition-colors"
+              >
+                {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </button>
+              <input
+                type="range" min={0} max={1} step={0.05}
+                value={muted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="w-16 cursor-pointer appearance-none h-1 rounded-full outline-none"
+                style={{ background: `linear-gradient(to right, #7a00df 0%, #7a00df ${(muted ? 0 : volume) * 100}%, rgba(255,255,255,0.15) ${(muted ? 0 : volume) * 100}%, rgba(255,255,255,0.15) 100%)` }}
+              />
+            </div>
+
+            {/* VU meter toggle */}
+            <button
+              onClick={() => setShowVU((v) => !v)}
+              title={`${showVU ? 'Hide' : 'Show'} VU meter`}
+              className={`transition-colors ${showVU ? 'text-frame-accent hover:text-frame-accentHover' : 'text-white/40 hover:text-white/70'}`}
+            >
+              <Activity className="w-4 h-4" />
+            </button>
+
+            {/* Speed */}
+            <select
+              value={playbackRate}
+              onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
+              className="bg-transparent text-white/60 hover:text-white text-xs border border-white/10 rounded px-1.5 py-1 cursor-pointer focus:outline-none"
+            >
+              {[0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map((r) => (
+                <option key={r} value={r} className="bg-[#111] text-white">{r}x</option>
+              ))}
+            </select>
+
+            {/* Fullscreen */}
+            <button
+              onClick={toggleFullscreen}
+              title="Fullscreen (F)"
+              className="text-white/60 hover:text-white transition-colors"
+            >
+              <Maximize className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>
