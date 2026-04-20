@@ -59,6 +59,34 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 });
     }
+
+    // Name rename — trim, reject empty, detect collision within owner's namespace
+    if (typeof updates.name === 'string') {
+      const trimmed = updates.name.trim();
+      if (!trimmed) {
+        return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 });
+      }
+      updates.name = trimmed;
+      if (trimmed !== project.name) {
+        // Check every other project owned by this owner for a case-insensitive
+        // match. Bounded per user — fine at v1.7 scale.
+        const ownerProjectsSnap = await db
+          .collection('projects')
+          .where('ownerId', '==', project.ownerId)
+          .get();
+        const target = trimmed.toLowerCase();
+        const collision = ownerProjectsSnap.docs.some(
+          (d) => d.id !== params.projectId && String((d.data() as any).name ?? '').toLowerCase() === target
+        );
+        if (collision) {
+          return NextResponse.json(
+            { error: 'A project with that name already exists', code: 'NAME_COLLISION' },
+            { status: 409 }
+          );
+        }
+      }
+    }
+
     await db.collection('projects').doc(params.projectId).update({
       ...updates,
       updatedAt: Timestamp.now(),
