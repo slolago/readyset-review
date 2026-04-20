@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { generateReadSignedUrl } from '@/lib/gcs';
+import { canProbeAsset } from '@/lib/permissions';
+import type { Project } from '@/types';
 import { existsSync } from 'fs';
 import { spawn } from 'child_process';
 import path from 'path';
@@ -152,8 +154,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (!snap.exists) return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
     const asset = snap.data() as any;
 
-    const hasAccess = await canAccessProject(user.id, asset.projectId);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const projDoc = await db.collection('projects').doc(asset.projectId).get();
+    if (!projDoc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const project = { id: projDoc.id, ...projDoc.data() } as Project;
+    if (!canProbeAsset(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     if (!asset.gcsPath) return NextResponse.json({ error: 'Asset has no file' }, { status: 400 });
 
     const ffprobePath = await resolveFfprobe();

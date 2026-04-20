@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { deleteFile, generateReadSignedUrl, generateDownloadSignedUrl } from '@/lib/gcs';
 import { FieldValue } from 'firebase-admin/firestore';
 import { fetchGroupMembers, resolveGroupId } from '@/lib/version-groups';
+import { canAccessProject, canRenameAsset, canDeleteAsset } from '@/lib/permissions';
+import type { Project } from '@/types';
 
 interface RouteParams {
   params: { assetId: string };
+}
+
+async function loadProject(projectId: string): Promise<Project | null> {
+  const db = getAdminDb();
+  const doc = await db.collection('projects').doc(projectId).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() } as Project;
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
@@ -18,9 +27,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const doc = await db.collection('assets').doc(params.assetId).get();
     if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const asset = { id: doc.id, ...doc.data() } as any;
-    const hasAccess = await canAccessProject(user.id, asset.projectId);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const project = await loadProject(asset.projectId);
+    if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!canAccessProject(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     if (asset.gcsPath && asset.status === 'ready') {
       const [signedUrl, downloadUrl] = await Promise.all([
@@ -34,6 +47,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Fetch all versions in the same group via shared helper (handles legacy-root)
     const groupId = resolveGroupId(asset, params.assetId);
     const groupMembers = await fetchGroupMembers(db, groupId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const versionDocs = groupMembers.map((m) => ({ id: m.id, ...m.data } as any));
 
     const versions = await Promise.all(
@@ -68,9 +82,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const doc = await db.collection('assets').doc(params.assetId).get();
     if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const asset = doc.data() as any;
-    const hasAccess = await canAccessProject(user.id, asset.projectId);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const project = await loadProject(asset.projectId);
+    if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!canRenameAsset(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const rawUpdates = await request.json();
     // Whitelist: only safe, user-mutable asset metadata. Never allow changing
@@ -123,12 +141,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const doc = await db.collection('assets').doc(params.assetId).get();
     if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const asset = doc.data() as any;
-    const hasAccess = await canAccessProject(user.id, asset.projectId);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const project = await loadProject(asset.projectId);
+    if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!canDeleteAsset(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Delete all associated GCS blobs — file, thumbnail, sprite — in parallel.
-    // Errors logged but non-fatal so orphaned Firestore records don't persist.
     await Promise.all([
       asset.gcsPath ? deleteFile(asset.gcsPath).catch(console.error) : null,
       asset.thumbnailGcsPath ? deleteFile(asset.thumbnailGcsPath).catch(console.error) : null,

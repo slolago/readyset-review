@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { fetchGroupMembers, resolveGroupId } from '@/lib/version-groups';
+import { canModifyStack } from '@/lib/permissions';
+import type { Project } from '@/types';
 
 export async function POST(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -40,8 +42,12 @@ export async function POST(request: NextRequest) {
     const firstAsset = firstDocSnap.data() as any;
 
     // Auth check outside transaction to avoid complicating retries
-    const hasAccess = await canAccessProject(user.id, firstAsset.projectId);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const projDoc = await db.collection('projects').doc(firstAsset.projectId).get();
+    if (!projDoc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const project = { id: projDoc.id, ...projDoc.data() } as Project;
+    if (!canModifyStack(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Bug 4 completeness check: reject partial reorders BEFORE the transaction.
     // Without this, a caller passing N-1 of N members would silently renumber

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { uploadBuffer, getPublicUrl, generateReadSignedUrl } from '@/lib/gcs';
+import { canGenerateSprite } from '@/lib/permissions';
+import type { Project } from '@/types';
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
@@ -101,7 +103,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (!doc.exists) return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
 
     const asset = doc.data() as any;
-    if (!(await canAccessProject(user.id, asset.projectId))) {
+    const projDoc = await db.collection('projects').doc(asset.projectId).get();
+    if (!projDoc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const project = { id: projDoc.id, ...projDoc.data() } as Project;
+    if (!canGenerateSprite(user, project)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     if (!asset.gcsPath || asset.type !== 'video') {

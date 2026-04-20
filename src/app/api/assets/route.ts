@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { generateReadSignedUrl, generateDownloadSignedUrl } from '@/lib/gcs';
+import { canAccessProject } from '@/lib/permissions';
+import type { Project } from '@/types';
 
 export async function GET(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -13,8 +15,13 @@ export async function GET(request: NextRequest) {
 
   if (!projectId) return NextResponse.json({ error: 'projectId required' }, { status: 400 });
 
-  const hasAccess = await canAccessProject(user.id, projectId);
-  if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const db0 = getAdminDb();
+  const projDoc = await db0.collection('projects').doc(projectId).get();
+  if (!projDoc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const project = { id: projDoc.id, ...projDoc.data() } as Project;
+  if (!canAccessProject(user, project)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   try {
     const db = getAdminDb();

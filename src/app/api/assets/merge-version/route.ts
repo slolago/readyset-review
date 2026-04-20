@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { fetchGroupMembers, resolveGroupId } from '@/lib/version-groups';
+import { canModifyStack } from '@/lib/permissions';
+import type { Project } from '@/types';
 
 export async function POST(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -36,8 +38,12 @@ export async function POST(request: NextRequest) {
     if (source.projectId !== target.projectId) {
       return NextResponse.json({ error: 'Assets must be in the same project' }, { status: 400 });
     }
-    const hasAccess = await canAccessProject(user.id, source.projectId);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const projDoc = await db.collection('projects').doc(source.projectId).get();
+    if (!projDoc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const project = { id: projDoc.id, ...projDoc.data() } as Project;
+    if (!canModifyStack(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Resolve group IDs
     const sourceGroupId = resolveGroupId(source, sourceId);

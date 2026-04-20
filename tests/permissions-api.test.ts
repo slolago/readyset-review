@@ -287,5 +287,57 @@ describe('API enforcement — folders', () => {
     expect((await POST(req(F.reviewer))).status).toBe(403);
   });
 });
+
+// ---------- Tests: asset endpoints ----------
+
+describe('API enforcement — assets', () => {
+  async function callId(
+    handler: any,
+    uid: string | null,
+    assetId: string,
+    body?: unknown
+  ): Promise<Response> {
+    const req = makeRequest({ body: body as any, headers: uid ? authHeader(uid) : {} });
+    return handler(req, { params: { assetId } });
+  }
+
+  it('PUT /api/assets/[id] — rename: reviewer is 403', async () => {
+    const { PUT } = await import('@/app/api/assets/[assetId]/route');
+    const aid = seedAsset(db, { projectId: F.projectId });
+    const body = { name: 'new-name.mp4' };
+    expect((await callId(PUT, F.owner, aid, body)).status).toBe(200);
+    expect((await callId(PUT, F.editor, aid, body)).status).toBe(200);
+    expect((await callId(PUT, F.reviewer, aid, body)).status).toBe(403);
+    expect((await callId(PUT, F.admin, aid, body)).status).toBe(200);
+    expect((await callId(PUT, F.stranger, aid, body)).status).toBe(403);
+  });
+
+  it('DELETE /api/assets/[id] — reviewer is 403 (gap closure)', async () => {
+    const { DELETE } = await import('@/app/api/assets/[assetId]/route');
+    const aid1 = seedAsset(db, { projectId: F.projectId });
+    expect((await callId(DELETE, F.reviewer, aid1)).status).toBe(403);
+
+    const aid2 = seedAsset(db, { projectId: F.projectId });
+    expect((await callId(DELETE, F.owner, aid2)).status).toBe(200);
+
+    const aid3 = seedAsset(db, { projectId: F.projectId });
+    expect((await callId(DELETE, F.editor, aid3)).status).toBe(200);
+
+    const aid4 = seedAsset(db, { projectId: F.projectId });
+    expect((await callId(DELETE, F.stranger, aid4)).status).toBe(403);
+
+    const aid5 = seedAsset(db, { projectId: F.projectId });
+    expect((await callId(DELETE, F.admin, aid5)).status).toBe(200);
+  });
+
+  it('POST /api/assets/copy — reviewer is 403', async () => {
+    const { POST } = await import('@/app/api/assets/copy/route');
+    const aid = seedAsset(db, { projectId: F.projectId });
+    const body = { assetId: aid };
+    const call = (uid: string) => POST(makeRequest({ body: body as any, headers: authHeader(uid) }));
+    expect((await call(F.owner)).status).toBe(201);
+    expect((await call(F.reviewer)).status).toBe(403);
+  });
+});
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
+import { canCopyAsset } from '@/lib/permissions';
+import type { Project } from '@/types';
 
 export async function POST(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -16,8 +18,12 @@ export async function POST(request: NextRequest) {
     if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const source = doc.data() as any;
-    const hasAccess = await canAccessProject(user.id, source.projectId);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const projDoc = await db.collection('projects').doc(source.projectId).get();
+    if (!projDoc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const project = { id: projDoc.id, ...projDoc.data() } as Project;
+    if (!canCopyAsset(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // targetFolderId may be null (project root) or a folder id; if omitted default to same folder
     const destinationFolderId = targetFolderId !== undefined ? targetFolderId : source.folderId;

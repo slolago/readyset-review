@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { fetchGroupMembers, resolveGroupId } from '@/lib/version-groups';
+import { canModifyStack } from '@/lib/permissions';
+import type { Project } from '@/types';
 
 export async function POST(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -25,8 +27,12 @@ export async function POST(request: NextRequest) {
     const asset = assetDoc.data() as any;
 
     // Auth check
-    const hasAccess = await canAccessProject(user.id, asset.projectId);
-    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const projDoc = await db.collection('projects').doc(asset.projectId).get();
+    if (!projDoc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const project = { id: projDoc.id, ...projDoc.data() } as Project;
+    if (!canModifyStack(user, project)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Resolve group
     const groupId = resolveGroupId(asset, assetId);
