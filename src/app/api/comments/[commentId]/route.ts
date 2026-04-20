@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
+import {
+  canResolveComment,
+  canEditComment,
+  canDeleteComment,
+} from '@/lib/permissions';
+import type { Project, Comment } from '@/types';
 
 interface RouteParams {
   params: { commentId: string };
@@ -11,6 +17,13 @@ const AUTHOR_UPDATABLE = ['text', 'inPoint', 'outPoint', 'timestamp', 'annotatio
 // Fields any project member can modify (resolved state is collaborative)
 const PROJECT_UPDATABLE = ['resolved'];
 
+async function loadProject(projectId: string): Promise<Project | null> {
+  const db = getAdminDb();
+  const doc = await db.collection('projects').doc(projectId).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() } as Project;
+}
+
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const user = await getAuthenticatedUser(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,28 +33,29 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const doc = await db.collection('comments').doc(params.commentId).get();
     if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const comment = doc.data() as any;
-    if (!(await canAccessProject(user.id, comment.projectId))) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const comment = { id: doc.id, ...doc.data() } as Comment;
+    const project = await loadProject(comment.projectId);
+    if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const rawUpdates = await request.json();
-    const isAuthor = comment.authorId === user.id;
-    const isAdmin = user.role === 'admin';
 
-    // Whitelist fields — author can update content, anyone with project
-    // access can mark resolved. Never allow mutating projectId/assetId/authorId/createdAt.
+    // Whitelist per permission:
+    //   PROJECT_UPDATABLE keys require canResolveComment (any project member)
+    //   AUTHOR_UPDATABLE keys require canEditComment (author or admin)
     const updates: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(rawUpdates)) {
-      if (PROJECT_UPDATABLE.includes(key)) {
+      if (PROJECT_UPDATABLE.includes(key) && canResolveComment(user, project)) {
         updates[key] = value;
-      } else if (AUTHOR_UPDATABLE.includes(key) && (isAuthor || isAdmin)) {
+      } else if (AUTHOR_UPDATABLE.includes(key) && canEditComment(user, project, comment)) {
         updates[key] = value;
       }
     }
 
     if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ error: 'No updatable fields provided or insufficient permission' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'No updatable fields provided or insufficient permission' },
+        { status: 403 }
+      );
     }
 
     await db.collection('comments').doc(params.commentId).update(updates);
@@ -61,12 +75,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const doc = await db.collection('comments').doc(params.commentId).get();
     if (!doc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const comment = doc.data() as any;
-    // Must have project access AND be author or admin
-    if (!(await canAccessProject(user.id, comment.projectId))) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    if (comment.authorId !== user.id && user.role !== 'admin') {
+    const comment = { id: doc.id, ...doc.data() } as Comment;
+    const project = await loadProject(comment.projectId);
+    if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    if (!canDeleteComment(user, project, comment)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

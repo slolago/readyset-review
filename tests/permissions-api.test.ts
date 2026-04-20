@@ -417,5 +417,190 @@ describe('API enforcement — review-links', () => {
     expect((await DELETE(req(F.admin), { params: { token: t4 } })).status).toBe(200); // admin
   });
 });
+
+// ---------- Tests: comments + review-link flags ----------
+
+describe('API enforcement — comments', () => {
+  it('guest POST blocked when link.allowComments=false (gap closure)', async () => {
+    const { POST } = await import('@/app/api/comments/route');
+    const aid = seedAsset(db, { projectId: F.projectId });
+    const tok = seedReviewLink(db, {
+      projectId: F.projectId,
+      createdBy: F.owner,
+      allowComments: false,
+    });
+    const body = {
+      assetId: aid,
+      projectId: F.projectId,
+      text: 'hi',
+      reviewLinkId: tok,
+    };
+    const res = await POST(makeRequest({ body: body as any }));
+    expect(res.status).toBe(403);
+    const json = await res.json();
+    expect(json.error).toMatch(/Comments are disabled/i);
+  });
+
+  it('guest POST blocked when link expired (gap closure)', async () => {
+    const { POST } = await import('@/app/api/comments/route');
+    const aid = seedAsset(db, { projectId: F.projectId });
+    const tok = seedReviewLink(db, {
+      projectId: F.projectId,
+      createdBy: F.owner,
+      expiresAt: new Date(Date.now() - 60_000),
+    });
+    const body = {
+      assetId: aid,
+      projectId: F.projectId,
+      text: 'hi',
+      reviewLinkId: tok,
+    };
+    const res = await POST(makeRequest({ body: body as any }));
+    expect(res.status).toBe(410);
+  });
+
+  it('guest POST requires password when link has one', async () => {
+    const { POST } = await import('@/app/api/comments/route');
+    const aid = seedAsset(db, { projectId: F.projectId });
+    const tok = seedReviewLink(db, {
+      projectId: F.projectId,
+      createdBy: F.owner,
+      password: 'hunter2',
+    });
+    const noPwd = await POST(
+      makeRequest({
+        body: { assetId: aid, projectId: F.projectId, text: 'hi', reviewLinkId: tok } as any,
+      })
+    );
+    expect(noPwd.status).toBe(401);
+    const wrongPwd = await POST(
+      makeRequest({
+        body: {
+          assetId: aid,
+          projectId: F.projectId,
+          text: 'hi',
+          reviewLinkId: tok,
+          password: 'wrong',
+        } as any,
+      })
+    );
+    expect(wrongPwd.status).toBe(401);
+    const okPwd = await POST(
+      makeRequest({
+        body: {
+          assetId: aid,
+          projectId: F.projectId,
+          text: 'hi',
+          reviewLinkId: tok,
+          password: 'hunter2',
+        } as any,
+      })
+    );
+    expect(okPwd.status).toBe(201);
+  });
+
+  it('guest GET ?reviewToken= + expired → 410', async () => {
+    const { GET } = await import('@/app/api/comments/route');
+    const aid = seedAsset(db, { projectId: F.projectId });
+    seedReviewLink(db, {
+      token: 'expired-tok',
+      projectId: F.projectId,
+      createdBy: F.owner,
+      expiresAt: new Date(Date.now() - 60_000),
+    });
+    const res = await GET(
+      makeRequest({
+        url: `http://localhost/api/comments?assetId=${aid}&reviewToken=expired-tok`,
+      })
+    );
+    expect(res.status).toBe(410);
+  });
+
+  it('authenticated POST: reviewer allowed, stranger denied', async () => {
+    const { POST } = await import('@/app/api/comments/route');
+    const aid = seedAsset(db, { projectId: F.projectId });
+    const body = { assetId: aid, projectId: F.projectId, text: 'hi' };
+    const call = (uid: string) => POST(makeRequest({ body: body as any, headers: authHeader(uid) }));
+    expect((await call(F.reviewer)).status).toBe(201); // reviewer can post
+    expect((await call(F.editor)).status).toBe(201);
+    expect((await call(F.stranger)).status).toBe(403);
+  });
+
+  it('PUT /api/comments/[id]: non-author cannot change text', async () => {
+    const { PUT } = await import('@/app/api/comments/[commentId]/route');
+    const aid = seedAsset(db, { projectId: F.projectId });
+    const cid = seedComment(db, {
+      assetId: aid,
+      projectId: F.projectId,
+      authorId: F.editor,
+    });
+    const body = { text: 'hacked' };
+    // Owner is NOT the author → author-updatable field denied → 0 updatable → 403
+    const ownerRes = await PUT(
+      makeRequest({ body: body as any, headers: authHeader(F.owner) }),
+      { params: { commentId: cid } }
+    );
+    expect(ownerRes.status).toBe(403);
+    // Author can update text
+    const authorRes = await PUT(
+      makeRequest({ body: body as any, headers: authHeader(F.editor) }),
+      { params: { commentId: cid } }
+    );
+    expect(authorRes.status).toBe(200);
+  });
+
+  it('PUT /api/comments/[id]: any project member can mark resolved', async () => {
+    const { PUT } = await import('@/app/api/comments/[commentId]/route');
+    const aid = seedAsset(db, { projectId: F.projectId });
+    const cid = seedComment(db, {
+      assetId: aid,
+      projectId: F.projectId,
+      authorId: F.editor,
+    });
+    const res = await PUT(
+      makeRequest({ body: { resolved: true } as any, headers: authHeader(F.reviewer) }),
+      { params: { commentId: cid } }
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('DELETE /api/comments/[id]: project owner (non-author) can delete', async () => {
+    const { DELETE } = await import('@/app/api/comments/[commentId]/route');
+    const aid = seedAsset(db, { projectId: F.projectId });
+    const cid = seedComment(db, {
+      assetId: aid,
+      projectId: F.projectId,
+      authorId: F.editor, // editor is the author
+    });
+    const res = await DELETE(makeRequest({ headers: authHeader(F.owner) }), {
+      params: { commentId: cid },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('DELETE /api/comments/[id]: non-author non-owner collab denied', async () => {
+    const { DELETE } = await import('@/app/api/comments/[commentId]/route');
+    // Add a second editor as collaborator
+    seedUser(db, { id: 'other-ed', role: 'editor' });
+    db.collection('projects').doc(F.projectId).update({
+      collaborators: [
+        { userId: F.owner, role: 'owner', email: 'o@e.com', name: 'o' },
+        { userId: F.editor, role: 'editor', email: 'e@e.com', name: 'e' },
+        { userId: F.reviewer, role: 'reviewer', email: 'r@e.com', name: 'r' },
+        { userId: 'other-ed', role: 'editor', email: 'oe@e.com', name: 'oe' },
+      ],
+    });
+    const aid = seedAsset(db, { projectId: F.projectId });
+    const cid = seedComment(db, {
+      assetId: aid,
+      projectId: F.projectId,
+      authorId: F.editor,
+    });
+    const res = await DELETE(makeRequest({ headers: authHeader('other-ed') }), {
+      params: { commentId: cid },
+    });
+    expect(res.status).toBe(403);
+  });
+});
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

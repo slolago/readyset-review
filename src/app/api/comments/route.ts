@@ -1,28 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
-import { canAccessProject } from '@/lib/auth-helpers';
 import { Timestamp } from 'firebase-admin/firestore';
+import {
+  canAccessProject,
+  canPostComment,
+  assertReviewLinkActive,
+  assertReviewLinkAllows,
+  ReviewLinkDenied,
+} from '@/lib/permissions';
+import type { Project, ReviewLink, User } from '@/types';
+
+function mapReviewLinkDenied(e: ReviewLinkDenied): NextResponse {
+  switch (e.reason) {
+    case 'expired':
+      return NextResponse.json({ error: 'This review link has expired' }, { status: 410 });
+    case 'password':
+      return NextResponse.json({ error: 'Password required' }, { status: 401 });
+    case 'comments_disabled':
+      return NextResponse.json(
+        { error: 'Comments are disabled on this review link' },
+        { status: 403 }
+      );
+    case 'approvals_disabled':
+      return NextResponse.json(
+        { error: 'Approvals are disabled on this review link' },
+        { status: 403 }
+      );
+    case 'downloads_disabled':
+      return NextResponse.json(
+        { error: 'Downloads are disabled on this review link' },
+        { status: 403 }
+      );
+  }
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const assetId = searchParams.get('assetId');
   const reviewToken = searchParams.get('reviewToken');
+  const reviewPassword = searchParams.get('password') ?? undefined;
 
   if (!assetId) return NextResponse.json({ error: 'assetId required' }, { status: 400 });
 
   try {
     const db = getAdminDb();
 
-    // For review links, verify token and filter by reviewLinkId
+    // For review links, verify token, enforce expiry+password, then filter by reviewLinkId.
     if (reviewToken) {
-      const linkSnap = await db.collection('reviewLinks').where('token', '==', reviewToken).limit(1).get();
+      const linkSnap = await db
+        .collection('reviewLinks')
+        .where('token', '==', reviewToken)
+        .limit(1)
+        .get();
       if (linkSnap.empty) return NextResponse.json({ error: 'Invalid token' }, { status: 403 });
-      const reviewLinkId = linkSnap.docs[0].id;
+      const linkDoc = linkSnap.docs[0];
+      const link = { id: linkDoc.id, ...linkDoc.data() } as ReviewLink;
 
+      try {
+        assertReviewLinkActive(link, { providedPassword: reviewPassword });
+      } catch (e) {
+        if (e instanceof ReviewLinkDenied) return mapReviewLinkDenied(e);
+        throw e;
+      }
+
+      const reviewLinkId = linkDoc.id;
       const snap = await db.collection('comments').where('assetId', '==', assetId).get();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const comments = snap.docs
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((d) => ({ id: d.id, ...d.data() } as any))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .filter((c: any) => c.reviewLinkId === reviewLinkId)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .sort((a: any, b: any) => (a.createdAt?.toMillis() ?? 0) - (b.createdAt?.toMillis() ?? 0));
       return NextResponse.json({ comments });
     }
@@ -38,19 +87,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch asset to verify project membership
     const assetDoc = await db.collection('assets').doc(assetId).get();
     if (!assetDoc.exists) return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const asset = assetDoc.data() as any;
-    if (!(await canAccessProject(userId, asset.projectId))) {
+
+    const projDoc = await db.collection('projects').doc(asset.projectId).get();
+    if (!projDoc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const project = { id: projDoc.id, ...projDoc.data() } as Project;
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const user = { id: userDoc.id, ...userDoc.data() } as User;
+    if (!canAccessProject(user, project)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const snap = await db.collection('comments')
-      .where('assetId', '==', assetId)
-      .get();
-
+    const snap = await db.collection('comments').where('assetId', '==', assetId).get();
     const comments = snap.docs
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((d) => ({ id: d.id, ...d.data() } as any))
       .sort((a, b) => (a.createdAt?.toMillis() ?? 0) - (b.createdAt?.toMillis() ?? 0));
     return NextResponse.json({ comments });
@@ -64,7 +118,21 @@ export async function POST(request: NextRequest) {
   try {
     const db = getAdminDb();
     const body = await request.json();
-    const { assetId, projectId, text, timestamp, inPoint, outPoint, annotation, parentId, authorName, authorEmail, reviewLinkId } = body;
+    const {
+      assetId,
+      projectId,
+      text,
+      timestamp,
+      inPoint,
+      outPoint,
+      annotation,
+      parentId,
+      authorName,
+      authorEmail,
+      reviewLinkId,
+      password,
+      approvalStatus,
+    } = body;
 
     if (!assetId || !projectId || !text) {
       return NextResponse.json({ error: 'assetId, projectId, text required' }, { status: 400 });
@@ -73,6 +141,7 @@ export async function POST(request: NextRequest) {
     // Verify the asset exists and its projectId matches what the client claims
     const assetDoc = await db.collection('assets').doc(assetId).get();
     if (!assetDoc.exists) return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const asset = assetDoc.data() as any;
     if (asset.projectId !== projectId) {
       return NextResponse.json({ error: 'projectId mismatch' }, { status: 400 });
@@ -88,6 +157,7 @@ export async function POST(request: NextRequest) {
         authorId = decoded.uid;
         const userDoc = await db.collection('users').doc(decoded.uid).get();
         if (userDoc.exists) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           resolvedAuthorName = (userDoc.data() as any).name || resolvedAuthorName;
         }
       } catch (err) {
@@ -96,16 +166,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticated users need project access; guests need a valid reviewLinkId
+    // plus passing the link's expiry/password/allowComments gates.
     if (authorId) {
-      if (!(await canAccessProject(authorId, projectId))) {
+      const projDoc = await db.collection('projects').doc(projectId).get();
+      if (!projDoc.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      const project = { id: projDoc.id, ...projDoc.data() } as Project;
+      const userDoc = await db.collection('users').doc(authorId).get();
+      if (!userDoc.exists) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      const user = { id: userDoc.id, ...userDoc.data() } as User;
+      if (!canPostComment(user, project)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     } else if (reviewLinkId) {
       const linkDoc = await db.collection('reviewLinks').doc(reviewLinkId).get();
       if (!linkDoc.exists) return NextResponse.json({ error: 'Invalid review link' }, { status: 403 });
-      const link = linkDoc.data() as any;
+      const link = { id: linkDoc.id, ...linkDoc.data() } as ReviewLink;
       if (link.projectId !== projectId) {
         return NextResponse.json({ error: 'Review link does not match project' }, { status: 403 });
+      }
+      try {
+        assertReviewLinkActive(link, { providedPassword: password });
+        assertReviewLinkAllows(link, 'comment');
+        if (approvalStatus !== undefined) {
+          assertReviewLinkAllows(link, 'approve');
+        }
+      } catch (e) {
+        if (e instanceof ReviewLinkDenied) return mapReviewLinkDenied(e);
+        throw e;
       }
     } else {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
