@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useProject } from '@/hooks/useProject';
 import { useAssets, useUpload } from '@/hooks/useAssets';
 import { AssetGrid } from './AssetGrid';
@@ -56,6 +57,7 @@ interface FolderBrowserProps {
 
 export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: FolderBrowserProps) {
   const { user, getIdToken } = useAuth();
+  const confirm = useConfirm();
   const router = useRouter();
   const { project, loading: projectLoading, refetch: refetchProject } = useProject(projectId);
   const { assets, loading: assetsLoading, refetch: refetchAssets } = useAssets(projectId, folderId);
@@ -408,7 +410,12 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
     if (assetIds.length) parts.push(`${assetIds.length} asset${assetIds.length === 1 ? '' : 's'}`);
     if (folderIds.length) parts.push(`${folderIds.length} folder${folderIds.length === 1 ? '' : 's'}`);
     const summary = parts.join(' and ');
-    if (!confirm(`Delete ${summary}?\n\n${folderIds.length ? 'Sub-folders will be deleted; their assets moved to project root. ' : ''}This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Delete ${summary}?`,
+      message: `${folderIds.length ? 'Sub-folders will be deleted; their assets moved to project root.\n\n' : ''}This cannot be undone.`,
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const token = await getIdToken();
 
@@ -767,7 +774,12 @@ export function FolderBrowser({ projectId, folderId, ancestorPath = '' }: Folder
   const handleDeleteFolder = async (deleteFolderId: string) => {
     const folder = folders.find((f) => f.id === deleteFolderId);
     const folderName = folder?.name ?? 'folder';
-    if (!confirm(`Delete "${folderName}"?\n\nAll sub-folders will be deleted. Assets inside will be moved to the project root. This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Delete "${folderName}"?`,
+      message: 'All sub-folders will be deleted. Assets inside will be moved to the project root.\n\nThis cannot be undone.',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const token = await getIdToken();
       const res = await fetch(`/api/folders/${deleteFolderId}`, {

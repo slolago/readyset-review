@@ -3,6 +3,11 @@
   "milestone_name": "ui-features",
   "profile": "balanced",
   "workflow": {
-    "_auto_chain_active": false
+    "_auto_chain_active": false,
+    "skip_discuss": true,
+    "ui_phase": false,
+    "auto_advance": true,
+    "research": false,
+    "plan_check": false
   }
 }

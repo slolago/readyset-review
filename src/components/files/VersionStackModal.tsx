@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { GripVertical, Unlink, Trash2, X } from 'lucide-react';
 import type { Asset } from '@/types';
 import toast from 'react-hot-toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 export interface VersionStackModalProps {
   asset: Asset;
@@ -17,6 +18,7 @@ export function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: Ver
   const [loading, setLoading] = useState(true);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const confirm = useConfirm();
 
   const fetchVersions = async () => {
     setLoading(true);
@@ -50,7 +52,12 @@ export function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: Ver
   };
 
   const handleDelete = async (version: Asset) => {
-    if (!confirm(`Delete version V${version.version} of "${version.name}"?\n\nThis cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Delete version V${version.version} of "${version.name}"?`,
+      message: 'This cannot be undone.',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const token = await getIdToken();
       const res = await fetch(`/api/assets/${version.id}`, {

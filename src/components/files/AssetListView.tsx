@@ -10,6 +10,7 @@ import {
 import { formatBytes, formatRelativeTime, forceDownload } from '@/lib/utils';
 import { useUserNames } from '@/hooks/useUserNames';
 import { useAuth } from '@/hooks/useAuth';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useUpload } from '@/hooks/useAssets';
 import { ContextMenu } from '@/components/ui/ContextMenu';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
@@ -222,6 +223,7 @@ function AssetListRow({
   onRequestMove,
 }: AssetListRowProps) {
   const { getIdToken } = useAuth();
+  const confirm = useConfirm();
   const { uploadFile } = useUpload();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
@@ -348,7 +350,12 @@ function AssetListRow({
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Delete "${asset.name}"?\n\nThis cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Delete "${asset.name}"?`,
+      message: 'This cannot be undone.',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const token = await getIdToken();
       const res = await fetch(`/api/assets/${asset.id}`, {

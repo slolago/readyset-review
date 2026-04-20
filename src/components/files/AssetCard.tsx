@@ -14,6 +14,7 @@ import { SmartCopyModal } from './SmartCopyModal';
 import { VersionStackModal } from './VersionStackModal';
 import { StackOntoModal } from './StackOntoModal';
 import { useAuth } from '@/hooks/useAuth';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useUpload } from '@/hooks/useAssets';
 import { selectionStyle, type SelectionState } from '@/lib/selectionStyle';
 import toast from 'react-hot-toast';
@@ -46,6 +47,7 @@ export const AssetCard = memo(function AssetCard({
   onDragOver, onDragLeave, onDrop, isDropTarget, folderSiblings
 }: AssetCardProps) {
   const { getIdToken } = useAuth();
+  const confirm = useConfirm();
   const { uploadFile } = useUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -239,7 +241,12 @@ export const AssetCard = memo(function AssetCard({
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Delete "${asset.name}"?\n\nThis will permanently remove the asset${(asset as any)._versionCount > 1 ? ` and all ${(asset as any)._versionCount} versions in its stack` : ''}. This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Delete "${asset.name}"?`,
+      message: `This will permanently remove the asset${(asset as any)._versionCount > 1 ? ` and all ${(asset as any)._versionCount} versions in its stack` : ''}.\n\nThis cannot be undone.`,
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const token = await getIdToken();
       const res = await fetch(`/api/assets/${asset.id}`, {

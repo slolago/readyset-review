@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 import { Toaster } from 'react-hot-toast';
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="bg-frame-bg text-frame-textPrimary min-h-screen">
         <AuthProvider>
+          <ConfirmProvider>
           {children}
           <Toaster
             position="bottom-right"
@@ -47,6 +49,7 @@ export default function RootLayout({
               },
             }}
           />
+          </ConfirmProvider>
         </AuthProvider>
       </body>
     </html>
