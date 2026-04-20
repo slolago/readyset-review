@@ -1,64 +1,51 @@
 # Requirements: readyset-review
 
-**Defined:** 2026-04-20 (v1.7 — supersedes v1.6)
+**Defined:** 2026-04-20 (v1.8 — asset pipeline & visual polish)
 **Core Value:** Fast, accurate video review — frame-level precision, rich metadata, and fluid version management without leaving the browser.
 
-## v1.7 Requirements
+## v1.8 Requirements
 
-Requirements for milestone v1.7 — Review UX & Access Rewrite. Each maps to roadmap phases via the Traceability table below.
+Requirements for milestone v1.8 — Asset Pipeline & Visual Polish. Each maps to roadmap phases via the Traceability table below.
 
-### Version Stack Management
+### Metadata Accuracy
 
-- [ ] **STACK-01**: User can stack any existing asset onto any other asset (not just singletons) — drag-and-drop or context-menu merge works when either source or target is already part of a version group, producing one merged group with stable version numbers
-- [ ] **STACK-02**: User can detach (unstack) any version from a stack — any version in the group, not only the topmost, becomes an independent asset without deleting comments/annotations/review-link associations
-- [ ] **STACK-03**: User can reorder versions within a stack — drag a version to a different position in the version list and the version numbers renumber atomically
-- [ ] **STACK-04**: Stack/unstack operations never produce silent data loss — comments, annotations, review-link references, and review status are preserved or explicitly warned-about before the operation commits
+- [ ] **MEA-01**: Image assets are NOT processed by ffprobe — metadata extraction branches on `asset.type`; images use an image-appropriate path (e.g. `sharp` / `image-size` / EXIF parser) and do not surface video-only fields (Container, Pixel format, Color space, Overall bitrate).
+- [ ] **MEA-02**: Info panel renders different field sets per asset type — images show resolution, file size, color space (when present), EXIF orientation; videos keep the current field set. Empty/non-applicable fields are hidden, not shown as "—".
+- [ ] **MEA-03**: Resolution and file size reflect the actual source file as uploaded — a 2250×4000 / 718 KB JPEG must display as 2250×4000 / 718 KB in the Info panel, not a transformed/thumbnailed version.
+- [ ] **MEA-04**: Upload timestamp in the Info panel renders as a readable date (e.g. "Apr 20, 2026, 3:42 PM") — never "Invalid Date". Timestamp serialization between Firestore Admin and the client is correct for both `Timestamp` and `{_seconds, _nanoseconds}` shapes.
 
-### Project Management
+### Review Links
 
-- [ ] **PROJ-01**: User with owner or admin role can rename a project (name field, not just description) — inline edit or modal, with name-conflict detection within the user's projects
+- [ ] **RVL-01**: "Add to review link" modal (opened from asset/folder actions) loads the current project's existing review links without surfacing "Failed to load review links". API and render paths align on the query shape.
+- [ ] **RVL-02**: Project-level review-link views — both the sidebar `Review Links` shortcut under a project AND the project's `Review Links` tab — list the review links created for that project. Filter is by `projectId`, not omitted.
 
-### Access & Admin Rewrite
+### Trash & Recovery
 
-- [ ] **ACCESS-01**: Platform role model is documented and consistently enforced — admin/manager/editor/viewer ranks, with exact matrix of which endpoints each role can call (single source of truth in code)
-- [ ] **ACCESS-02**: Project role model is documented and consistently enforced — owner/editor/reviewer on each project, with clear matrix for upload/delete/rename/invite/share permissions
-- [ ] **ACCESS-03**: Review-link permission flags (allowComments, allowDownloads, allowApprovals, showAllVersions, password) are each enforced on both the read path (API) and the render path (UI hides controls) — no client-side-only gating
-- [ ] **ACCESS-04**: Admin UI surfaces the full permission state of any project and review link — can audit collaborators, review-link holders, and pending invites in one view without touching Firestore manually
-- [ ] **ACCESS-05**: Admin can disable/suspend any user and revoke all of their active sessions — suspended users cannot establish a new session or use existing tokens
-- [ ] **ACCESS-06**: Admin can audit uninvited / orphaned users (users that exist in Firestore but were never explicitly invited) and delete or suspend them in-app
-- [ ] **ACCESS-07**: All access-control tests pass — platform-level, project-level, and review-link-level tests prove each role's matrix; no "cannot access" path silently falls through to allow access
+- [ ] **TRH-01**: Deleting an asset or folder soft-deletes it into a Trash list (e.g. `deletedAt` timestamp) instead of hard-deleting immediately. Soft-deleted items disappear from normal grid/list views.
+- [ ] **TRH-02**: User can open Trash (project-level view) and see deleted assets/folders; each item shows name, deleted date, and a Restore action. Restore returns the item to its original folder (or project root if the original folder is also gone).
+- [ ] **TRH-03**: User can permanently delete a single item from Trash, or "Empty Trash" to permanently delete all. Permanent deletion frees the GCS object and removes the Firestore doc. Confirmation goes through the in-app `useConfirm` dialog.
 
-### Comments
+### File Type Expansion
 
-- [ ] **CMT-01** (supersedes v1.6 CMT-04): User can set an in-point and out-point on a comment; timeline shows a highlighted range; clicking a range comment seeks to the in-point
-- [ ] **CMT-02**: Comment count badge matches the actual number of user-visible comments for that asset — no off-by-N, no phantom drawings-counted-as-comments
-- [ ] **CMT-03**: User cannot save an annotation drawing without comment text — either the Save button is disabled, or the drawing is discarded on Cancel; orphan drawings are not persisted
+- [ ] **UPL-01**: Uploader accepts, in addition to video/image, the following MIME types and extensions: PDF (`application/pdf`), archives (`.zip`), fonts (`.ttf`, `.otf`, `.woff`, `.woff2`), HTML (`.html`), editable design (`.ai`, `.psd`, `.aep`, `.fig`). Server and client allow-lists agree.
+- [ ] **UPL-02**: Non-viewable asset types (archive, font, design file) render a file-type icon + filename + metadata card (size, uploader, date) in the viewer instead of attempting a broken video/image preview.
+- [ ] **UPL-03**: Grid/list cards for non-viewable types show the file-type icon prominently (not the generic broken-thumbnail placeholder) with the extension badge.
+- [ ] **UPL-04**: PDF and HTML assets open in an inline viewer — PDF via an iframe / pdf.js, HTML via a sandboxed iframe — so a user reviewing a deck or interactive prototype can scroll through without downloading.
 
-### Export
+### Visual Polish
 
-- [ ] **EXPORT-01**: User can open an Export modal from the video player that lets them choose format (GIF or MP4), set in-point and out-point on a trim bar, name the file, and trigger a server-side export
-- [ ] **EXPORT-02**: Exported MP4 preserves the source codec settings where possible (copy) or re-encodes cleanly (H.264 + AAC) for the trim range; exported GIF is looping, reasonable frame rate, palette-optimized
-- [ ] **EXPORT-03**: Export progress is observable (queued → encoding → ready) and the user can download the result via signed URL
+- [ ] **VIS-01**: New Folder modal's top accent gradient is clipped to the modal card's rounded container — the colored line never extends past the card edge.
+- [ ] **VIS-02**: Folder cards show a content preview — the first 1–4 child asset thumbnails, stacked or tiled within the folder card, replacing the generic folder icon when the folder has assets.
+- [ ] **VIS-03**: Inline folder/asset rename has an explicit confirm affordance — an adjacent checkmark button commits the change, Escape cancels, Enter commits. The user never has to guess whether blur-to-save is the trigger.
+- [ ] **VIS-04**: Asset card thumbnails preserve source aspect ratio — images/videos display `object-contain` within a fixed aspect-ratio frame, no stretching to full card width when the source is tall/narrow.
+- [ ] **VIS-05**: Asset cards show the version count badge exactly once (no duplicate).
+- [ ] **VIS-06**: Asset tag/label pills remain legible on any thumbnail — add a semi-opaque dark background + white text (or text shadow / backdrop-blur) so tags are readable against bright, busy, or low-contrast image previews.
+- [ ] **VIS-07**: Create Review Link modal keeps all UI (pickers, toggles, action buttons) contained within the modal card — no controls bleed outside the card boundary.
+- [ ] **VIS-08**: Dashboard Quick Actions route to their respective flows — "Browse Projects" → `/dashboard` (or project list), "Upload Assets" → opens the upload modal / navigates to the default project's upload flow, "Invite Team" → opens the invite/collaborators flow. Each action's `href`/`onClick` is distinct.
 
-### UX & Hierarchy
+## Absorbed from prior milestones
 
-- [ ] **UX-01**: Selection and hover states have a visible hierarchy that communicates nesting — project → folder → asset → version all read clearly when nested selections are active (selected-parent vs selected-child vs hovered-child distinguishable)
-
-### Playback
-
-- [ ] **PLAY-01**: User can toggle a loop button in the player controls — when no in/out is set, the whole video loops; when in/out is marked, loop honors those bounds; state is per-session (reset when asset/version changes)
-
-## Absorbed from v1.6
-
-The following v1.6 IDs are retired and their intent is captured in v1.7 IDs above:
-
-| v1.6 ID | v1.7 replacement | Notes |
-|---------|------------------|-------|
-| CMT-04 (range comments) | CMT-01 | Same intent, renumbered |
-| (implicit) phantom comment count | CMT-02 | New in v1.7 |
-| (implicit) orphan drawings | CMT-03 | New in v1.7 |
-
-Other v1.6 items (BUG-01..05, CMT-01..03, PLAY-02..04, VER-01, RVLINK-01..02) were either **already shipped** in ad-hoc commits during the v1.6 planning window (resolved comments badge, compare player rewrite, FPS accuracy in v1.5, viewer download CTA in v1.5, show-all-versions in v1.5 Phase 40) or **deferred** as out-of-scope polish. See v1.6-archive/README.md for the original scope.
+See `.planning/MILESTONES.md` for shipped scope.
 
 ## v2 / Future Requirements
 
@@ -66,6 +53,7 @@ Other v1.6 items (BUG-01..05, CMT-01..03, PLAY-02..04, VER-01, RVLINK-01..02) we
 - Notifications (in-app + email) for new comments on shared assets
 - Bulk export (export a whole folder of trims in one job)
 - Per-asset watermarking for client-facing review links
+- AI-powered asset search / auto-tagging
 
 ## Out of Scope
 
@@ -75,44 +63,48 @@ Explicitly excluded. Documented to prevent scope creep.
 |---------|--------|
 | Mobile app | Web-first approach |
 | Real-time collaborative cursors | Not needed for async review workflow |
-| Video transcoding library / ingest pipeline | ffmpeg trim + convert is enough for v1.7 export |
+| Video transcoding library / ingest pipeline | ffmpeg trim + convert is enough |
 | Offline mode | Real-time collaboration is core value |
 | SSO / SAML / OIDC beyond Google | Google OAuth is the single entry point |
 | Role customization / custom permission matrices | Fixed role set is sufficient |
-| Audit log of all admin actions (full event sourcing) | Logged errors + Firestore history is enough |
+| In-browser Photoshop/AE editing | Only preview/download for design files |
+| Archive extraction + preview of zip contents | Download to inspect; out of scope for this milestone |
+| Server-side HTML sandboxing / CSP hardening beyond iframe sandbox | iframe `sandbox` is the boundary |
+| Trash retention policy / auto-purge after N days | Manual cleanup only — no cron in v1.8 |
 
 ## Traceability
 
-Which phases cover which requirements. Populated by gsd-roadmapper during roadmap creation.
+Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STACK-01 | Phase 43 | Pending |
-| STACK-02 | Phase 43 | Pending |
-| STACK-03 | Phase 43 | Pending |
-| STACK-04 | Phase 43 | Pending |
-| PROJ-01 | Phase 45 | Pending |
-| ACCESS-01 | Phase 44 | Pending |
-| ACCESS-02 | Phase 44 | Pending |
-| ACCESS-03 | Phase 44 | Pending |
-| ACCESS-04 | Phase 45 | Pending |
-| ACCESS-05 | Phase 45 | Pending |
-| ACCESS-06 | Phase 45 | Pending |
-| ACCESS-07 | Phase 44 | Pending |
-| CMT-01 | Phase 46 | Pending |
-| CMT-02 | Phase 46 | Pending |
-| CMT-03 | Phase 46 | Pending |
-| EXPORT-01 | Phase 47 | Pending |
-| EXPORT-02 | Phase 47 | Pending |
-| EXPORT-03 | Phase 47 | Pending |
-| UX-01 | Phase 48 | Pending |
-| PLAY-01 | Phase 48 | Pending |
+| MEA-01 | Phase 49 | Pending |
+| MEA-02 | Phase 49 | Pending |
+| MEA-03 | Phase 49 | Pending |
+| MEA-04 | Phase 49 | Pending |
+| RVL-01 | Phase 50 | Pending |
+| RVL-02 | Phase 50 | Pending |
+| TRH-01 | Phase 52 | Pending |
+| TRH-02 | Phase 52 | Pending |
+| TRH-03 | Phase 52 | Pending |
+| UPL-01 | Phase 51 | Pending |
+| UPL-02 | Phase 51 | Pending |
+| UPL-03 | Phase 51 | Pending |
+| UPL-04 | Phase 51 | Pending |
+| VIS-01 | Phase 53 | Pending |
+| VIS-02 | Phase 53 | Pending |
+| VIS-03 | Phase 53 | Pending |
+| VIS-04 | Phase 53 | Pending |
+| VIS-05 | Phase 53 | Pending |
+| VIS-06 | Phase 53 | Pending |
+| VIS-07 | Phase 53 | Pending |
+| VIS-08 | Phase 53 | Pending |
 
 **Coverage:**
-- v1.7 requirements: 20 total
-- Mapped to phases: 20 (100%)
+- v1.8 requirements: 21 total
+- Mapped to phases: 21 (100%)
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-20*
-*Last updated: 2026-04-20 — roadmapper populated traceability (phases 43–48)*
+*Last updated: 2026-04-20 — traceability populated at roadmap creation*

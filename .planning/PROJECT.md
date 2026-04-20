@@ -10,21 +10,18 @@ A fully-featured media review platform for internal teams: upload video/image as
 
 Fast, accurate video review — frame-level precision, rich metadata, and fluid version management without leaving the browser.
 
-## Current Milestone: v1.7 Review UX & Access Rewrite
+## Current Milestone: v1.8 Asset Pipeline & Visual Polish
 
-**Goal:** Rewrite the access/permissions model end-to-end (platform + review links), harden version-stack management so any version can be stacked or detached freely, and raise review UX to production quality (in/out comments, GIF/MP4 export, loop, selection hierarchy, comments-count integrity).
+**Goal:** Make asset metadata trustworthy for both images and video, restore broken review-link flows, widen the supported file-type surface (PDFs, archives, design files, fonts, HTML), add a Trash/restore safety net, and close visible UI-polish bugs reported during v1.7 QA.
 
 **Target features:**
-- Stack/unstack audit — stack any version onto any other, detach any version from any stack, all via drag-and-drop or menu; no silent data loss
-- Rename projects — currently only description is editable; add inline/modal rename with collision handling
-- Access + admin rewrite — full audit of platform roles (admin/manager/editor/viewer), project roles (owner/editor/reviewer), review-link permissions (allowComments/allowDownloads/allowApprovals/showAllVersions/password), and admin UI; rewrite endpoints and UI where needed
-- In/out range comments — set in-point and out-point on a comment, highlighted range on timeline (supersedes v1.6 CMT-04)
-- Video export — modal with format (GIF or MP4), in/out selection on a trim bar, filename, destination; reproducible, server-side ffmpeg
-- Selection hierarchy redesign — visual hierarchy for selected/hovered/focused states so nested containers (project → folder → asset → version) read clearly
-- Comments count integrity — badge must match real count; drawings without comment text cannot be saved (or are attached to an auto-created comment)
-- Loop button — per-video loop that loops the whole asset, or the marked in/out range when set
+- Metadata accuracy — stop running ffprobe on images; show image-appropriate info (real resolution, file size, EXIF); fix "Invalid Date" upload timestamp
+- Review-link repairs — "Add to review link" modal loads without error; project-scoped review-link views list the project's links
+- File-type expansion — accept PDFs, archives (.zip), fonts, .html, and editable design formats (.ai/.psd/.aep/.fig); sensible previews/icons for non-playable types
+- Trash & restore — soft-delete assets/folders, list in a Trash view, restore to original location, permanent delete from Trash
+- Visual polish — New Folder modal accent clipped, folder content thumbnails, inline-rename confirm, aspect-preserving asset cards, de-duplicate version count, legible tags on busy backgrounds, Review Link modal containment, Quick Actions route correctly
 
-**Supersedes:** v1.6 (paper-only, never executed — see [milestones/v1.6-archive/README.md](milestones/v1.6-archive/README.md))
+**Prior milestone (v1.7 Review UX & Access Rewrite):** Shipped 2026-04-20 — see [milestones/v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md).
 
 ## Current State (v1.4 — shipped 2026-04-14)
 
