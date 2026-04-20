@@ -3,6 +3,7 @@ import { getAuthenticatedUser, canAccessProject } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { deleteFile, generateReadSignedUrl, generateDownloadSignedUrl } from '@/lib/gcs';
 import { FieldValue } from 'firebase-admin/firestore';
+import { fetchGroupMembers, resolveGroupId } from '@/lib/version-groups';
 
 interface RouteParams {
   params: { assetId: string };
@@ -30,23 +31,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       if (downloadUrl) asset.downloadUrl = downloadUrl;
     }
 
-    // Fetch all versions in the same group
-    // groupId is always the root asset's ID (either stored explicitly or derived from asset.id)
-    const groupId = asset.versionGroupId || asset.id;
-
-    const versionsSnap = await db.collection('assets')
-      .where('versionGroupId', '==', groupId)
-      .get();
-
-    let versionDocs = versionsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
-
-    // The root asset may not have versionGroupId set (old assets) — add it by ID if missing
-    if (!versionDocs.some((v) => v.id === groupId)) {
-      const rootDoc = await db.collection('assets').doc(groupId).get();
-      if (rootDoc.exists) {
-        versionDocs.push({ id: rootDoc.id, ...rootDoc.data() } as any);
-      }
-    }
+    // Fetch all versions in the same group via shared helper (handles legacy-root)
+    const groupId = resolveGroupId(asset, params.assetId);
+    const groupMembers = await fetchGroupMembers(db, groupId);
+    const versionDocs = groupMembers.map((m) => ({ id: m.id, ...m.data } as any));
 
     const versions = await Promise.all(
       versionDocs.map(async (v) => {
