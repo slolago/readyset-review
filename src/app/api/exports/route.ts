@@ -207,21 +207,32 @@ export async function POST(request: NextRequest) {
       contentType = 'image/gif';
       gcsOutPath = `exports/${user.id}/${jobId}.gif`;
 
+      // Pass 1 — palettegen. `-t` BEFORE `-i` binds to that input, so it
+      // bounds the source decode window correctly.
       const paletteArgs = [
         '-y',
         '-ss', String(inPoint),
-        '-i', sourceUrl,
         '-t', String(clipDur),
-        '-vf', 'fps=15,scale=720:-1:flags=lanczos,palettegen=stats_mode=diff',
+        '-i', sourceUrl,
+        '-vf', 'fps=15,scale=720:-2:flags=lanczos,palettegen=stats_mode=diff',
         palettePath,
       ];
+      // Pass 2 — paletteuse. Two inputs: the source video (clipped again)
+      // and the palette PNG. The palette PNG is a still image — we must
+      // either loop it as an input or apply `-t` only to the source, NOT
+      // to the palette input, otherwise ffmpeg caps the output to the
+      // palette's implicit 0-second duration and you get a single frame.
+      // We put `-ss`/`-t` before the source `-i` (binds to it) and use
+      // `-loop 1 -i palette` so the palette stream runs as long as the
+      // filter graph needs.
       const useArgs = [
         '-y',
         '-ss', String(inPoint),
-        '-i', sourceUrl,
         '-t', String(clipDur),
+        '-i', sourceUrl,
+        '-loop', '1',
         '-i', palettePath,
-        '-filter_complex', 'fps=15,scale=720:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5',
+        '-filter_complex', '[0:v]fps=15,scale=720:-2:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5',
         '-loop', '0',
         outPath,
       ];

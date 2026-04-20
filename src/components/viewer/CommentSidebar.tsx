@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { CommentItem } from './CommentItem';
 import type { Asset, Comment } from '@/types';
-import { MessageSquare, Send, Clock, Pencil, X, CheckCircle2, Info } from 'lucide-react';
+import { MessageSquare, Send, Clock, Pencil, X, CheckCircle2, Info, Scissors } from 'lucide-react';
 import { FileInfoPanel } from './FileInfoPanel';
 import { formatTimestamp } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -284,6 +284,44 @@ export function CommentSidebar({
             </div>
           )}
 
+          {/* Range banner — appears when in AND out are set. Makes it obvious
+              the comment will scope to a segment, not a single timestamp. */}
+          {inPoint !== undefined && outPoint !== undefined && (
+            <div className="flex items-center justify-between px-2.5 py-1.5 bg-frame-accent/10 border border-frame-accent/30 rounded-lg">
+              <span className="text-xs text-frame-accent flex items-center gap-1.5 font-medium">
+                <Scissors className="w-3 h-3" />
+                Commenting on range
+                <span className="font-mono text-[11px]">
+                  {formatTimestamp(inPoint)} → {formatTimestamp(outPoint)}
+                </span>
+              </span>
+              <button
+                onClick={() => { setInPoint(undefined); setOutPoint(undefined); }}
+                title="Clear range"
+                className="text-frame-textMuted hover:text-white"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Half-set range hint: IN clicked, waiting on OUT */}
+          {inPoint !== undefined && outPoint === undefined && (
+            <div className="flex items-center justify-between px-2.5 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <span className="text-xs text-yellow-400 flex items-center gap-1.5">
+                <Scissors className="w-3 h-3" />
+                Range start at <span className="font-mono">{formatTimestamp(inPoint)}</span> — click <span className="font-mono">OUT</span> at the end
+              </span>
+              <button
+                onClick={() => setInPoint(undefined)}
+                title="Cancel range"
+                className="text-frame-textMuted hover:text-white"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <textarea
             ref={textareaRef}
             value={text}
@@ -313,50 +351,59 @@ export function CommentSidebar({
                 </button>
               )}
               {asset.type === 'video' && (
-                <>
+                <div
+                  className={`inline-flex items-center rounded-lg overflow-hidden border ${
+                    inPoint !== undefined
+                      ? 'border-frame-accent/40'
+                      : 'border-frame-border'
+                  }`}
+                >
                   <button
                     type="button"
                     onClick={() => setInPoint(currentTime)}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${
-                      inPoint !== undefined ? 'bg-frame-accent/15 text-frame-accent' : 'text-frame-textMuted hover:text-white'
+                    className={`flex items-center gap-1 px-2 py-1 text-xs transition-colors ${
+                      inPoint !== undefined
+                        ? 'bg-frame-accent/15 text-frame-accent'
+                        : 'text-frame-textMuted hover:text-white'
                     }`}
                     title="Mark range start at current time"
                   >
+                    <Scissors className="w-3 h-3" />
                     <span className="font-mono text-[10px]">IN</span>
-                    {inPoint !== undefined && <span className="font-mono text-[10px]">{formatTimestamp(inPoint)}</span>}
+                    {inPoint !== undefined && (
+                      <span className="font-mono text-[10px] opacity-80">
+                        {formatTimestamp(inPoint)}
+                      </span>
+                    )}
                   </button>
-                  {inPoint !== undefined && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (currentTime <= inPoint) {
-                          toast.error('Out-point must come after in-point');
-                          return;
-                        }
-                        setOutPoint(currentTime);
-                      }}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${
-                        outPoint !== undefined
-                          ? 'bg-frame-accent/15 text-frame-accent'
-                          : 'text-frame-textMuted hover:text-white animate-pulse'
-                      }`}
-                      title="Mark range end at current time"
-                    >
-                      <span className="font-mono text-[10px]">OUT</span>
-                      {outPoint !== undefined && <span className="font-mono text-[10px]">{formatTimestamp(outPoint)}</span>}
-                    </button>
-                  )}
-                  {(inPoint !== undefined || outPoint !== undefined) && (
-                    <button
-                      type="button"
-                      onClick={() => { setInPoint(undefined); setOutPoint(undefined); }}
-                      className="text-frame-textMuted hover:text-red-400 text-xs px-1"
-                      title="Clear range"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </>
+                  <button
+                    type="button"
+                    disabled={inPoint === undefined}
+                    onClick={() => {
+                      if (inPoint === undefined) return;
+                      if (currentTime <= inPoint) {
+                        toast.error('Out-point must come after in-point');
+                        return;
+                      }
+                      setOutPoint(currentTime);
+                    }}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs transition-colors border-l ${
+                      outPoint !== undefined
+                        ? 'bg-frame-accent/15 text-frame-accent border-frame-accent/30'
+                        : inPoint !== undefined
+                        ? 'text-yellow-400 animate-pulse border-frame-accent/30'
+                        : 'text-frame-textMuted/50 cursor-not-allowed border-frame-border'
+                    }`}
+                    title={inPoint === undefined ? 'Mark IN first' : 'Mark range end at current time'}
+                  >
+                    <span className="font-mono text-[10px]">OUT</span>
+                    {outPoint !== undefined && (
+                      <span className="font-mono text-[10px] opacity-80">
+                        {formatTimestamp(outPoint)}
+                      </span>
+                    )}
+                  </button>
+                </div>
               )}
               <button
                 type="button"

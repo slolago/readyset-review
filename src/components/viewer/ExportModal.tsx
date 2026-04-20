@@ -168,7 +168,25 @@ export function ExportModal({
           filename,
         }),
       });
-      const data = await res.json();
+      // Server may return HTML on edge crashes / timeouts (Vercel's
+      // "An error occurred…" page) — res.json() would throw. Read as
+      // text first, then try to parse.
+      const raw = await res.text();
+      let data: { status?: string; signedUrl?: string; error?: string } = {};
+      try {
+        data = JSON.parse(raw) as typeof data;
+      } catch {
+        // Non-JSON (usually Vercel runtime crash). Surface a friendlier
+        // message and keep the raw payload in the console for debugging.
+        console.error('[export] non-JSON response:', raw.slice(0, 500));
+        setUi('failed');
+        const msg = res.status === 504
+          ? 'Export timed out — try a shorter clip.'
+          : `Server error (${res.status}). Try again or check the logs.`;
+        setErrorMsg(msg);
+        toast.error(msg);
+        return;
+      }
       if (!res.ok) {
         setUi('failed');
         setErrorMsg(data.error || 'Export failed');
