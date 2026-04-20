@@ -415,6 +415,113 @@ describe('API enforcement — review-links', () => {
   });
 });
 
+// ---------- Tests: GET /api/review-links?projectId=... ----------
+
+describe('GET /api/review-links?projectId=...', () => {
+  const loadGET = async () => {
+    const mod = await import('@/app/api/review-links/route');
+    return mod.GET;
+  };
+
+  const mkReq = (uid: string | null, projectId?: string | null) => {
+    const qs = projectId === null ? '' : `?projectId=${projectId ?? F.projectId}`;
+    return makeRequest({
+      url: `http://localhost/api/review-links${qs}`,
+      headers: uid ? authHeader(uid) : {},
+    });
+  };
+
+  it('Test A: owner → 200, returns seeded links sorted desc by createdAt', async () => {
+    const GET = await loadGET();
+    // seed two links with distinct createdAt (override after seed)
+    const tOld = seedReviewLink(db, { projectId: F.projectId, createdBy: F.owner });
+    const tNew = seedReviewLink(db, { projectId: F.projectId, createdBy: F.owner });
+    // Overwrite createdAt shapes to simulate Firestore Timestamp serialized form
+    const old = db.__store.get('reviewLinks')!.get(tOld)!;
+    old.createdAt = { _seconds: 1000, toMillis: () => 1000000 };
+    const nw = db.__store.get('reviewLinks')!.get(tNew)!;
+    nw.createdAt = { _seconds: 2000, toMillis: () => 2000000 };
+
+    const res = await GET(mkReq(F.owner));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.links).toHaveLength(2);
+    expect(data.links[0].id).toBe(tNew);
+    expect(data.links[1].id).toBe(tOld);
+    expect(data.links[0].createdAt._seconds).toBe(2000);
+  });
+
+  it('Test B: editor → 200, same set as owner', async () => {
+    const GET = await loadGET();
+    seedReviewLink(db, { projectId: F.projectId, createdBy: F.owner, token: 'tA' });
+    const res = await GET(mkReq(F.editor));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.links.map((l: any) => l.id)).toEqual(['tA']);
+  });
+
+  it('Test C: reviewer → 200, can list review links for accessible project', async () => {
+    const GET = await loadGET();
+    seedReviewLink(db, { projectId: F.projectId, createdBy: F.owner, token: 'tA' });
+    const res = await GET(mkReq(F.reviewer));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.links.map((l: any) => l.id)).toEqual(['tA']);
+  });
+
+  it('Test D: platform admin → 200 via admin override', async () => {
+    const GET = await loadGET();
+    seedReviewLink(db, { projectId: F.projectId, createdBy: F.owner, token: 'tA' });
+    const res = await GET(mkReq(F.admin));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.links.map((l: any) => l.id)).toEqual(['tA']);
+  });
+
+  it('Test E: stranger → 403', async () => {
+    const GET = await loadGET();
+    seedReviewLink(db, { projectId: F.projectId, createdBy: F.owner });
+    const res = await GET(mkReq(F.stranger));
+    expect(res.status).toBe(403);
+  });
+
+  it('Test F: missing projectId → 400', async () => {
+    const GET = await loadGET();
+    const res = await GET(mkReq(F.owner, null));
+    expect(res.status).toBe(400);
+  });
+
+  it('Test G: unknown projectId → 404', async () => {
+    const GET = await loadGET();
+    const res = await GET(mkReq(F.owner, 'does-not-exist'));
+    expect(res.status).toBe(404);
+  });
+
+  it('Test H: no Authorization header → 401', async () => {
+    const GET = await loadGET();
+    const res = await GET(mkReq(null));
+    expect(res.status).toBe(401);
+  });
+
+  it('Test I: filter correctness — only returns links for requested projectId', async () => {
+    const GET = await loadGET();
+    seedReviewLink(db, { projectId: F.projectId, createdBy: F.owner, token: 'link-A' });
+    seedProject(db, {
+      id: 'proj-B',
+      ownerId: F.owner,
+      collaborators: [{ userId: F.owner, role: 'owner' }],
+    });
+    seedReviewLink(db, { projectId: 'proj-B', createdBy: F.owner, token: 'link-B' });
+
+    const res = await GET(mkReq(F.owner));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const ids = data.links.map((l: any) => l.id);
+    expect(ids).toContain('link-A');
+    expect(ids).not.toContain('link-B');
+  });
+});
+
 // ---------- Tests: comments + review-link flags ----------
 
 describe('API enforcement — comments', () => {
