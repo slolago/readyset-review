@@ -145,6 +145,25 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // BLK-01: ?allVersions=true soft-deletes every group member atomically.
+    // Default (flag absent) preserves single-doc behavior used by VersionStackModal.
+    const allVersions = new URL(request.url).searchParams.get('allVersions') === 'true';
+
+    if (allVersions) {
+      const groupId = resolveGroupId(asset, params.assetId);
+      const members = await fetchGroupMembers(db, groupId);
+      const batch = db.batch();
+      const now = Timestamp.now();
+      for (const m of members) {
+        batch.update(db.collection('assets').doc(m.id), {
+          deletedAt: now,
+          deletedBy: user.id,
+        });
+      }
+      await batch.commit();
+      return NextResponse.json({ success: true, count: members.length });
+    }
+
     // Soft-delete: mark deletedAt/deletedBy. GCS blobs and comments stay
     // intact so restore is lossless. Permanent destruction happens via
     // /api/trash/permanent-delete.

@@ -260,7 +260,10 @@ export const AssetCard = memo(function AssetCard({
     if (!ok) return;
     try {
       const token = await getIdToken();
-      const res = await fetch(`/api/assets/${asset.id}`, {
+      // BLK-01: when the card represents a stack (_versionCount > 1), delete every version
+      const allVersions = ((asset as any)._versionCount ?? 1) > 1;
+      const url = `/api/assets/${asset.id}${allVersions ? '?allVersions=true' : ''}`;
+      const res = await fetch(url, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
