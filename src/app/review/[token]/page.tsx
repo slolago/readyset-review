@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { Film, Lock, AlertCircle, ChevronLeft, Download, Folder as FolderIcon, Home, ChevronRight } from 'lucide-react';
+import { Film, Lock, AlertCircle, ChevronLeft, Download, Folder as FolderIcon, Home, ChevronRight, Clock } from 'lucide-react';
 import type { ReviewLink, Asset, Folder, Comment } from '@/types';
 import { forceDownload } from '@/lib/utils';
 import { AssetCard } from '@/components/files/AssetCard';
@@ -68,7 +68,10 @@ export default function ReviewPage() {
       if (folderId) qs.set('folder', folderId);
       const res = await fetch(`/api/review-links/${token}?${qs}`);
       if (res.status === 401) { setPasswordError(true); setLoading(false); return; }
-      if (!res.ok) throw new Error('Review link not found or expired');
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || 'Review link not found or expired');
+      }
       const json = await res.json();
       setData(json);
       setPasswordError(false);
@@ -280,6 +283,18 @@ export default function ReviewPage() {
     );
   }
 
+  if (error && /expired/i.test(error)) {
+    return (
+      <div className="min-h-screen bg-frame-bg flex items-center justify-center">
+        <div className="text-center p-8">
+          <Clock className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+          <h1 className="text-xl font-bold text-white mb-2">This link has expired</h1>
+          <p className="text-frame-textSecondary">Contact whoever shared it with you for a fresh link.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-frame-bg flex items-center justify-center">
@@ -290,6 +305,24 @@ export default function ReviewPage() {
         </div>
       </div>
     );
+  }
+
+  // Client-side guard: if the link's expiresAt resolved to the past mid-session,
+  // force-render the expired screen (race after load).
+  if (data?.reviewLink.expiresAt) {
+    const exp = (data.reviewLink.expiresAt as any);
+    const d = typeof exp?.toDate === 'function' ? exp.toDate() as Date : null;
+    if (d && d.getTime() <= Date.now()) {
+      return (
+        <div className="min-h-screen bg-frame-bg flex items-center justify-center">
+          <div className="text-center p-8">
+            <Clock className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+            <h1 className="text-xl font-bold text-white mb-2">This link has expired</h1>
+            <p className="text-frame-textSecondary">Contact whoever shared it with you for a fresh link.</p>
+          </div>
+        </div>
+      );
+    }
   }
 
   if (passwordError || (!data && !loading)) {
