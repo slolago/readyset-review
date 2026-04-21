@@ -31,15 +31,50 @@ export async function GET(request: NextRequest) {
 
   try {
     const db = getAdminDb();
-    const snap = await db.collection('folders').where('projectId', '==', projectId).get();
-    const allFolders = snap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
-    // Hide soft-deleted folders from normal listings — they surface only in the Trash view.
-    const liveFolders = allFolders.filter((f: any) => !f.deletedAt);
-    const folders = all
-      ? liveFolders.sort((a: any, b: any) => a.createdAt?.toMillis() - b.createdAt?.toMillis())
-      : liveFolders
-          .filter((f: any) => (f.parentId ?? null) === parentId)
-          .sort((a: any, b: any) => a.createdAt?.toMillis() - b.createdAt?.toMillis());
+
+    // Phase 63 (IDX-03): composite index on folders(projectId, parentId, deletedAt)
+    // lets us fetch only live folders at a given tree level without scanning the
+    // full project collection. `?all=true` requests every live folder, which uses
+    // the (projectId, deletedAt) index instead. Fall back to an in-memory filter
+    // while the index is still provisioning.
+    let liveFolders: any[];
+    try {
+      if (all) {
+        const snap = await db
+          .collection('folders')
+          .where('projectId', '==', projectId)
+          .where('deletedAt', '==', null)
+          .get();
+        liveFolders = snap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
+      } else {
+        const snap = await db
+          .collection('folders')
+          .where('projectId', '==', projectId)
+          .where('parentId', '==', parentId)
+          .where('deletedAt', '==', null)
+          .get();
+        liveFolders = snap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/index/i.test(msg) || /FAILED_PRECONDITION/i.test(msg)) {
+        console.warn(
+          '[GET /api/folders] Composite index not deployed yet — falling back to in-memory filter. Deploy firestore.indexes.json.'
+        );
+        const snap = await db.collection('folders').where('projectId', '==', projectId).get();
+        const allFolders = snap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
+        liveFolders = allFolders.filter((f: any) => !f.deletedAt);
+        if (!all) {
+          liveFolders = liveFolders.filter((f: any) => (f.parentId ?? null) === parentId);
+        }
+      } else {
+        throw err;
+      }
+    }
+
+    const folders = liveFolders.sort(
+      (a: any, b: any) => a.createdAt?.toMillis() - b.createdAt?.toMillis()
+    );
 
     return NextResponse.json({ folders });
   } catch (err) {
