@@ -339,23 +339,29 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
     };
   }, [masterRef, slaveRef]);
 
-  // Track durations from each video independently
+  // Track durations from each video independently. Deps include selectedIdA
+  // / selectedIdB so when the user picks a different version the effect
+  // re-runs: we reset durationA/B to 0 (scrubber max reflects the new src
+  // while it loads) and re-attach the loadedmetadata listener so the fresh
+  // duration lands once metadata arrives.
   useEffect(() => {
     const vA = videoARef.current;
     if (!vA) return;
+    setDurationA(0);
     const onLoaded = () => setDurationA(vA.duration || 0);
     vA.addEventListener('loadedmetadata', onLoaded);
     if (vA.readyState >= 1) setDurationA(vA.duration || 0);
     return () => vA.removeEventListener('loadedmetadata', onLoaded);
-  }, []);
+  }, [selectedIdA]);
   useEffect(() => {
     const vB = videoBRef.current;
     if (!vB) return;
+    setDurationB(0);
     const onLoaded = () => setDurationB(vB.duration || 0);
     vB.addEventListener('loadedmetadata', onLoaded);
     if (vB.readyState >= 1) setDurationB(vB.duration || 0);
     return () => vB.removeEventListener('loadedmetadata', onLoaded);
-  }, []);
+  }, [selectedIdB]);
 
   // Play / pause — audibility is handled by video.muted declaratively; Web Audio
   // is analysis-only so no context-resume dance needed. Kept synchronous to
