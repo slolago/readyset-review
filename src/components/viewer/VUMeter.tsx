@@ -96,6 +96,10 @@ interface AnalysisGraph {
 // because MediaStreamAudioSourceNode is bound to the audio track present at
 // creation time — it doesn't automatically follow the video when src flips.
 let sharedCtx: AudioContext | null = null;
+// Ref-count of currently-mounted VUMeter instances. The last unmount closes
+// sharedCtx so navigating away from the viewer doesn't leak an AudioContext
+// across route changes (Chrome caps per-page contexts at ~6).
+let consumerCount = 0;
 
 function getOrCreateAudioContext(): AudioContext | null {
   if (sharedCtx && sharedCtx.state !== 'closed') return sharedCtx;
@@ -220,6 +224,10 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
     useEffect(() => {
       const ctx = getOrCreateAudioContext();
       if (!ctx) return;
+      // Ref-count this mount. Deps are [] so increment happens exactly once
+      // per component instance; the matching decrement is in the cleanup
+      // which only runs on unmount (never on re-render).
+      consumerCount++;
 
       graphsRef.current = videoRefs.map(() => null);
       const cleanups: Array<() => void> = [];
@@ -271,6 +279,15 @@ export const VUMeter = memo(forwardRef<VUMeterHandle, VUMeterProps>(
         cancelAnimationFrame(rafRef.current);
         cleanups.forEach((fn) => fn());
         graphsRef.current = [];
+        consumerCount--;
+        if (consumerCount <= 0 && sharedCtx) {
+          // Last VUMeter gone — release the shared AudioContext so it doesn't
+          // leak across page navigations. Next mount will lazily build a new
+          // one via getOrCreateAudioContext().
+          try { sharedCtx.close(); } catch {}
+          sharedCtx = null;
+          consumerCount = 0;
+        }
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
