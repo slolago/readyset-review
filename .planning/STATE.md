@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Dashboard & Annotation UX Fixes
-status: defining_requirements
-stopped_at: Defining requirements for v2.2
-last_updated: "2026-04-21T21:00:00.000Z"
+status: roadmap_ready
+stopped_at: Roadmap created — 4 phases (70–73), ready for Phase 70 planning
+last_updated: "2026-04-21T21:30:00.000Z"
 last_activity: 2026-04-21
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,14 +21,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-21)
 
 **Core value:** Fast, accurate video review
-**Current focus:** v2.2 Dashboard & Annotation UX Fixes — 9 UI/UX bugs
+**Current focus:** v2.2 Dashboard & Annotation UX Fixes — 9 UI/UX bugs across 4 phases
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 70 (context-menu-behavior) — not started
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-21 — Milestone v2.2 started
+Status: Roadmap ready, awaiting `/gsd:plan-phase 70`
+Last activity: 2026-04-21 — Roadmap for v2.2 created, 9/9 requirements mapped
+
+## v2.2 Phase Structure
+
+| Phase | Name | Requirements |
+|-------|------|--------------|
+| 70 | context-menu-behavior | CTX-02, CTX-03, CTX-04, CTX-05 |
+| 71 | grid-view-affordances | VIEW-01, VIEW-02 |
+| 72 | inline-edit-and-folder-duplicate | EDIT-01, FS-01 |
+| 73 | drawing-mode-transforms | DRAW-01 |
+
+**Coverage:** 9/9 requirements mapped, no orphans.
 
 ## Accumulated Context
 
@@ -40,6 +51,13 @@ Last activity: 2026-04-21 — Milestone v2.2 started
 - `ProjectsContext` wraps authenticated pages so dashboard + sidebar share one fetch
 - `getAuthenticatedUser` caches user doc reads module-level, 30s TTL; `invalidateUserCache(uid)` exposed and called by session endpoint after name/avatar mutations
 - Server Component dashboard ships structurally; `initialStats=null` fallback until session-cookie middleware lands in v3
+
+### Relevant prior art for v2.2
+
+- `<InlineRename />` primitive exists from v1.9 Phase 57 — already used in grid + list views; EDIT-01 work will live on this component
+- Folder deep-copy helper exists: `src/lib/folders.ts::deepCopyFolder` (BFS, Promise.all per level) from v1.9 Phase 55 — FS-01 folder-duplicate should reuse this
+- Context menu / Dropdown a11y + keyboard nav established in v1.9 Phase 59 (`role="menu"`, arrow keys, Escape)
+- Asset duplicate naming rule (no "copy of" prefix) set in v1.5 Phase 39 — FS-01 should match for parity
 
 ### Recently shipped
 
@@ -58,14 +76,14 @@ Last activity: 2026-04-21 — Milestone v2.2 started
 
 ### Pending Todos
 
-None — starting v2.2 requirements work.
+None — ready to plan Phase 70.
 
 ### Blockers/Concerns
 
-- None blocking v2.2 specifically. All bugs are scoped to frontend behavior (context menus, grid/list UI, inline rename, Fabric.js canvas) plus one API-backed fix for folder duplicate.
+- None blocking v2.2. All 4 phases touch isolated code paths (context menu component, grid view toggle + AssetCard layering, inline rename + folder duplicate API, Fabric.js canvas). No phase dependencies within v2.2 — phases can theoretically be planned/executed in any order.
 
 ## Session Continuity
 
 Last session: 2026-04-21
-Stopped at: v2.2 milestone started — requirements being defined
-Resume file: None
+Stopped at: Roadmap for v2.2 created — 4 phases (70, 71, 72, 73) defined with 100% requirement coverage
+Resume file: None — run `/gsd:plan-phase 70` to start

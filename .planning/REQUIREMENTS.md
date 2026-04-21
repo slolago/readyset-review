@@ -60,21 +60,21 @@ See `.planning/MILESTONES.md` — v1.7 through v2.1 shipped.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CTX-02 | TBD | Pending |
-| CTX-03 | TBD | Pending |
-| CTX-04 | TBD | Pending |
-| CTX-05 | TBD | Pending |
-| VIEW-01 | TBD | Pending |
-| VIEW-02 | TBD | Pending |
-| EDIT-01 | TBD | Pending |
-| FS-01 | TBD | Pending |
-| DRAW-01 | TBD | Pending |
+| CTX-02 | Phase 70 | Pending |
+| CTX-03 | Phase 70 | Pending |
+| CTX-04 | Phase 70 | Pending |
+| CTX-05 | Phase 70 | Pending |
+| VIEW-01 | Phase 71 | Pending |
+| VIEW-02 | Phase 71 | Pending |
+| EDIT-01 | Phase 72 | Pending |
+| FS-01 | Phase 72 | Pending |
+| DRAW-01 | Phase 73 | Pending |
 
 **Coverage:**
 - v2.2 requirements: 9 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 9 (will be filled by roadmapper)
+- Mapped to phases: 9 (100%)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-21*
-*Last updated: 2026-04-21 — v2.2 UI/UX bug fixes*
+*Last updated: 2026-04-21 — v2.2 roadmap created, all 9 REQs mapped to phases 70–73*
