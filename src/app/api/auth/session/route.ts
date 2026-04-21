@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { invalidateUserCache } from '@/lib/auth-helpers';
 import { Timestamp } from 'firebase-admin/firestore';
 
 export async function POST(request: NextRequest) {
@@ -96,6 +97,9 @@ export async function POST(request: NextRequest) {
         avatar: avatar || userData.avatar,
       });
       userData = { ...userData, name: name || userData.name, avatar: avatar || userData.avatar };
+      // PERF-08: user doc was just mutated (name/avatar refresh) — bust the
+      // in-process cache so the next getAuthenticatedUser read sees fresh data.
+      invalidateUserCache(decoded.uid);
     }
 
     return NextResponse.json({
