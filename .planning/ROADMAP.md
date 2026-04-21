@@ -315,7 +315,7 @@ See [milestones/v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md) for full phase deta
 - [ ] **Phase 62: signed-url-caching** — cache signedUrl + expiresAt; stop regenerating per-request
 - [ ] **Phase 63: firestore-indexes-and-denorm** — composite indexes, denormalize commentCount, kill full-collection scans
 - [x] **Phase 64: format-edge-cases** — HEVC/AV1/VP9/ProRes export, stale-job sweeper, HEIC/AVIF fallback, adaptive sprite spacing
-- [ ] **Phase 65: security-and-upload-validation** — bcrypt review-link passwords, POST body not query, GCS.exists() verify, MIME validation
+- [x] **Phase 65: security-and-upload-validation** — bcrypt review-link passwords, POST body not query, GCS.exists() verify, MIME validation (completed 2026-04-21)
 - [ ] **Phase 66: dead-data-and-contracts** — remove url phantom, unify sprite naming, UploadCompleteRequest, AbortController, folder.path ancestry, provisional-metadata pattern
 
 ## Progress
@@ -364,5 +364,5 @@ See [milestones/v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md) for full phase deta
 | 62. signed-url-caching | v2.0 | 1/1 | Complete | 2026-04-20 |
 | 63. firestore-indexes-and-denorm | v2.0 | 1/1 | Complete | 2026-04-20 |
 | 64. format-edge-cases | v2.0 | 1/1 | Complete | 2026-04-20 |
-| 65. security-and-upload-validation | v2.0 | 0/? | Not started | - |
+| 65. security-and-upload-validation | v2.0 | 1/1 | Complete   | 2026-04-21 |
 | 66. dead-data-and-contracts | v2.0 | 0/? | Not started | - |

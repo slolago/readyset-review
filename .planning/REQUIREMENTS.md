@@ -44,10 +44,10 @@ Synthesized from a deep pipeline-lifecycle + unhappy-path audit (2026-04-20). 5 
 
 ### Security & Upload Validation (Phase 65)
 
-- [ ] **SEC-20**: Review-link passwords are hashed with bcrypt (cost ≥10) at write; verification uses `bcrypt.compare`; existing plaintext passwords are migrated on first read (hash-then-replace)
-- [ ] **SEC-21**: Guests submit the password in the POST body (not the `?password=` query string) so CDN and Vercel access logs stop capturing passwords; legacy query-param path removed after a migration window
-- [ ] **SEC-22**: `POST /api/upload/complete` calls `bucket.file(gcsPath).getMetadata()` and rejects if the object is missing or size is 0 — zero-byte, cancelled, and MIME-spoofed uploads never become `ready` assets
-- [ ] **SEC-23**: Server-side MIME validation on upload/complete — the Content-Type GCS reports must be on the accepted-MIME allow-list (from `src/lib/file-types.ts`); mismatch rejects with a clear error
+- [x] **SEC-20**: Review-link passwords are hashed with bcrypt (cost ≥10) at write; verification uses `bcrypt.compare`; existing plaintext passwords are migrated on first read (hash-then-replace)
+- [x] **SEC-21**: Guests submit the password in the POST body (not the `?password=` query string) so CDN and Vercel access logs stop capturing passwords; legacy query-param path removed after a migration window
+- [x] **SEC-22**: `POST /api/upload/complete` calls `bucket.file(gcsPath).getMetadata()` and rejects if the object is missing or size is 0 — zero-byte, cancelled, and MIME-spoofed uploads never become `ready` assets
+- [x] **SEC-23**: Server-side MIME validation on upload/complete — the Content-Type GCS reports must be on the accepted-MIME allow-list (from `src/lib/file-types.ts`); mismatch rejects with a clear error
 
 ### Dead Data & Contract Cleanup (Phase 66)
 
@@ -109,10 +109,10 @@ All 37 REQs trace to concrete audit findings — 18 specific (C-1 to L-4) + 5 sy
 | FMT-02 | Phase 64 | Complete |
 | FMT-03 | Phase 64 | Complete |
 | FMT-04 | Phase 64 | Complete |
-| SEC-20 | Phase 65 | Pending |
-| SEC-21 | Phase 65 | Pending |
-| SEC-22 | Phase 65 | Pending |
-| SEC-23 | Phase 65 | Pending |
+| SEC-20 | Phase 65 | Complete |
+| SEC-21 | Phase 65 | Complete |
+| SEC-22 | Phase 65 | Complete |
+| SEC-23 | Phase 65 | Complete |
 | CLN-01 | Phase 66 | Pending |
 | CLN-02 | Phase 66 | Pending |
 | CLN-03 | Phase 66 | Pending |

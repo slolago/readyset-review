@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Architecture Hardening
 status: active
-stopped_at: Phase 64 complete — Phase 65 (security-and-upload-validation) ready
+stopped_at: Phase 65 complete — Phase 66 (dead-data-and-contract-cleanup) ready
 last_updated: "2026-04-20T00:00:00.000Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 5
-  completed_plans: 5
-  percent: 71
+  completed_phases: 6
+  total_plans: 6
+  completed_plans: 6
+  percent: 86
 ---
 
 # State
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-04-20)
 
 ## Current Position
 
-Phase: Phase 65 (security-and-upload-validation) — Not started
-Status: Phase 64 complete — FMT-01..04 shipped (mov+h264 remux, stale sweep, HEIC ffprobe, adaptive sprite)
-Last activity: 2026-04-20 — Phase 64 shipped
+Phase: Phase 66 (dead-data-and-contract-cleanup) — Not started
+Status: Phase 65 complete — SEC-20..23 shipped (bcrypt hashing + legacy migration, header-only password path, MIME allow-list on upload/complete)
+Last activity: 2026-04-20 — Phase 65 shipped
 
-Progress: [███████░░░] 71% (5/7 phases)
+Progress: [████████░░] 86% (6/7 phases)
 
 ## Accumulated Context
 
