@@ -97,6 +97,9 @@ export const AssetCard = memo(function AssetCard({
     setScrubPct(pct);
   }, []);
 
+  // Hover-fallback only (OBS-03). The normal pipeline fires sprite generation
+  // server-side from /api/upload/complete; this keeps pre-Phase-60 assets
+  // without a sprite working — first hover triggers generation on demand.
   const ensureSprite = useCallback(async () => {
     // Don't retry after a failure — would hammer the server on every hover.
     // User can refresh to try again.

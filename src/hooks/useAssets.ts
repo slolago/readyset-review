@@ -331,9 +331,6 @@ export function useUpload() {
         } else {
           console.warn('[thumbnail] captureThumbnail returned null — no thumbnail will be stored');
         }
-
-        // Trigger server-side sprite generation (non-blocking — fire-and-forget
-        // runs after the upload-complete step below so the video file is already in GCS)
       }
 
       // Step 2: Upload to GCS — track xhr so user can cancel mid-transfer
@@ -391,13 +388,9 @@ export function useUpload() {
       if (!completeRes.ok) throw new Error('Failed to complete upload');
       updateUpload(uploadId, { status: 'complete', progress: 100 });
 
-      // Step 4 (fire-and-forget): Trigger server-side sprite strip generation for videos
-      if (file.type.startsWith('video/')) {
-        fetch(`/api/assets/${assetId}/generate-sprite`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        }).catch(() => {});
-      }
+      // Sprite generation is fired server-side from /api/upload/complete (OBS-03);
+      // no client trigger here. The AssetCard hover path still runs as a
+      // fallback for pre-Phase-60 assets without sprites.
 
       return assetId;
     } catch (err) {
