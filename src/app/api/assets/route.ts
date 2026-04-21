@@ -76,8 +76,9 @@ export async function GET(request: NextRequest) {
         if (!d.text || !String(d.text).trim()) continue;    // skip empty/whitespace
         commentCountMap.set(aid, (commentCountMap.get(aid) ?? 0) + 1);
       }
-    } catch {
+    } catch (err) {
       // Non-fatal: comment counts stay 0 if query fails
+      console.error('[GET /api/assets] comment count query failed', err);
     }
     for (const asset of grouped) {
       asset._commentCount = commentCountMap.get(asset.id) ?? 0;

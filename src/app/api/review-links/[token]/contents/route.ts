@@ -72,7 +72,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         if (!d.exists || (d.data() as any).deletedAt) { assets.push({ id, _deleted: true }); return; }
         const a = { id: d.id, ...d.data() } as any;
         if (a.thumbnailGcsPath) {
-          try { a.thumbnailSignedUrl = await generateReadSignedUrl(a.thumbnailGcsPath); } catch {}
+          try { a.thumbnailSignedUrl = await generateReadSignedUrl(a.thumbnailGcsPath); } catch (err) {
+            console.error('[GET /api/review-links/[token]/contents] sign thumbnail URL failed', err);
+          }
         }
         assets.push(a);
       })

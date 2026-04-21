@@ -51,7 +51,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     });
 
     return NextResponse.json({ collaborator });
-  } catch {
+  } catch (err) {
+    console.error('[POST /api/projects/[projectId]/collaborators]', err);
     return NextResponse.json({ error: 'Failed to add collaborator' }, { status: 500 });
   }
 }
@@ -81,7 +82,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     });
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error('[DELETE /api/projects/[projectId]/collaborators]', err);
     return NextResponse.json({ error: 'Failed to remove collaborator' }, { status: 500 });
   }
 }

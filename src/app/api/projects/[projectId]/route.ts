@@ -29,7 +29,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json({ project });
-  } catch {
+  } catch (err) {
+    console.error('[GET /api/projects/[projectId]]', err);
     return NextResponse.json({ error: 'Failed to fetch project' }, { status: 500 });
   }
 }

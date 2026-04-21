@@ -41,12 +41,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     try {
       const byId = await db.collection('comments').where('userId', '==', params.userId).get();
       commentsAuthored = byId.size;
-    } catch {}
+    } catch (err) {
+      console.error('[GET /api/admin/users/[userId]] comment count query failed', err);
+    }
     let assetsUploaded = 0;
     try {
       const s = await db.collection('assets').where('uploadedBy', '==', params.userId).get();
       assetsUploaded = s.size;
-    } catch {}
+    } catch (err) {
+      console.error('[GET /api/admin/users/[userId]] asset count query failed', err);
+    }
 
     return NextResponse.json({
       user,
@@ -104,10 +108,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       try {
         await getAdminAuth().revokeRefreshTokens(params.userId);
         await getAdminAuth().updateUser(params.userId, { disabled: true });
-      } catch { /* user may not have an Auth record (invited-only) */ }
+      } catch (err) {
+        // user may not have an Auth record (invited-only) — non-fatal
+        console.error('[PATCH /api/admin/users/[userId]] revoke/disable auth failed (may be invited-only)', err);
+      }
     }
     if (updates.disabled === false) {
-      try { await getAdminAuth().updateUser(params.userId, { disabled: false }); } catch {}
+      try { await getAdminAuth().updateUser(params.userId, { disabled: false }); } catch (err) {
+        console.error('[PATCH /api/admin/users/[userId]] reactivate auth user failed', err);
+      }
     }
 
     return NextResponse.json({ success: true, updates });

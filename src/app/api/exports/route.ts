@@ -62,7 +62,9 @@ function runFfmpeg(binPath: string, args: string[]): Promise<{ code: number; std
 }
 
 async function safeUnlink(p: string) {
-  try { await fsp.unlink(p); } catch {}
+  try { await fsp.unlink(p); } catch (err) {
+    console.error('[exports safeUnlink]', p, err);
+  }
 }
 
 interface AssetDoc {
@@ -89,7 +91,8 @@ export async function POST(request: NextRequest) {
   };
   try {
     body = await request.json();
-  } catch {
+  } catch (err) {
+    console.error('[POST /api/exports] invalid JSON body', err);
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
@@ -326,7 +329,8 @@ export async function GET(request: NextRequest) {
             60,
           );
           return { ...job, signedUrl };
-        } catch {
+        } catch (err) {
+          console.error('[GET /api/exports] sign download URL failed', err);
           return job;
         }
       }

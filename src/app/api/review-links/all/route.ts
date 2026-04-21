@@ -46,7 +46,10 @@ export async function GET(request: NextRequest) {
           const rl = doc.data().reviewLinkId;
           commentCounts[rl] = (commentCounts[rl] || 0) + 1;
         }
-      } catch { /* non-fatal */ }
+      } catch (err) {
+        // non-fatal
+        console.error('[GET /api/review-links/all] comment count query failed', err);
+      }
     }
 
     const links = allLinks.map((l) => ({

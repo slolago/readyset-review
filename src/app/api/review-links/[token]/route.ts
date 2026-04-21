@@ -87,13 +87,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Attach signed URLs on a raw asset doc
     const decorate = async (asset: any) => {
       if (asset.gcsPath) {
-        try { asset.signedUrl = await generateReadSignedUrl(asset.gcsPath); } catch {}
+        try { asset.signedUrl = await generateReadSignedUrl(asset.gcsPath); } catch (err) {
+          console.error('[GET /api/review-links/[token]] sign asset URL failed', err);
+        }
       }
       if (asset.thumbnailGcsPath) {
-        try { asset.thumbnailSignedUrl = await generateReadSignedUrl(asset.thumbnailGcsPath); } catch {}
+        try { asset.thumbnailSignedUrl = await generateReadSignedUrl(asset.thumbnailGcsPath); } catch (err) {
+          console.error('[GET /api/review-links/[token]] sign thumbnail URL failed', err);
+        }
       }
       if (asset.gcsPath && link.allowDownloads) {
-        try { asset.downloadUrl = await generateDownloadSignedUrl(asset.gcsPath, asset.name); } catch {}
+        try { asset.downloadUrl = await generateDownloadSignedUrl(asset.gcsPath, asset.name); } catch (err) {
+          console.error('[GET /api/review-links/[token]] sign download URL failed', err);
+        }
       }
       return asset;
     };
@@ -339,7 +345,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({
       link: serializeReviewLink({ id: params.token, ...updatedData }),
     });
-  } catch {
+  } catch (err) {
+    console.error('[PUT /api/review-links/[token]]', err);
     return NextResponse.json({ error: 'Failed to update review link' }, { status: 500 });
   }
 }
@@ -363,7 +370,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     await doc.ref.delete();
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error('[DELETE /api/review-links/[token]]', err);
     return NextResponse.json({ error: 'Failed to delete review link' }, { status: 500 });
   }
 }

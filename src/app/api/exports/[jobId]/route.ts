@@ -36,8 +36,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         `${job.filename}.${job.format}`,
         60,
       );
-    } catch {
+    } catch (err) {
       // non-fatal — caller can retry
+      console.error('[GET /api/exports/[jobId]] sign download URL failed', err);
     }
   }
 

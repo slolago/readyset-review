@@ -31,7 +31,9 @@ async function resolveFfprobe(): Promise<string | null> {
       const candidate = path.join(dir, process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe');
       if (existsSync(candidate)) return candidate;
     }
-  } catch {}
+  } catch (err) {
+    console.error('[probe resolveFfprobe] ffmpeg-installer lookup failed', err);
+  }
 
   // Try ffmpeg-static directory
   try {
@@ -43,7 +45,9 @@ async function resolveFfprobe(): Promise<string | null> {
       const candidate = path.join(dir, process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe');
       if (existsSync(candidate)) return candidate;
     }
-  } catch {}
+  } catch (err) {
+    console.error('[probe resolveFfprobe] ffmpeg-static lookup failed', err);
+  }
 
   // Try @ffprobe-installer as a fallback (separate package, also widely used)
   try {
@@ -51,7 +55,9 @@ async function resolveFfprobe(): Promise<string | null> {
     const probePath = (probeInstaller as { path?: string; default?: { path?: string } }).path
       ?? (probeInstaller as { default?: { path?: string } }).default?.path;
     if (probePath && existsSync(probePath)) return probePath;
-  } catch {}
+  } catch (err) {
+    console.error('[probe resolveFfprobe] ffprobe-installer lookup failed', err);
+  }
 
   // System fallback
   if (existsSync('/usr/bin/ffprobe')) return '/usr/bin/ffprobe';
@@ -183,7 +189,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let data: FfprobeOutput;
     try {
       data = JSON.parse(stdout);
-    } catch {
+    } catch (err) {
+      console.error('[POST /api/assets/[assetId]/probe] parse ffprobe output failed', err);
       return NextResponse.json({ error: 'Could not parse ffprobe output' }, { status: 500 });
     }
 

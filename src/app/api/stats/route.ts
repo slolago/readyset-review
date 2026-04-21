@@ -40,8 +40,9 @@ export async function GET(request: NextRequest) {
             const s = data.size;
             storageBytes += typeof s === 'number' ? s : 0;
           }
-        } catch {
+        } catch (err) {
           // Non-fatal: skip this project's assets if the query fails
+          console.error('[GET /api/stats] asset query failed for project', pid, err);
         }
       }
     }
@@ -55,7 +56,10 @@ export async function GET(request: NextRequest) {
           .where('projectId', 'in', chunk)
           .get();
         reviewLinkCount += rlSnap.size;
-      } catch { /* non-fatal */ }
+      } catch (err) {
+        // non-fatal
+        console.error('[GET /api/stats] review-link count query failed', err);
+      }
     }
 
     return NextResponse.json({
@@ -65,7 +69,8 @@ export async function GET(request: NextRequest) {
       storageBytes,
       reviewLinkCount,
     });
-  } catch (error) {
+  } catch (err) {
+    console.error('[GET /api/stats]', err);
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
   }
 }

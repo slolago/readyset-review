@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
     const snap = await db.collection('users').orderBy('createdAt', 'desc').get();
     const users = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     return NextResponse.json({ users });
-  } catch {
+  } catch (err) {
+    console.error('[GET /api/admin/users]', err);
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
   }
 }
@@ -53,7 +54,8 @@ export async function POST(request: NextRequest) {
     await docRef.set(userData);
 
     return NextResponse.json({ user: { id: docRef.id, ...userData } }, { status: 201 });
-  } catch {
+  } catch (err) {
+    console.error('[POST /api/admin/users]', err);
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
   }
 }
@@ -71,7 +73,8 @@ export async function PUT(request: NextRequest) {
     const db = getAdminDb();
     await db.collection('users').doc(userId).update({ role });
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error('[PUT /api/admin/users]', err);
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
   }
 }
@@ -89,12 +92,16 @@ export async function DELETE(request: NextRequest) {
     const db = getAdminDb();
 
     // Try to delete from Firebase Auth — may not exist if user was only invited and never logged in
-    try { await auth.deleteUser(userId); } catch {}
+    try { await auth.deleteUser(userId); } catch (err) {
+      // User may exist only as an invited Firestore doc with no Auth record — log and continue.
+      console.error('[DELETE /api/admin/users] auth.deleteUser failed (may be invited-only)', err);
+    }
     // Always delete from Firestore
     await db.collection('users').doc(userId).delete();
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error('[DELETE /api/admin/users]', err);
     return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
   }
 }

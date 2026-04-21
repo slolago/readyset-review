@@ -105,7 +105,8 @@ export async function POST(request: NextRequest) {
     const docData = doc.data() as Record<string, unknown>;
 
     return NextResponse.json({ link: serializeReviewLink({ id: token, ...docData }) }, { status: 201 });
-  } catch {
+  } catch (err) {
+    console.error('[POST /api/review-links]', err);
     return NextResponse.json({ error: 'Failed to create review link' }, { status: 500 });
   }
 }

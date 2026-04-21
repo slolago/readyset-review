@@ -125,7 +125,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'ffmpeg not found', diagnostic: diag, steps }, { status: 500 });
     }
     step(`ffmpeg via ${source}`);
-    try { await fs.chmod(binPath, 0o755); } catch {}
+    try { await fs.chmod(binPath, 0o755); } catch (err) {
+      console.error('[POST /api/assets/[assetId]/generate-sprite] chmod ffmpeg failed', err);
+    }
 
     // Get signed URL for the video — ffmpeg will do HTTP range requests
     // so we ONLY download the bytes needed for each frame's keyframe
@@ -198,7 +200,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         ms: Date.now() - startedAt,
       });
     } finally {
-      try { await fs.rm(tmpDir, { recursive: true, force: true }); } catch {}
+      try { await fs.rm(tmpDir, { recursive: true, force: true }); } catch (err) {
+        console.error('[POST /api/assets/[assetId]/generate-sprite] cleanup tmp dir failed', err);
+      }
     }
   } catch (err) {
     console.error('[generate-sprite] unhandled error:', err);

@@ -59,7 +59,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             ]);
             v.signedUrl = signedUrl;
             if (downloadUrl) v.downloadUrl = downloadUrl;
-          } catch {}
+          } catch (err) {
+            console.error('[GET /api/assets/[assetId]] sign version URLs failed', err);
+          }
         }
         return v;
       })
@@ -67,7 +69,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     versions.sort((a, b) => (a.version || 1) - (b.version || 1));
 
     return NextResponse.json({ asset, versions });
-  } catch {
+  } catch (err) {
+    console.error('[GET /api/assets/[assetId]]', err);
     return NextResponse.json({ error: 'Failed to fetch asset' }, { status: 500 });
   }
 }
@@ -141,7 +144,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error('[PUT /api/assets/[assetId]]', err);
     return NextResponse.json({ error: 'Failed to update asset' }, { status: 500 });
   }
 }

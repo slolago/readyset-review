@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({ projects: enriched });
-  } catch {
+  } catch (err) {
+    console.error('[GET /api/admin/projects]', err);
     return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });
   }
 }

@@ -102,7 +102,8 @@ export async function GET(request: NextRequest) {
     try {
       const decoded = await getAdminAuth().verifyIdToken(authHeader.slice(7));
       userId = decoded.uid;
-    } catch {
+    } catch (err) {
+      console.error('[GET /api/comments] token verify failed', err);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
