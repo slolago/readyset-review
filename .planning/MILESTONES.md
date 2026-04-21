@@ -1,5 +1,30 @@
 # Milestones
 
+## v1.9 Hardening & Consistency Audit (Shipped: 2026-04-20)
+
+**Phases completed:** 6 phases (54–59), 6 plans
+**Timeline:** Single-session sprint, 2026-04-20
+**Source:** Four parallel full-app audits (UX, backend/security, file-management flows, viewer/player) surfaced 21 CRITICAL / 33 MEDIUM / 21 LOW findings. v1.9 attacked the top 37 across 6 phases.
+
+**Key accomplishments:**
+
+1. **Phase 54 — security-hardening:** `/api/debug` gated behind admin + stripped of credential hints; `/api/safe-zones GET` authenticated; `disabled` user check moved into `getAuthenticatedUser` (closes the ~1h ID-token window on suspend); `PATCH /api/review-links/[token]` extended to cover every editable flag (password, expiresAt, all allow-*, showAllVersions); `serializeReviewLink` helper strips password in every response path; `approvalStatus` now persists on comment POST; guest comment GET uses compound Firestore query with composite-index fallback.
+2. **Phase 55 — bulk-mutations-and-soft-delete:** Version-stack aware DELETE (`?allVersions=true`); deep folder copy (`src/lib/folders.ts::deepCopyFolder`, BFS with Promise.all per level); `Promise.allSettled` on bulk move + bulk status with per-item error reporting; drag-to-stack clears source from selectedIds; soft-delete filter sweep on stats, copy, size, review-link root/drill-down/contents.
+3. **Phase 56 — viewer-alignment:** ExportModal receives `initialIn`/`initialOut` from the parent so marked loop range pre-fills trim bar; 0-duration waiting state; review-page routes documents (PDF/HTML) to DocumentViewer/HtmlViewer + other types to FileTypeCard; range-comment click unifies with shared `rangeIn`/`rangeOut` (loop + composer + export all read the same state); VUMeter AudioContext ref-counts and closes on last unmount; VersionComparison duration effects re-subscribe on version swap.
+4. **Phase 57 — ux-and-dashboard:** Dashboard Quick Actions routed (Browse → `/projects`, Upload → `?action=upload`, Invite → `?action=invite`); review-link guest resolve/delete work end-to-end (server + client); new `<InlineRename />` primitive adopted in grid + list views (no more `window.prompt`); UserTable delete via `useConfirm`; Collaborators stat card on dashboard; review-link expiry banner + dedicated expired screen; guest name + email persisted in single `frame_guest_info` JSON with back-compat.
+5. **Phase 58 — data-consistency:** Deprecated async `canAccessProject` wrapper removed; all callers migrated to pure function; `Asset` declares `thumbnailGcsPath`/`spriteStripUrl`/`spriteStripGcsPath`/`description`; `Comment.approvalStatus` typed; new `src/lib/names.ts` with `validateAssetRename`/`validateFolderRename` + 13 tests; name-collision returns 409 on rename; every `catch` in API routes logs with contextual `[ROUTE VERB]` prefix.
+6. **Phase 59 — a11y-and-keyboard-coordination:** New `useFocusTrap` + `useModalOwner` hooks; Modal + UserDrawer render `role="dialog"`, `aria-modal="true"`, trap Tab focus, Escape closes; Dropdown full keyboard nav (arrow keys, Enter, Escape) + `role="menu"`/`role="menuitem"` + `aria-haspopup`; VideoPlayer + VersionComparison + ExportModal keydown handlers early-return when `document.body.dataset.modalOpen === 'true'` — no more shortcut leak across layers.
+
+**New files (high-value):** `src/lib/review-links.ts` (serializeReviewLink), `src/lib/folders.ts` (deepCopyFolder), `src/lib/names.ts` (rename collision validators), `src/components/ui/InlineRename.tsx`, `src/hooks/useFocusTrap.ts`, `src/hooks/useModalOwner.ts`.
+
+**Tests:** 138 → 151 (+13 name validation tests, all green).
+
+**Deferred to v2 / Future (21 lower-severity audit findings):** Modal `size="full"` + AssetCompareModal migration, Dropdown/ContextMenu divider API unification, useAssets AbortController, ReviewHeader flag pills, hash-sort folders, N+1 fixes in hardDeleteFolder, Trash auto-purge cron, inline design-file preview.
+
+**Pending:** Live QA walkthroughs on phases 56 + 57 verifications (flagged human_needed — AudioContext leak under real navigation, review-page document routing, guest resolve/delete end-to-end).
+
+---
+
 ## v1.8 Asset Pipeline & Visual Polish (Shipped: 2026-04-20)
 
 **Phases completed:** 5 phases (49–53), 5 plans
