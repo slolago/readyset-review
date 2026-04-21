@@ -36,6 +36,9 @@ import {
   Download,
   GitCompare,
   ArrowUpDown,
+  Film,
+  FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 import type { Folder as FolderType, UploadItem } from '@/types';
 import type { ReviewStatus } from '@/types';
@@ -1511,6 +1514,28 @@ const FolderCard = React.memo(function FolderCard({
   const renameInputRef = useRef<HTMLInputElement>(null);
   const [showFolderCopyModal, setShowFolderCopyModal] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [preview, setPreview] = useState<
+    Array<{ id: string; type: string; name: string; thumbnailSignedUrl?: string; signedUrl?: string }>
+  >([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const token = await getIdToken();
+        const res = await fetch(`/api/folders/${folder.id}/preview-assets`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!controller.signal.aborted) setPreview(data.assets ?? []);
+      } catch {
+        /* ignore — fallback to folder icon */
+      }
+    })();
+    return () => controller.abort();
+  }, [folder.id, getIdToken]);
 
   const handleOpenCopyModal = async () => {
     await onBeforeCopyTo?.();
@@ -1588,7 +1613,35 @@ const FolderCard = React.memo(function FolderCard({
       )}
 
       <div className="flex items-start justify-between mb-2 mt-1">
-        <Folder className="w-8 h-8 text-frame-accent" />
+        {preview.length === 0 ? (
+          <Folder className="w-8 h-8 text-frame-accent" />
+        ) : (
+          <div
+            className={`w-16 h-12 rounded overflow-hidden grid gap-[1px] bg-frame-border ${
+              preview.length === 1
+                ? 'grid-cols-1 grid-rows-1'
+                : preview.length === 2
+                ? 'grid-cols-2 grid-rows-1'
+                : 'grid-cols-2 grid-rows-2'
+            }`}
+          >
+            {preview.map((a) => {
+              const src = a.thumbnailSignedUrl ?? a.signedUrl;
+              if (src && (a.type === 'image' || a.type === 'video')) {
+                // eslint-disable-next-line @next/next/no-img-element
+                return <img key={a.id} src={src} alt="" className="w-full h-full object-cover" />;
+              }
+              const Icon = a.type === 'video' ? Film : a.type === 'image' ? ImageIcon : FileText;
+              return (
+                <div key={a.id} className="w-full h-full flex items-center justify-center bg-frame-bg">
+                  <Icon className="w-4 h-4 text-frame-textMuted" />
+                </div>
+              );
+            })}
+            {/* fill empty cells in 2x2 grid with bg */}
+            {preview.length === 3 && <div className="bg-frame-bg" />}
+          </div>
+        )}
         <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
           <Dropdown
             trigger={
