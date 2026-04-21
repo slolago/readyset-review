@@ -1,5 +1,36 @@
 # Milestones
 
+## v2.1 Dashboard Performance (Shipped: 2026-04-21)
+
+**Phases completed:** 3 phases (67–69), 3 plans
+**Tests:** 171/171 green throughout
+**Source:** Focused dashboard perf audit — 3 critical + 3 medium + 3 low findings
+
+**The 3 criticals it attacked:**
+
+1. `/api/stats` and `/api/projects` doing full `projects` collection scans (cost scaled with total DB projects, not user's own)
+2. `/api/stats` sequential N+1 asset-count loop — 15 projects = 15 serial Firestore RPCs = 750ms-2.5s
+3. `AuthContext` blocking all rendering with `/api/auth/session` POST — 700ms-1s blank spinner every page load
+
+**Key accomplishments:**
+
+1. **Phase 67 dashboard-query-optimizations:** Denormalized `Project.collaboratorIds: string[]` for indexed `array-contains` queries. New `src/lib/projects-access.ts::fetchAccessibleProjects` shared helper runs `Promise.all([ownerQuery, collaboratorIdsQuery])` with id-dedup — used by both `/api/projects` and `/api/stats`. Both stats loops (asset-count + review-link chunks) now use `Promise.all` fan-out. `Cache-Control: private, max-age=0, s-maxage=60, stale-while-revalidate=300` header on stats response. One-off backfill + composite Firestore index. All 5 write paths that touch `collaborators` now atomically update `collaboratorIds` too (create, collaborator add/remove, admin ownership transfer, admin project-access add/remove).
+2. **Phase 68 client-init-waterfall:** `AuthContext` caches the user object in `sessionStorage` keyed by UID with 24h TTL. Returning users paint the app shell immediately (cache hit) while a background POST refreshes in parallel — no blocking gate. Cache invalidates on logout, on UID mismatch, on suspended-user 403, on explicit clear. New `ProjectsContext` wraps `(app)/layout.tsx` as provider; `useProjects` hook rewritten as a thin context consumer so dashboard + sidebar both read the same state from a single `/api/projects` fetch per page load.
+3. **Phase 69 ssr-and-micro-optimizations:** Extracted `src/lib/dashboard-stats.ts::fetchDashboardStats` shared by `/api/stats` and a new Server Component dashboard page. Dashboard split into `page.tsx` (Server Component, resolves auth server-side when possible) + `DashboardClient.tsx` (client shell with `initialStats` prop). `getAuthenticatedUser` caches user doc reads in a module-level `Map<uid, {user, exp}>` with 30s TTL; session endpoint calls `invalidateUserCache` on name/avatar updates so refreshes see fresh data. Sidebar logo migrated from `readyset.co` external CDN to local `public/logo-horizontal.png`; `readyset.co` removed from `next.config.mjs` remotePatterns; `unoptimized` dropped and `priority` added to above-the-fold usages.
+
+**New files (high-value):** `src/lib/projects-access.ts`, `src/lib/dashboard-stats.ts`, `src/contexts/ProjectsContext.tsx`, `src/app/(app)/dashboard/DashboardClient.tsx`, `scripts/backfill-collaborator-ids.mjs`, `public/logo-horizontal.png`.
+
+**Operational steps executed (2026-04-21):**
+- `firebase deploy --only firestore:indexes` — composite index `projects(collaboratorIds ARRAY, updatedAt DESC)` deployed
+- `scripts/backfill-collaborator-ids.mjs` — 18 projects updated with denormalized UIDs
+- v2.0 sprite regeneration backfill — 64/74 videos have sprite-v2.jpg (rest are orphans pointing to deleted projects, or timeouts on large clips)
+
+**Expected impact:** `/api/stats` from ~2-5s down to ~50-200ms (CDN cache) / ~400ms (cold). First-paint for returning users from ~1-1.5s down to <200ms (sessionStorage cache skips the session gate). Duplicate `/api/projects` fetch eliminated.
+
+**Pending human verification:** Live Lighthouse run on the deployed dashboard (Phase 69 flagged `human_needed`). SSR prefetch is architecturally in place but activates only when middleware-based session cookie infra ships in v3.
+
+---
+
 ## v2.0 Architecture Hardening (Shipped: 2026-04-20)
 
 **Phases completed:** 7 phases (60–66), 7 plans
