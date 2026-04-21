@@ -17,6 +17,12 @@ interface InlineRenameProps {
  * Blur does NOT commit (matches the fix from Phase 53). Clicks on the
  * check/X buttons have stopPropagation so row/card click handlers don't
  * navigate.
+ *
+ * Phase 72 (EDIT-01): a document-level `pointerdown` listener cancels when
+ * the click lands outside the container. `pointerdown` (not `click`) fires
+ * before click handlers on other cards, so the revert happens before any
+ * sibling-card click ever runs. Blur/focusout still do NOT commit — Enter
+ * and the check button remain the only commit paths.
  */
 export function InlineRename({
   value,
@@ -27,11 +33,27 @@ export function InlineRename({
 }: InlineRenameProps) {
   const [draft, setDraft] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Keep onCancel stable for the effect so the listener isn't re-attached
+  // on every parent render; callers pass inline arrow fns.
+  const onCancelRef = useRef(onCancel);
+  useEffect(() => { onCancelRef.current = onCancel; }, [onCancel]);
 
   useEffect(() => {
     inputRef.current?.focus();
     if (selectOnMount) inputRef.current?.select();
   }, [selectOnMount]);
+
+  useEffect(() => {
+    function handlePointerDown(e: PointerEvent) {
+      const container = containerRef.current;
+      if (!container) return;
+      if (container.contains(e.target as Node)) return;
+      onCancelRef.current();
+    }
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, []);
 
   const commit = () => {
     const trimmed = draft.trim();
@@ -43,7 +65,7 @@ export function InlineRename({
   };
 
   return (
-    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+    <div ref={containerRef} className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
       <input
         ref={inputRef}
         className="flex-1 bg-frame-bg border border-frame-accent rounded px-1.5 py-0.5 text-sm font-medium text-white outline-none focus:ring-1 focus:ring-frame-accent"

@@ -1583,8 +1583,6 @@ const FolderCard = React.memo(function FolderCard({
   const { getIdToken } = useAuth();
   const ctxMenu = useContextMenuController();
   const [isRenaming, setIsRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
-  const renameInputRef = useRef<HTMLInputElement>(null);
   const [showFolderCopyModal, setShowFolderCopyModal] = useState(false);
   // CTX-05 defense: suppress the synthetic click some platforms fire
   // immediately after contextmenu+mouseup (Linux Chromium is the usual
@@ -1619,13 +1617,11 @@ const FolderCard = React.memo(function FolderCard({
   };
 
   const handleRenameFolder = () => {
-    setRenameValue(folder.name);
     setIsRenaming(true);
-    setTimeout(() => renameInputRef.current?.select(), 0);
   };
 
-  const commitFolderRename = async () => {
-    const trimmed = renameValue.trim();
+  const commitFolderRename = async (next: string) => {
+    const trimmed = next.trim();
     if (!trimmed || trimmed === folder.name) {
       setIsRenaming(false);
       return;
@@ -1809,35 +1805,11 @@ const FolderCard = React.memo(function FolderCard({
       {/* Name row */}
       <div className="p-3">
       {isRenaming ? (
-        <div className="flex items-center gap-1">
-          <input
-            ref={renameInputRef}
-            className="flex-1 bg-frame-bg border border-frame-accent rounded px-1.5 py-0.5 text-sm font-medium text-white outline-none focus:ring-1 focus:ring-frame-accent"
-            value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); commitFolderRename(); }
-              if (e.key === 'Escape') { setIsRenaming(false); }
-            }}
-            onClick={(e) => e.stopPropagation()}
-          />
-          <button
-            type="button"
-            title="Confirm"
-            onClick={(e) => { e.stopPropagation(); commitFolderRename(); }}
-            className="p-1 rounded hover:bg-frame-accent/20 text-frame-accent"
-          >
-            <Check className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            title="Cancel"
-            onClick={(e) => { e.stopPropagation(); setIsRenaming(false); }}
-            className="p-1 rounded hover:bg-frame-border text-frame-textMuted"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <InlineRename
+          value={folder.name}
+          onCommit={commitFolderRename}
+          onCancel={() => setIsRenaming(false)}
+        />
       ) : (
         <p className="text-sm font-medium text-white truncate">{folder.name}</p>
       )}
