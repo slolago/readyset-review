@@ -148,7 +148,7 @@ export const AssetCard = memo(function AssetCard({
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.spriteStripUrl) setLazySpriteUrl(data.spriteStripUrl);
+        if (data.spriteSignedUrl) setLazySpriteUrl(data.spriteSignedUrl);
         else { console.warn('[sprite] no URL in response', data); setSpriteFailed(true); }
       } else {
         const data = await res.json().catch(() => null);

@@ -134,7 +134,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (asset.spriteStripGcsPath && asset.spriteStripGcsPath.includes('sprite-v2.jpg')) {
       const signedUrl = await generateReadSignedUrl(asset.spriteStripGcsPath, 720);
       await updateJob(jobId, { status: 'ready', completedAt: FieldValue.serverTimestamp() as any });
-      return NextResponse.json({ spriteStripUrl: signedUrl, cached: true });
+      return NextResponse.json({ spriteSignedUrl: signedUrl, cached: true });
     }
     step(`duration: ${asset.duration}`);
 
@@ -318,7 +318,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const signedSpriteUrl = await generateReadSignedUrl(spriteGcsPath, 720);
       step(`total: ${Date.now() - startedAt}ms`);
       return NextResponse.json({
-        spriteStripUrl: signedSpriteUrl,
+        spriteSignedUrl: signedSpriteUrl,
         spriteStripGcsPath: spriteGcsPath,
         ms: Date.now() - startedAt,
       });
