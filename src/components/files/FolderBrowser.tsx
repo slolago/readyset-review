@@ -1625,7 +1625,7 @@ const FolderCard = React.memo(function FolderCard({
       draggable
       onDragStart={onDragStart}
       className={[
-        'group relative bg-frame-card rounded-xl p-3 cursor-pointer transition-all hover:bg-frame-cardHover',
+        'group relative bg-frame-card rounded-xl overflow-hidden cursor-pointer transition-all hover:bg-frame-cardHover',
         selectionStyle('folder', (isDropTarget || isSelected) ? 'selected' : 'idle'),
         isDropTarget ? 'ring-2 ring-frame-accent bg-frame-accent/10' : '',
       ].filter(Boolean).join(' ')}
@@ -1643,26 +1643,17 @@ const FolderCard = React.memo(function FolderCard({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      {/* Checkbox */}
-      {onToggleSelect && (
-        <div
-          className={`absolute top-2 left-2 z-10 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-          onClick={(e) => { e.stopPropagation(); onToggleSelect(e); }}
-        >
-          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-            isSelected ? 'bg-frame-accent border-frame-accent' : 'bg-black/60 border-white/60 backdrop-blur-sm'
-          }`}>
-            {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
-          </div>
-        </div>
-      )}
-
-      <div className="flex items-start justify-between mb-2 mt-1">
+      {/* Full-width thumbnail area — mirrors AssetCard's aspect-video slot
+          so folder cards read as siblings of asset cards in the grid.
+          Empty folders fall back to a centered Folder icon. */}
+      <div className="relative aspect-video bg-black overflow-hidden">
         {preview.length === 0 ? (
-          <Folder className="w-8 h-8 text-frame-accent" />
+          <div className="absolute inset-0 flex items-center justify-center bg-frame-bg">
+            <Folder className="w-12 h-12 text-frame-accent/70" />
+          </div>
         ) : (
           <div
-            className={`w-16 h-12 rounded overflow-hidden grid gap-[1px] bg-frame-border ${
+            className={`absolute inset-0 grid gap-[2px] bg-frame-border ${
               preview.length === 1
                 ? 'grid-cols-1 grid-rows-1'
                 : preview.length === 2
@@ -1674,24 +1665,55 @@ const FolderCard = React.memo(function FolderCard({
               const src = a.thumbnailSignedUrl ?? a.signedUrl;
               if (src && (a.type === 'image' || a.type === 'video')) {
                 // eslint-disable-next-line @next/next/no-img-element
-                return <img key={a.id} src={src} alt="" className="w-full h-full object-cover" />;
+                return (
+                  <img
+                    key={a.id}
+                    src={src}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                );
               }
               const Icon = a.type === 'video' ? Film : a.type === 'image' ? ImageIcon : FileText;
               return (
                 <div key={a.id} className="w-full h-full flex items-center justify-center bg-frame-bg">
-                  <Icon className="w-4 h-4 text-frame-textMuted" />
+                  <Icon className="w-6 h-6 text-frame-textMuted" />
                 </div>
               );
             })}
-            {/* fill empty cells in 2x2 grid with bg */}
-            {preview.length === 3 && <div className="bg-frame-bg" />}
+            {/* Fill the 4th cell when preview.length === 3 so the 2×2 grid
+                stays visually balanced (otherwise the last cell collapses). */}
+            {preview.length === 3 && (
+              <div className="w-full h-full bg-frame-bg flex items-center justify-center">
+                <Folder className="w-5 h-5 text-frame-textMuted/50" />
+              </div>
+            )}
           </div>
         )}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+
+        {/* Checkbox — overlays the thumbnail, top-left */}
+        {onToggleSelect && (
+          <div
+            className={`absolute top-2 left-2 z-10 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+            onClick={(e) => { e.stopPropagation(); onToggleSelect(e); }}
+          >
+            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+              isSelected ? 'bg-frame-accent border-frame-accent' : 'bg-black/60 border-white/60 backdrop-blur-sm'
+            }`}>
+              {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+            </div>
+          </div>
+        )}
+
+        {/* More-actions menu — overlays the thumbnail, top-right */}
+        <div
+          className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Dropdown
             trigger={
-              <button className="w-6 h-6 flex items-center justify-center rounded text-frame-textMuted hover:text-white hover:bg-frame-border transition-colors">
-                <MoreHorizontal className="w-3.5 h-3.5" />
+              <button className="w-7 h-7 flex items-center justify-center rounded bg-black/60 backdrop-blur-sm text-white/80 hover:text-white hover:bg-black/80 transition-colors">
+                <MoreHorizontal className="w-4 h-4" />
               </button>
             }
             items={[
@@ -1705,7 +1727,17 @@ const FolderCard = React.memo(function FolderCard({
             ]}
           />
         </div>
+
+        {/* Folder-icon chip in the bottom-left — signals "this is a folder"
+            regardless of which thumbnails are showing. */}
+        <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm text-white/90 text-[10px] font-medium uppercase tracking-wide">
+          <Folder className="w-3 h-3" />
+          Folder
+        </div>
       </div>
+
+      {/* Name row */}
+      <div className="p-3">
       {isRenaming ? (
         <div className="flex items-center gap-1">
           <input
@@ -1739,6 +1771,7 @@ const FolderCard = React.memo(function FolderCard({
       ) : (
         <p className="text-sm font-medium text-white truncate">{folder.name}</p>
       )}
+      </div>
       {showFolderCopyModal && (
         <MoveModal
           folders={allFolders ?? []}
