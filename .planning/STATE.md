@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: — Dashboard & Annotation UX Fixes
-status: "Phase 71 complete (VIEW-01, VIEW-02). Awaiting Phase 72."
-stopped_at: Completed 71-01-PLAN.md
-last_updated: "2026-04-21T21:01:41.997Z"
-last_activity: 2026-04-21 — Roadmap for v2.2 created, 9/9 requirements mapped
+status: in_progress
+stopped_at: Completed 72-02-PLAN.md
+last_updated: "2026-04-21T21:14:40.250Z"
+last_activity: "2026-04-21 — Phase 72 plan 02 shipped: deepCopyFolder writes deletedAt:null (FS-01)"
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 5
+  completed_plans: 4
 ---
 
 # State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-04-21)
 
 ## Current Position
 
-Phase: 71 (grid-view-affordances) — complete
-Plan: 71-01-PLAN.md — shipped
-Status: Phase 71 complete (VIEW-01, VIEW-02). Awaiting next phase.
-Last activity: 2026-04-21 — Phase 71 plan 01 shipped: folders list view + asset three-dots layering
+Phase: 72 (inline-edit-and-folder-duplicate) — in progress
+Plan: 72-02-PLAN.md — shipped (FS-01). 72-01-PLAN.md running in parallel (EDIT-01).
+Status: Phase 72 FS-01 complete. Awaiting 72-01 completion to close phase.
+Last activity: 2026-04-21 — Phase 72 plan 02 shipped: deepCopyFolder writes deletedAt:null (FS-01)
 
 ## v2.2 Phase Structure
 
@@ -83,6 +83,6 @@ None — ready to plan Phase 70.
 
 ## Session Continuity
 
-Last session: 2026-04-21T21:01:41.991Z
-Stopped at: Completed 71-01-PLAN.md
+Last session: 2026-04-21T21:14:40.244Z
+Stopped at: Completed 72-02-PLAN.md
 Resume file: None

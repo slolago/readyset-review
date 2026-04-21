@@ -22,7 +22,7 @@
 ### Inline edit + mutations
 
 - [ ] **EDIT-01**: When renaming a folder or asset via the inline rename input, clicking anywhere outside the input (another card, empty space, sidebar, header) cancels the rename and reverts the name. Only the confirm affordance (check icon or Enter key) commits the new name. Only one rename input can be active across the whole file browser at any time — opening rename on object B while A is still editing cancels A first.
-- [ ] **FS-01**: Selecting "Duplicate" on a folder (via three-dots or right-click) creates a real duplicate of the folder — same contents, new id, "(copy)" naming treatment or whatever rule the asset duplicate uses — and the duplicate appears in the current folder listing. The success toast only fires after the duplicate actually persists. Parity with asset duplicate behavior.
+- [x] **FS-01**: Selecting "Duplicate" on a folder (via three-dots or right-click) creates a real duplicate of the folder — same contents, new id, "(copy)" naming treatment or whatever rule the asset duplicate uses — and the duplicate appears in the current folder listing. The success toast only fires after the duplicate actually persists. Parity with asset duplicate behavior.
 
 ### Drawing mode
 
@@ -67,7 +67,7 @@ See `.planning/MILESTONES.md` — v1.7 through v2.1 shipped.
 | VIEW-01 | Phase 71 | Complete |
 | VIEW-02 | Phase 71 | Complete |
 | EDIT-01 | Phase 72 | Pending |
-| FS-01 | Phase 72 | Pending |
+| FS-01 | Phase 72 | Complete |
 | DRAW-01 | Phase 73 | Pending |
 
 **Coverage:**
