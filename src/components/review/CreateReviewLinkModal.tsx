@@ -131,8 +131,8 @@ export function CreateReviewLinkModal({
           />
 
           <div className="space-y-1 divide-y divide-frame-border/40">
-            <div className="flex items-center justify-between py-2">
-              <div>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-white">Allow comments</p>
                 <p className="text-xs text-frame-textMuted mt-0.5">
                   Viewers can leave comments and annotations
@@ -141,7 +141,7 @@ export function CreateReviewLinkModal({
               <button
                 type="button"
                 onClick={() => setAllowComments((v) => !v)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
                   allowComments ? 'bg-frame-accent' : 'bg-frame-border'
                 }`}
               >
@@ -153,8 +153,8 @@ export function CreateReviewLinkModal({
               </button>
             </div>
 
-            <div className="flex items-center justify-between py-2">
-              <div>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-white">Allow downloads</p>
                 <p className="text-xs text-frame-textMuted mt-0.5">
                   Viewers can download the original files
@@ -163,7 +163,7 @@ export function CreateReviewLinkModal({
               <button
                 type="button"
                 onClick={() => setAllowDownloads((v) => !v)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
                   allowDownloads ? 'bg-frame-accent' : 'bg-frame-border'
                 }`}
               >
@@ -175,8 +175,8 @@ export function CreateReviewLinkModal({
               </button>
             </div>
 
-            <div className="flex items-center justify-between py-2">
-              <div>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-white">Allow approvals</p>
                 <p className="text-xs text-frame-textMuted mt-0.5">
                   Viewers can approve or request changes
@@ -185,7 +185,7 @@ export function CreateReviewLinkModal({
               <button
                 type="button"
                 onClick={() => setAllowApprovals((v) => !v)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
                   allowApprovals ? 'bg-frame-accent' : 'bg-frame-border'
                 }`}
               >
@@ -197,8 +197,8 @@ export function CreateReviewLinkModal({
               </button>
             </div>
 
-            <div className="flex items-center justify-between py-2">
-              <div>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-white">Show all versions</p>
                 <p className="text-xs text-frame-textMuted mt-0.5">
                   Viewers see all asset versions, not just the latest
@@ -207,7 +207,7 @@ export function CreateReviewLinkModal({
               <button
                 type="button"
                 onClick={() => setShowAllVersions((v) => !v)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
                   showAllVersions ? 'bg-frame-accent' : 'bg-frame-border'
                 }`}
               >
@@ -233,7 +233,7 @@ export function CreateReviewLinkModal({
                   key={v}
                   type="button"
                   onClick={() => setExpiresIn(v)}
-                  className={`px-2 py-1.5 text-xs rounded-lg border transition-colors ${
+                  className={`min-w-0 px-1 py-1.5 text-xs rounded-lg border transition-colors truncate ${
                     expiresIn === v
                       ? 'bg-frame-accent/15 border-frame-accent text-frame-accent'
                       : 'border-frame-border text-frame-textSecondary hover:text-white hover:border-frame-borderLight'
