@@ -2,31 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { canAccessProject } from '@/lib/permissions';
-import type { Project } from '@/types';
+import { fetchAccessibleProjects } from '@/lib/projects-access';
 
 export async function GET(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const db = getAdminDb();
-    // Fetch projects owned by this user directly via index query
-    const ownedSnap = await db.collection('projects').where('ownerId', '==', user.id).get();
-    const ownedIds = new Set(ownedSnap.docs.map((d) => d.id));
-    const ownedProjects = ownedSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-    // Fetch remaining projects and filter via canAccessProject (handles admin + collaborators)
-    const allSnap = await db.collection('projects').get();
-    const collaboratorProjects = allSnap.docs
-      .filter((d) => !ownedIds.has(d.id))
-      .map((d) => ({ id: d.id, ...d.data() }) as Project)
-      .filter((p) => canAccessProject(user, p));
-
-    const projects = [...ownedProjects, ...collaboratorProjects];
-
+    const projects = await fetchAccessibleProjects(user.id, user.role === 'admin');
     return NextResponse.json({ projects });
   } catch (error) {
+    console.error('[GET /api/projects]', error);
     return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });
   }
 }
@@ -53,6 +39,7 @@ export async function POST(request: NextRequest) {
           name: user.name,
         },
       ],
+      collaboratorIds: [user.id],
       color: color || 'purple',
       createdAt: now,
       updatedAt: now,
