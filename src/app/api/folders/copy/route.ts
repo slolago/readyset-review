@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
 import { canCreateFolder } from '@/lib/permissions';
+import { deepCopyFolder } from '@/lib/folders';
 import type { Project } from '@/types';
 
+/**
+ * POST /api/folders/copy
+ *
+ * Deep-copies a folder + all subfolders + non-deleted assets inside them to the
+ * destination. Returns { folder, counts: { folders, assets } }. The `counts` field
+ * is additive — existing clients that only read `folder` keep working.
+ */
 export async function POST(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -29,27 +36,20 @@ export async function POST(request: NextRequest) {
     // targetParentId: if omitted default to same parent (Duplicate behaviour)
     const destinationParentId = targetParentId !== undefined ? targetParentId : source.parentId;
 
-    // Compute path for the copy
-    let path: string[] = [];
-    if (destinationParentId) {
-      const parentDoc = await db.collection('folders').doc(destinationParentId).get();
-      if (parentDoc.exists) {
-        const parent = parentDoc.data() as any;
-        path = [...(parent.path || []), destinationParentId];
-      }
-    }
+    const { newRootId, counts } = await deepCopyFolder(
+      db,
+      folderId,
+      destinationParentId ?? null,
+      source.projectId,
+      user.id,
+      name,
+    );
 
-    const newRef = db.collection('folders').doc();
-    const copyData = {
-      name: name ?? source.name,
-      projectId: source.projectId,
-      parentId: destinationParentId ?? null,
-      path,
-      createdAt: Timestamp.now(),
-    };
-
-    await newRef.set(copyData);
-    return NextResponse.json({ folder: { id: newRef.id, ...copyData } }, { status: 201 });
+    const newDoc = await db.collection('folders').doc(newRootId).get();
+    return NextResponse.json(
+      { folder: { id: newRootId, ...newDoc.data() }, counts },
+      { status: 201 },
+    );
   } catch (err) {
     console.error('POST folders/copy error:', err);
     return NextResponse.json({ error: 'Failed to copy folder' }, { status: 500 });
