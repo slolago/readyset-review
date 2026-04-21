@@ -182,6 +182,9 @@ export interface UploadCompleteRequest {
   width?: number;
   height?: number;
   duration?: number;
+  frameRate?: number;
+  thumbnailGcsPath?: string;
+  mimeType?: string;
 }
 
 export interface SafeZone {
