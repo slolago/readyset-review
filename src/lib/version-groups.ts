@@ -7,7 +7,7 @@
  * mutates or reads a version group MUST go through these helpers so the
  * legacy-root inclusion logic lives in exactly one place.
  */
-import type { Firestore } from 'firebase-admin/firestore';
+import type { Firestore, Transaction } from 'firebase-admin/firestore';
 
 export interface GroupMember {
   id: string;
@@ -39,6 +39,45 @@ export async function fetchGroupMembers(
   // directly and append it if it exists.
   if (!members.some((m) => m.id === groupId)) {
     const rootDoc = await db.collection('assets').doc(groupId).get();
+    if (rootDoc.exists) {
+      const data = rootDoc.data() as Record<string, unknown>;
+      members.push({
+        id: rootDoc.id,
+        version: typeof data.version === 'number' ? data.version : 1,
+        data,
+      });
+    }
+  }
+
+  members.sort((a, b) => a.version - b.version);
+  return members;
+}
+
+/**
+ * Transaction-aware variant of fetchGroupMembers. All reads go through the
+ * provided Transaction so they participate in the tx's read set. Callers MUST
+ * invoke this before any tx.update()/tx.set()/tx.delete() (Firestore rule:
+ * all reads before any writes inside a transaction).
+ */
+export async function fetchGroupMembersTx(
+  db: Firestore,
+  tx: Transaction,
+  groupId: string
+): Promise<GroupMember[]> {
+  const query = db.collection('assets').where('versionGroupId', '==', groupId);
+  const snap = await tx.get(query);
+
+  const members: GroupMember[] = snap.docs.map((d) => {
+    const data = d.data() as Record<string, unknown>;
+    return {
+      id: d.id,
+      version: typeof data.version === 'number' ? data.version : 1,
+      data,
+    };
+  });
+
+  if (!members.some((m) => m.id === groupId)) {
+    const rootDoc = await tx.get(db.collection('assets').doc(groupId));
     if (rootDoc.exists) {
       const data = rootDoc.data() as Record<string, unknown>;
       members.push({

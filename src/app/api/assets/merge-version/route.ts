@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
-import { fetchGroupMembers, resolveGroupId } from '@/lib/version-groups';
+import { fetchGroupMembersTx, resolveGroupId } from '@/lib/version-groups';
 import { canModifyStack } from '@/lib/permissions';
 import type { Project } from '@/types';
 
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     const db = getAdminDb();
 
-    // Fetch source and target docs
+    // Fetch source and target docs (pre-transaction — used for auth + validation)
     const [sourceDoc, targetDoc] = await Promise.all([
       db.collection('assets').doc(sourceId).get(),
       db.collection('assets').doc(targetId).get(),
@@ -54,27 +54,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Assets are already in the same version stack' }, { status: 400 });
     }
 
-    // Helper handles legacy-root inclusion authoritatively for both groups
-    const sourceMembers = await fetchGroupMembers(db, sourceGroupId);
-    const targetMembers = await fetchGroupMembers(db, targetGroupId);
+    // Firestore transaction: all reads first (fetchGroupMembersTx), then all writes.
+    // Guards against two concurrent merges producing duplicate version numbers.
+    const merged = await db.runTransaction(async (tx) => {
+      const sourceMembers = await fetchGroupMembersTx(db, tx, sourceGroupId);
+      const targetMembers = await fetchGroupMembersTx(db, tx, targetGroupId);
 
-    // Calculate max version in target group
-    const maxTargetVersion = Math.max(...targetMembers.map((m) => m.version));
+      const maxTargetVersion = Math.max(...targetMembers.map((m) => m.version));
 
-    // sourceMembers already sorted ascending by version (helper guarantees this)
+      // sourceMembers already sorted ascending by version (helper guarantees this)
+      for (let i = 0; i < sourceMembers.length; i++) {
+        const member = sourceMembers[i];
+        tx.update(db.collection('assets').doc(member.id), {
+          versionGroupId: targetGroupId,
+          version: maxTargetVersion + 1 + i,
+        });
+      }
 
-    // Atomic batch: reassign all source members to target group with new version numbers
-    const batch = db.batch();
-    for (let i = 0; i < sourceMembers.length; i++) {
-      const member = sourceMembers[i];
-      batch.update(db.collection('assets').doc(member.id), {
-        versionGroupId: targetGroupId,
-        version: maxTargetVersion + 1 + i,
-      });
-    }
-    await batch.commit();
+      return sourceMembers.length;
+    });
 
-    return NextResponse.json({ merged: sourceMembers.length }, { status: 200 });
+    return NextResponse.json({ merged }, { status: 200 });
   } catch (err) {
     console.error('POST assets/merge-version error:', err);
     return NextResponse.json({ error: 'Failed to merge version' }, { status: 500 });
