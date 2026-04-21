@@ -5,6 +5,7 @@ import { X, Download, Loader2, Scissors } from 'lucide-react';
 import type { Asset, ExportFormat } from '@/types';
 import { forceDownload } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { useModalOwner } from '@/hooks/useModalOwner';
 import toast from 'react-hot-toast';
 
 interface ExportModalProps {
@@ -42,6 +43,7 @@ export function ExportModal({
   open,
   onClose,
 }: ExportModalProps) {
+  useModalOwner(open);
   const { getIdToken } = useAuth();
   const rawDuration = asset.duration ?? 0;
   const isWaitingForDuration = rawDuration <= 0;

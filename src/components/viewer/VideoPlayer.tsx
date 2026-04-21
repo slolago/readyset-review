@@ -195,6 +195,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   // ── Keyboard shortcuts (Frame.io style) ──────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (typeof document !== 'undefined' && document.body.dataset.modalOpen === 'true') return;
       // Don't capture when typing in inputs/textareas
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable) return;
@@ -314,6 +315,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   useEffect(() => {
     if (!isAnnotationMode) return;
     const onKey = (e: KeyboardEvent) => {
+      if (typeof document !== 'undefined' && document.body.dataset.modalOpen === 'true') return;
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault();
         canvasRef.current?.undo();

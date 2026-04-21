@@ -639,6 +639,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
   // ── Keyboard shortcuts (only while compare is mounted) ────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (typeof document !== 'undefined' && document.body.dataset.modalOpen === 'true') return;
       // Ignore when typing in inputs
       const target = e.target as HTMLElement;
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return;
