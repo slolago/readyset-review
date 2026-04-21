@@ -64,11 +64,34 @@ export async function GET(request: NextRequest) {
       }
 
       const reviewLinkId = linkDoc.id;
-      const snap = await db.collection('comments').where('assetId', '==', assetId).get();
-      const comments = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() } as any))
-        .filter((c: any) => c.reviewLinkId === reviewLinkId)
-        .sort((a: any, b: any) => (a.createdAt?.toMillis() ?? 0) - (b.createdAt?.toMillis() ?? 0));
+      // Compound query: requires a Firestore composite index on
+      //   comments(assetId ASC, reviewLinkId ASC, createdAt ASC)
+      // If the index is missing, Firestore throws FAILED_PRECONDITION with
+      // a URL to auto-create it. We fall back to the legacy in-memory filter
+      // in that window so the endpoint degrades rather than 500s.
+      let comments: any[];
+      try {
+        const snap = await db
+          .collection('comments')
+          .where('assetId', '==', assetId)
+          .where('reviewLinkId', '==', reviewLinkId)
+          .get();
+        comments = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() } as any))
+          .sort((a: any, b: any) => (a.createdAt?.toMillis() ?? 0) - (b.createdAt?.toMillis() ?? 0));
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (/index/i.test(msg) || /FAILED_PRECONDITION/i.test(msg)) {
+          console.warn('[comments GET] composite index missing, falling back to in-memory filter:', msg);
+          const snap = await db.collection('comments').where('assetId', '==', assetId).get();
+          comments = snap.docs
+            .map((d) => ({ id: d.id, ...d.data() } as any))
+            .filter((c: any) => c.reviewLinkId === reviewLinkId)
+            .sort((a: any, b: any) => (a.createdAt?.toMillis() ?? 0) - (b.createdAt?.toMillis() ?? 0));
+        } else {
+          throw e;
+        }
+      }
       return NextResponse.json({ comments });
     }
 
