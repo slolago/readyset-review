@@ -76,22 +76,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       ?? (editableRoots.length === 1 && looseAssetCount === 0 ? editableRoots[0] : null);
 
     const folderIsAccessible = async (folderId: string): Promise<boolean> => {
-      // Walk up parentId chain (max depth 20). Allowed if we hit a root, or if the
-      // link is project-scoped and the folder belongs to this project.
-      let current: string | null = folderId;
-      const seen = new Set<string>();
-      for (let depth = 0; depth < 20 && current; depth++) {
-        if (seen.has(current)) return false; // cycle guard
-        seen.add(current);
-        if (editableRoots.includes(current)) return true;
-        const fs = await db.collection('folders').doc(current).get();
-        if (!fs.exists) return false;
-        const f = fs.data() as any;
-        if (f.projectId !== link.projectId) return false;
-        if (isProjectScoped) return true; // project-scoped allows any folder in project
-        current = (f.parentId as string | null) ?? null;
-      }
-      return false;
+      // CLN-05: use Folder.path[] (ancestor ids, already denormalized on the doc)
+      // for O(1) ancestry: a single doc read, then a set-membership check.
+      // Replaces the N sequential reads the old parentId walk required.
+      const fs = await db.collection('folders').doc(folderId).get();
+      if (!fs.exists) return false;
+      const f = fs.data() as any;
+      if (f.projectId !== link.projectId) return false;
+      if (isProjectScoped) return true; // any folder in project is allowed
+      if (editableRoots.includes(folderId)) return true;
+      const path: string[] = Array.isArray(f.path) ? f.path : [];
+      return path.some((ancestorId) => editableRoots.includes(ancestorId));
     };
 
     // Signed-URL write-back buffer (Phase 62 CACHE-02). Filled by decorate(),
