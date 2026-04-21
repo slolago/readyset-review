@@ -10,7 +10,7 @@
 - ✅ **v1.7 — Review UX & Access Rewrite** - Phases 43–48 (shipped 2026-04-20)
 - ✅ **v1.8 — Asset Pipeline & Visual Polish** - Phases 49–53 (shipped 2026-04-20)
 - ✅ **v1.9 — Hardening & Consistency Audit** - Phases 54–59 (shipped 2026-04-20)
-- 🚧 **v2.0 — Architecture Hardening** - Phases 60–66 (in progress)
+- ✅ **v2.0 — Architecture Hardening** - Phases 60–66 (shipped 2026-04-20)
 
 ## Phases
 
@@ -304,19 +304,14 @@ See [milestones/v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md) for full phase deta
 
 </details>
 
-### 🚧 v2.0 — Architecture Hardening (In Progress)
+<details>
+<summary>✅ v2.0 — Architecture Hardening (Phases 60–66) - SHIPPED 2026-04-20</summary>
 
-**Milestone goal:** Fix the 5 systemic architectural patterns surfaced by a deep pipeline-lifecycle + unhappy-path audit. Production-grade foundations for the platform.
+See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details.
 
-**Phases (7):**
+7 phases: pipeline-observability, transactional-mutations, signed-url-caching, firestore-indexes-and-denorm, format-edge-cases, security-and-upload-validation, dead-data-and-contracts. Synthesized from a deep lifecycle + unhappy-path audit.
 
-- [ ] **Phase 60: pipeline-observability** — Job status tracking, retry UI, dedupe sprite triggers, GCS verify, wait-for-probe
-- [ ] **Phase 61: transactional-mutations** — merge/unstack/reorder + auto-versioning under runTransaction, folder-delete-during-upload guard
-- [ ] **Phase 62: signed-url-caching** — cache signedUrl + expiresAt; stop regenerating per-request
-- [ ] **Phase 63: firestore-indexes-and-denorm** — composite indexes, denormalize commentCount, kill full-collection scans
-- [x] **Phase 64: format-edge-cases** — HEVC/AV1/VP9/ProRes export, stale-job sweeper, HEIC/AVIF fallback, adaptive sprite spacing
-- [x] **Phase 65: security-and-upload-validation** — bcrypt review-link passwords, POST body not query, GCS.exists() verify, MIME validation (completed 2026-04-21)
-- [x] **Phase 66: dead-data-and-contracts** — remove url phantom, unify sprite naming, UploadCompleteRequest, AbortController, folder.path ancestry, provisional-metadata pattern (completed 2026-04-21)
+</details>
 
 ## Progress
 

@@ -1,5 +1,38 @@
 # Milestones
 
+## v2.0 Architecture Hardening (Shipped: 2026-04-20)
+
+**Phases completed:** 7 phases (60–66), 7 plans
+**Tests:** 156 → 171 (+15)
+**Source:** Deep pipeline-lifecycle + unhappy-path audit — 5 critical + 8 medium + 4 low findings, 5 systemic patterns
+
+**Systemic patterns attacked:**
+
+1. Fire-and-forget jobs with no observability → Phase 60
+2. Signed URLs regenerated per-request → Phase 62
+3. Full-collection scans instead of composite indexes → Phase 63
+4. `batch()` where `runTransaction()` is needed → Phase 61
+5. Client metadata stale window → Phase 66 (provisional-metadata pattern)
+
+**Key accomplishments:**
+
+1. **Phase 60 pipeline-observability:** Generalized `Job` model + `src/lib/jobs.ts` lifecycle helpers. Probe/sprite/thumbnail/export write `{type, status, startedAt, completedAt, error?, attempt}` to Firestore `jobs` collection. `GET /api/assets/[id]/jobs` + `POST /api/jobs/[id]/retry` endpoints. AssetCard renders an amber dot while running, red dot + tooltip on failed, retry button. Client-side duplicate sprite trigger removed (OBS-03). `upload/complete` verifies GCS object exists + size>0 before marking `ready` (OBS-04). Sprite route re-reads fresh duration from Firestore (OBS-05).
+2. **Phase 61 transactional-mutations:** merge-version, unstack-version, upload/signed-url auto-versioning all wrapped in `db.runTransaction()` — concurrent writes can no longer produce duplicate version numbers. `fetchGroupMembersTx` helper in version-groups.ts. folderId live-check in signed-url (TXN-04) prevents orphaned uploads into soft-deleted folders.
+3. **Phase 62 signed-url-caching:** `signedUrl` + `signedUrlExpiresAt` + thumbnail + sprite caching on asset doc. New `src/lib/signed-url-cache.ts::getOrCreateSignedUrl` regenerates only within 30 min of expiry. `/api/assets` and `/api/review-links/[token]` both go through the cache. A 200-asset review link no longer fires 200 GCS signing calls per guest page load. Sync batched write-back to persist fresh URLs.
+4. **Phase 63 firestore-indexes-and-denorm:** New `firestore.indexes.json` with composite indexes on `assets(projectId, folderId, deletedAt)`, `folders(projectId, parentId, deletedAt)`, `comments(assetId, parentId, createdAt)`. `commentCount` denormalized onto asset doc with `FieldValue.increment(±1)` inside transactions. List endpoints use indexed queries with graceful fallback + `console.warn` if index not deployed.
+5. **Phase 64 format-edge-cases:** Export copy path now accepts `mov+h264+aac` (was rejecting). `sweepStaleJobs()` marks any running job >2min old as failed (catches SIGKILL'd functions). `image-metadata.ts` falls back to ffprobe for HEIC/AVIF/HDR when `image-size` returns null. Sprite frame spacing adapts: clamped to 0.1..duration-0.1s for <3s clips; normal 0.02..0.98 span otherwise.
+6. **Phase 65 security-and-upload-validation:** `bcryptjs` hashing (cost 10) on review-link passwords with transparent legacy migration (plaintext match → fire-and-forget rehash). `x-review-password` header replaces `?password=` query string (backwards-compat with deprecation warning). MIME validation on `upload/complete` — GCS content-type must be on ACCEPTED_MIME allow-list with octet-stream fallback to asset.mimeType.
+7. **Phase 66 dead-data-and-contracts:** Removed `Asset.url` phantom field (bucket is private, no one reads it). Unified sprite URL naming on `spriteSignedUrl` across list + on-demand paths. Expanded `UploadCompleteRequest` type with `frameRate` + `thumbnailGcsPath` + `mimeType`. `useAssets.fetchAssets` gets AbortController. `folderIsAccessible` uses `Folder.path[]` array for O(1) ancestry (replaces N sequential Firestore reads). Sprite generation properly awaits `writer.once('close')` + `reader.cancel()` on size-exceeded path. Videos tagged `probed: false` on upload so UI differentiates "no probe yet" vs "probe complete".
+
+**New files (high-value):** `src/lib/jobs.ts`, `src/lib/signed-url-cache.ts`, `src/lib/review-links.ts` (serializeReviewLink → Phase 54, extended here), `src/lib/review-password.ts` (bcrypt), `firestore.indexes.json`, `src/app/api/assets/[assetId]/jobs/route.ts`, `src/app/api/jobs/[jobId]/retry/route.ts`, `src/hooks/useAssetJobs.ts`.
+
+**Operational follow-ups:**
+- Deploy `firestore.indexes.json` via `firebase deploy --only firestore:indexes`
+- Existing review-link passwords will self-migrate to bcrypt on first verify
+- No migration script needed for other changes — backward-compatible
+
+---
+
 ## v1.9 Hardening & Consistency Audit (Shipped: 2026-04-20)
 
 **Phases completed:** 6 phases (54–59), 6 plans
