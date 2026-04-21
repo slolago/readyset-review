@@ -362,7 +362,7 @@ See [milestones/v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md) for full phase deta
 | 60. pipeline-observability | v2.0 | 1/1 | Complete | 2026-04-20 |
 | 61. transactional-mutations | v2.0 | 1/1 | Complete | 2026-04-20 |
 | 62. signed-url-caching | v2.0 | 1/1 | Complete | 2026-04-20 |
-| 63. firestore-indexes-and-denorm | v2.0 | 0/? | Not started | - |
+| 63. firestore-indexes-and-denorm | v2.0 | 1/1 | Complete | 2026-04-20 |
 | 64. format-edge-cases | v2.0 | 0/? | Not started | - |
 | 65. security-and-upload-validation | v2.0 | 0/? | Not started | - |
 | 66. dead-data-and-contracts | v2.0 | 0/? | Not started | - |
