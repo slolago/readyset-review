@@ -597,6 +597,23 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
+      // F and digit-based view mode toggle work for both videos + images.
+      // Playback/audio shortcuts are video-only — skip them for images so
+      // the key isn't silently swallowed.
+      if (e.code === 'KeyF') {
+        e.preventDefault();
+        toggleFullscreen();
+        return;
+      }
+      if (isImage) {
+        // For images, only the viewMode toggles need keyboard support.
+        if (e.code === 'KeyS') {
+          e.preventDefault();
+          setViewMode((m) => (m === 'slider' ? 'side-by-side' : 'slider'));
+          return;
+        }
+        return;
+      }
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
@@ -605,11 +622,6 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
       if (e.code === 'KeyM') {
         e.preventDefault();
         setMuted((m) => !m);
-        return;
-      }
-      if (e.code === 'KeyF') {
-        e.preventDefault();
-        toggleFullscreen();
         return;
       }
       if (e.code === 'Digit1') {
@@ -638,7 +650,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [togglePlay, masterRef, duration, toggleFullscreen]);
+  }, [togglePlay, masterRef, duration, toggleFullscreen, isImage]);
 
   // ── Render: gate on mismatched types ──────────────────────────────────────
   if (!assetA || !assetB) {
@@ -989,6 +1001,52 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
                 <option key={r} value={r} className="bg-[#111] text-white">{r}x</option>
               ))}
             </select>
+
+            {/* Fullscreen */}
+            <button
+              onClick={toggleFullscreen}
+              title="Fullscreen (F)"
+              className="text-white/60 hover:text-white transition-colors"
+            >
+              <Maximize className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Image controls — lightweight strip with view mode + bg + fullscreen.
+          Playback/audio/timecode/VU rows don't apply to images, but the user
+          still needs to flip between slider and side-by-side and the bg
+          picker + fullscreen are useful everywhere. */}
+      {isImage && (
+        <div className="flex-shrink-0 bg-[#111] border-t border-white/5 px-4 py-2">
+          <div className="flex items-center gap-3">
+            <div className="flex-1" />
+
+            {/* View mode toggle (slider vs side-by-side) */}
+            <div className="flex bg-white/5 rounded-md p-0.5">
+              <button
+                onClick={() => setViewMode('slider')}
+                title="Slider"
+                className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  viewMode === 'slider' ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white'
+                }`}
+              >
+                <SplitSquareHorizontal className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('side-by-side')}
+                title="Side by side"
+                className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  viewMode === 'side-by-side' ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white'
+                }`}
+              >
+                <Columns2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Background color picker */}
+            <PlayerBgPicker value={playerBg} onChange={setPlayerBg} />
 
             {/* Fullscreen */}
             <button
