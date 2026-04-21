@@ -37,67 +37,100 @@ export async function POST(request: NextRequest) {
     const gcsPath = buildGcsPath(projectId, assetId, filename);
     const signedUrl = await generateUploadSignedUrl(gcsPath, contentType);
     const publicUrl = getPublicUrl(gcsPath);
+    const folderMatch = folderId || null;
 
-    // Versioning logic
-    let versionNumber = 1;
-    let versionGroupId = assetId; // V1: the asset is its own group root
+    // Transaction scoped to (projectId, folderId, filename):
+    // 1. TXN-04: validate folderId is live (not soft-deleted, not missing)
+    // 2. TXN-03: auto-version name-collision scan + next-version compute + write doc
+    // All reads happen before any writes (Firestore rule).
+    try {
+      await db.runTransaction(async (tx) => {
+        // TXN-04: folderId live-check (inside tx so a concurrent soft-delete is caught)
+        if (folderMatch) {
+          const folderSnap = await tx.get(db.collection('folders').doc(folderMatch));
+          if (!folderSnap.exists) {
+            throw new Error('FOLDER_NOT_FOUND');
+          }
+          const folderData = folderSnap.data() as any;
+          if (folderData?.deletedAt) {
+            throw new Error('FOLDER_NOT_FOUND');
+          }
+        }
 
-    // Helper: given a group root ID, get the max version number in that group
-    const getMaxVersionInGroup = async (groupId: string, parentVersion: number) => {
-      const groupSnap = await db.collection('assets').where('versionGroupId', '==', groupId).get();
-      return groupSnap.docs.reduce((max, d) => {
-        const v = (d.data() as any).version || 1;
-        return v > max ? v : max;
-      }, parentVersion);
-    };
+        let versionNumber = 1;
+        let versionGroupId = assetId; // V1: the asset is its own group root
 
-    if (parentAssetId) {
-      // Explicit "upload new version" — use the provided parent
-      const parentDoc = await db.collection('assets').doc(parentAssetId).get();
-      if (parentDoc.exists) {
-        const parent = parentDoc.data() as any;
-        const groupId = parent.versionGroupId || parentAssetId;
-        const maxVersion = await getMaxVersionInGroup(groupId, parent.version || 1);
-        versionNumber = maxVersion + 1;
-        versionGroupId = groupId;
+        // Helper: given a group root ID, compute max version in that group via tx.
+        const getMaxVersionInGroupTx = async (groupId: string, parentVersion: number) => {
+          const groupQuery = db.collection('assets').where('versionGroupId', '==', groupId);
+          const groupSnap = await tx.get(groupQuery);
+          return groupSnap.docs.reduce((max, d) => {
+            const v = (d.data() as any).version || 1;
+            return v > max ? v : max;
+          }, parentVersion);
+        };
+
+        if (parentAssetId) {
+          // Explicit "upload new version" — use the provided parent
+          const parentDoc = await tx.get(db.collection('assets').doc(parentAssetId));
+          if (parentDoc.exists) {
+            const parent = parentDoc.data() as any;
+            const groupId = parent.versionGroupId || parentAssetId;
+            const maxVersion = await getMaxVersionInGroupTx(groupId, parent.version || 1);
+            versionNumber = maxVersion + 1;
+            versionGroupId = groupId;
+          }
+        } else {
+          // Auto-version: scan project assets for a same-folder same-name collision.
+          // Scoped query by projectId (existing pattern — avoids a new composite index);
+          // folder + name + status filters applied in-memory on the tx-read snapshot.
+          const projectQuery = db.collection('assets').where('projectId', '==', projectId);
+          const allSnap = await tx.get(projectQuery);
+          const existing = allSnap.docs
+            .map((d) => ({ id: d.id, ...(d.data() as any) }))
+            .filter(
+              (a: any) =>
+                a.name === filename &&
+                (a.folderId ?? null) === folderMatch &&
+                a.status !== 'uploading'
+            );
+
+          if (existing.length > 0) {
+            // Pick the one with the highest version number as the representative
+            existing.sort((a: any, b: any) => (b.version || 1) - (a.version || 1));
+            const parent: any = existing[0];
+            const groupId = parent.versionGroupId || parent.id;
+            const maxVersion = await getMaxVersionInGroupTx(groupId, parent.version || 1);
+            versionNumber = maxVersion + 1;
+            versionGroupId = groupId;
+          }
+        }
+
+        // All reads complete — now the single write.
+        tx.set(db.collection('assets').doc(assetId), {
+          projectId,
+          folderId: folderMatch,
+          name: filename,
+          type: meta.type,
+          subtype: meta.subtype,
+          mimeType: contentType,
+          url: publicUrl,
+          gcsPath,
+          thumbnailUrl: '',
+          size: size || 0,
+          uploadedBy: user.id,
+          status: 'uploading',
+          version: versionNumber,
+          versionGroupId,
+          createdAt: Timestamp.now(),
+        });
+      });
+    } catch (txErr: any) {
+      if (txErr?.message === 'FOLDER_NOT_FOUND') {
+        return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
       }
-    } else {
-      // Auto-version: check if an asset with the same filename exists in the same folder
-      const allSnap = await db.collection('assets').where('projectId', '==', projectId).get();
-      const allAssets = allSnap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
-      const folderMatch = (folderId || null);
-      const existing = allAssets.filter(
-        (a) => a.name === filename && (a.folderId ?? null) === folderMatch && a.status !== 'uploading'
-      );
-
-      if (existing.length > 0) {
-        // Pick the one with the highest version number as the representative
-        existing.sort((a, b) => (b.version || 1) - (a.version || 1));
-        const parent = existing[0];
-        const groupId = parent.versionGroupId || parent.id;
-        const maxVersion = await getMaxVersionInGroup(groupId, parent.version || 1);
-        versionNumber = maxVersion + 1;
-        versionGroupId = groupId;
-      }
+      throw txErr;
     }
-
-    await db.collection('assets').doc(assetId).set({
-      projectId,
-      folderId: folderId || null,
-      name: filename,
-      type: meta.type,
-      subtype: meta.subtype,
-      mimeType: contentType,
-      url: publicUrl,
-      gcsPath,
-      thumbnailUrl: '',
-      size: size || 0,
-      uploadedBy: user.id,
-      status: 'uploading',
-      version: versionNumber,
-      versionGroupId,
-      createdAt: Timestamp.now(),
-    });
 
     return NextResponse.json({ signedUrl, assetId, gcsPath });
   } catch (error) {
