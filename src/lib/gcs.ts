@@ -126,7 +126,7 @@ export async function downloadToFile(gcsPath: string, localPath: string): Promis
  */
 export async function verifyGcsObject(
   gcsPath: string
-): Promise<{ exists: boolean; size: number }> {
+): Promise<{ exists: boolean; size: number; contentType: string | null }> {
   const storage = getStorage();
   const bucket = storage.bucket(BUCKET_NAME);
   const file = bucket.file(gcsPath);
@@ -134,10 +134,11 @@ export async function verifyGcsObject(
     const [meta] = await file.getMetadata();
     const raw = meta.size;
     const size = typeof raw === 'string' ? parseInt(raw, 10) : (raw ?? 0);
-    return { exists: true, size: Number.isNaN(size) ? 0 : size };
+    const contentType = typeof meta.contentType === 'string' ? meta.contentType : null;
+    return { exists: true, size: Number.isNaN(size) ? 0 : size, contentType };
   } catch (err) {
     const code = (err as { code?: number })?.code;
-    if (code === 404) return { exists: false, size: 0 };
+    if (code === 404) return { exists: false, size: 0, contentType: null };
     throw err;
   }
 }

@@ -115,6 +115,25 @@ export const ACCEPTED_MIME: string[] = [
   'application/vnd.ms-fontobject',
 ];
 
+/**
+ * Server-side allow-list check (SEC-23). Accepts the same patterns used in
+ * ACCEPTED_MIME: either an exact string or a `prefix/*` wildcard.
+ * Case-insensitive; empty/null input returns false.
+ */
+export function isAcceptedMime(mime: string | null | undefined): boolean {
+  if (!mime || typeof mime !== 'string') return false;
+  const m = mime.toLowerCase().split(';')[0].trim();
+  for (const entry of ACCEPTED_MIME) {
+    const e = entry.toLowerCase();
+    if (e.endsWith('/*')) {
+      if (m.startsWith(e.slice(0, -1))) return true;
+    } else if (m === e) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** Accepted extensions (leading dot, lowercase). */
 export const ACCEPTED_EXTENSIONS: string[] = [
   // video

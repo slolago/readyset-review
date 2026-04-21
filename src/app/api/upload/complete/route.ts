@@ -3,6 +3,7 @@ import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { getPublicUrl, verifyGcsObject } from '@/lib/gcs';
 import { canUpload } from '@/lib/permissions';
+import { isAcceptedMime } from '@/lib/file-types';
 import type { Project } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -40,6 +41,21 @@ export async function POST(request: NextRequest) {
     if (!verify.exists || verify.size === 0) {
       return NextResponse.json(
         { error: verify.exists ? 'Upload is zero bytes — cancelled or failed' : 'GCS object not found' },
+        { status: 400 },
+      );
+    }
+
+    // SEC-23: server-side MIME allow-list. If GCS reports a real content-type,
+    // it must be on the accepted list. If GCS reports nothing or
+    // application/octet-stream (some browsers omit the header on signed PUTs),
+    // fall back to the mimeType recorded at signed-url creation time.
+    const gcsMime = verify.contentType;
+    const fallbackMime = typeof asset.mimeType === 'string' ? asset.mimeType : null;
+    const shouldFallback = !gcsMime || gcsMime.toLowerCase() === 'application/octet-stream';
+    const mimeForCheck = shouldFallback ? fallbackMime : gcsMime;
+    if (!isAcceptedMime(mimeForCheck)) {
+      return NextResponse.json(
+        { error: `Unsupported MIME type${mimeForCheck ? `: ${mimeForCheck}` : ''}` },
         { status: 400 },
       );
     }
