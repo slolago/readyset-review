@@ -67,27 +67,9 @@ function runFfmpeg(binPath: string, args: string[]): Promise<{ code: number; std
   });
 }
 
-// Extract a single frame at timestamp `t` using HTTP fast seek.
-// Places -ss BEFORE -i so ffmpeg does keyframe-level seek (doesn't decode from start).
-async function extractFrame(
-  binPath: string,
-  videoUrl: string,
-  t: number,
-  outPath: string,
-): Promise<{ ok: boolean; stderr: string }> {
-  const { code, stderr } = await runFfmpeg(binPath, [
-    '-y',
-    '-ss', String(t),           // BEFORE -i = fast keyframe seek
-    '-i', videoUrl,
-    '-frames:v', '1',
-    '-vf',
-      `scale=${SPRITE_FRAME_W}:${SPRITE_FRAME_H}:force_original_aspect_ratio=increase,` +
-      `crop=${SPRITE_FRAME_W}:${SPRITE_FRAME_H}`,
-    '-q:v', '6',
-    outPath,
-  ]);
-  return { ok: code === 0 && existsSync(outPath), stderr };
-}
+// (Deleted: per-timestamp `extractFrame` from the parallel-20-seeks design.
+// The new single-pass ffmpeg invocation below renders the tiled sprite in
+// one shot via `fps + scale + crop + tile` filter chain.)
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const steps: string[] = [];
@@ -229,83 +211,73 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
       step(`source downloaded: ${Math.round(downloaded / 1024 / 1024)} MB in ${Date.now() - downloadStart}ms`);
 
-      // FMT-04: adaptive frame spacing.
-      //  - very short (<3s): a 2%-98% span clusters all frames in ~2.8s and
-      //    returns duplicate keyframes. Clamp to [0.1, duration-0.1] and
-      //    compute unique timestamps at ~5/s, then pad by repeating the
-      //    last timestamp so we still produce a 20-slot strip (client
-      //    math assumes a fixed SPRITE_FRAMES tile).
-      //  - very long (>2h): a 2%-98% span over 4+ hours produces frames
-      //    ~10min apart, too sparse for scrubbing. Cap the sampled window
-      //    to the first 2h; warn so it's visible in logs.
-      //  - normal (3s..2h): existing 2%-98% spread, 20 frames.
+      // Single-pass sprite generation.
+      //
+      // Prior design (Phase 47) did 20 parallel `ffmpeg -ss <t> -i file`
+      // invocations + a final tile step. That pattern is:
+      //   (a) fragile on MP4s with non-standard moov placement (Premiere /
+      //       Mainconcept-muxed files trip `-ss` before `-i` even on local
+      //       files, returning "frames failed" for all 20), and
+      //   (b) resource-heavy — 20 concurrent ffmpeg processes on a 1 GB
+      //       serverless function push the memory ceiling.
+      //
+      // New design: one ffmpeg invocation with `fps=N/duration` to sample
+      // exactly 20 frames evenly spaced, then `tile=20x1` to glue them
+      // into the strip — all in a single linear decode pass. No seeks,
+      // no parallelism, works for any codec/container ffmpeg can read.
       const TWO_HOURS = 7200;
-      let spanStart: number;
-      let spanEnd: number;
-      let uniqueFrames = SPRITE_FRAMES;
-      if (duration < 3) {
-        uniqueFrames = Math.max(1, Math.min(SPRITE_FRAMES, Math.floor(duration * 5)));
-        spanStart = Math.min(0.1, duration / 2);
-        spanEnd = Math.max(spanStart, duration - 0.1);
-      } else if (duration > TWO_HOURS) {
+      let sampleWindow = duration;
+      if (duration > TWO_HOURS) {
         console.warn(`[generate-sprite] duration ${duration}s exceeds 2h cap; sampling first 2h`);
-        spanStart = TWO_HOURS * 0.02;
-        spanEnd = TWO_HOURS * 0.98;
-      } else {
-        spanStart = duration * 0.02;
-        spanEnd = duration * 0.98;
+        sampleWindow = TWO_HOURS;
       }
-      const timestamps = Array.from({ length: SPRITE_FRAMES }, (_, i) => {
-        // Distribute the first `uniqueFrames` evenly; repeat the last
-        // timestamp for any remaining slots (happens only when <3s).
-        if (i >= uniqueFrames) {
-          return uniqueFrames === 1 ? spanStart : spanEnd;
-        }
-        if (uniqueFrames === 1) return spanStart;
-        return spanStart + (i / (uniqueFrames - 1)) * (spanEnd - spanStart);
-      });
-      step(`${uniqueFrames} unique timestamps across [${spanStart.toFixed(2)}s, ${spanEnd.toFixed(2)}s]`);
+      // fps expression produces 20 frames across sampleWindow. If duration
+      // is very short (< SPRITE_FRAMES seconds at 1fps), ffmpeg naturally
+      // outputs fewer frames and the tile step pads with duplicate of last
+      // (tile's `nb_frames < grid` behavior).
+      // `fps=SPRITE_FRAMES/sampleWindow` evaluates per-frame. Using a ratio
+      // expression keeps it exact.
+      const fpsExpr = `${SPRITE_FRAMES}/${sampleWindow}`;
+      step(`single-pass sprite: fps=${fpsExpr}, window=${sampleWindow}s`);
 
-      // Extract all 20 frames IN PARALLEL from the LOCAL file. `-ss` before
-      // `-i` on a local file does a reliable keyframe seek (no HTTP range
-      // quirks) and avoids the "Mainconcept MP4 can't decode" class of bug.
-      step(`extracting ${SPRITE_FRAMES} frames in parallel from local file`);
-      const frameResults = await Promise.all(
-        timestamps.map((t, i) =>
-          extractFrame(binPath, localVideoPath, t, path.join(tmpDir, `frame-${i}.jpg`))
-        )
-      );
+      // Build the filter graph:
+      //   fps=<rate>                          → decimate to 20 samples
+      //   scale=W:H:force_original_aspect...  → upscale to frame box
+      //   crop=W:H                            → exact box for tile
+      //   tile=20x1                           → horizontal strip
+      const vf = [
+        `fps=${fpsExpr}`,
+        `scale=${SPRITE_FRAME_W}:${SPRITE_FRAME_H}:force_original_aspect_ratio=increase`,
+        `crop=${SPRITE_FRAME_W}:${SPRITE_FRAME_H}`,
+        `tile=${SPRITE_FRAMES}x1`,
+      ].join(',');
 
-      const failed = frameResults.filter((r) => !r.ok);
-      if (failed.length > 0) {
-        await updateJob(jobId, { status: 'failed', error: `${failed.length}/${SPRITE_FRAMES} frames failed` });
-        return NextResponse.json({
-          error: `${failed.length}/${SPRITE_FRAMES} frames failed`,
-          stderr: failed[0]?.stderr.slice(-500),
-          steps,
-        }, { status: 500 });
-      }
-      step(`all ${SPRITE_FRAMES} frames extracted in ${Date.now() - startedAt}ms`);
-
-      // Tile the 20 frames into a single strip
-      const tileArgs = [
+      // `-t sampleWindow` caps the read for long videos (input option
+      // BEFORE `-i` binds to the input). `-an` drops audio — we only
+      // need video. `-frames:v 1` emits the single tiled image.
+      const spriteArgs = [
         '-y',
-        '-i', path.join(tmpDir, 'frame-%d.jpg'),
-        '-vf', `tile=${SPRITE_FRAMES}x1`,
+        '-t', String(sampleWindow),
+        '-i', localVideoPath,
+        '-an',
+        '-vf', vf,
         '-frames:v', '1',
         '-q:v', '6',
         spritePath,
       ];
-      const tile = await runFfmpeg(binPath, tileArgs);
-      if (tile.code !== 0 || !existsSync(spritePath)) {
-        await updateJob(jobId, { status: 'failed', error: `tile step failed: ${tile.stderr.slice(-300)}` });
+      const spriteRun = await runFfmpeg(binPath, spriteArgs);
+      if (spriteRun.code !== 0 || !existsSync(spritePath)) {
+        await updateJob(jobId, {
+          status: 'failed',
+          error: `sprite render failed: ${spriteRun.stderr.slice(-300)}`,
+        });
         return NextResponse.json({
-          error: 'tile step failed',
-          stderr: tile.stderr.slice(-500),
+          error: 'sprite render failed',
+          stderr: spriteRun.stderr.slice(-500),
           steps,
         }, { status: 500 });
       }
-      step(`tile complete at ${Date.now() - startedAt}ms`);
+      step(`sprite ready at ${Date.now() - startedAt}ms`);
 
       const spriteBuffer = await fs.readFile(spritePath);
       const spriteGcsPath = `projects/${asset.projectId}/assets/${assetId}/sprite-v2.jpg`;
