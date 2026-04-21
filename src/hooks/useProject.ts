@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
+import { useProjectsContext } from '@/contexts/ProjectsContext';
 import type { Project, Folder } from '@/types';
 
 export function useProject(projectId?: string) {
@@ -57,37 +58,12 @@ export function useProject(projectId?: string) {
   return { project, folders, loading, error, refetch: fetchProject, fetchFolders };
 }
 
+/**
+ * PERF-06: thin wrapper around ProjectsContext so dashboard + sidebar
+ * (via useProjectTree) share one `/api/projects` fetch. External API
+ * (`{ projects, loading, error, refetch }`) is unchanged.
+ */
 export function useProjects() {
-  const { user, getIdToken } = useAuth();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchProjects = useCallback(async () => {
-    if (!user) {
-      setProjects([]);
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      const token = await getIdToken();
-      const res = await fetch('/api/projects', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch projects');
-      const data = await res.json();
-      setProjects(data.projects ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  }, [user, getIdToken]);
-
-  useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
-
-  return { projects, loading, error, refetch: fetchProjects };
+  const { projects, loading, error, refetch } = useProjectsContext();
+  return { projects, loading, error, refetch };
 }
