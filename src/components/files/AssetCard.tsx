@@ -360,12 +360,12 @@ export const AssetCard = memo(function AssetCard({
             src={signedUrl}
             alt={asset.name}
             fill
-            className="object-cover"
+            className="object-contain"
             unoptimized
           />
         ) : asset.type === 'video' && thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumbnailUrl} alt={asset.name} className="w-full h-full object-cover" />
+          <img src={thumbnailUrl} alt={asset.name} className="w-full h-full object-contain" />
         ) : asset.type === 'video' && signedUrl ? (
           // No stored thumbnail — use a video element to show the first frame
           // eslint-disable-next-line jsx-a11y/media-has-caption
@@ -375,7 +375,7 @@ export const AssetCard = memo(function AssetCard({
             preload="metadata"
             muted
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
             onLoadedMetadata={handleVideoMetadata}
           />
         ) : asset.type !== 'video' && asset.type !== 'image' ? (
