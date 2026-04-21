@@ -220,3 +220,33 @@ export interface ExportJob {
   completedAt?: Timestamp;
   error?: string;
 }
+
+// ---------- Generalized jobs (Phase 60) ----------
+// Unified observability for probe, sprite, thumbnail, and export pipelines.
+// `ExportJob` above is retained as a type-level alias so in-flight exports
+// don't break mid-migration — the serialization layer in src/lib/exports.ts
+// maps the legacy `encoding` status onto `running`.
+export type JobType = 'probe' | 'sprite' | 'thumbnail' | 'export';
+export type JobStatus = 'queued' | 'running' | 'ready' | 'failed';
+
+export interface Job {
+  id: string;
+  type: JobType;
+  assetId: string;
+  projectId: string;
+  userId: string;
+  status: JobStatus;
+  attempt: number;        // 1-based; bumped on retry; max 3
+  error?: string;
+  createdAt: Timestamp;
+  startedAt?: Timestamp;
+  completedAt?: Timestamp;
+
+  // Export-only fields (kept optional on Job; exports reuse this shape)
+  format?: ExportFormat;
+  inPoint?: number;
+  outPoint?: number;
+  filename?: string;
+  gcsPath?: string;
+  signedUrl?: string;      // transient, never stored
+}
