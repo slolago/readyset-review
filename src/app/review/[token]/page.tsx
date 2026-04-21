@@ -36,8 +36,28 @@ export default function ReviewPage() {
   const [passwordError, setPasswordError] = useState(false);
   const [guestInfo, setGuestInfo] = useState<{ name: string; email: string } | null>(() => {
     if (typeof window === 'undefined') return null;
-    const saved = localStorage.getItem('frame_guest_name');
-    return saved ? { name: saved, email: '' } : null;
+    // New key: single JSON with name + email
+    const raw = localStorage.getItem('frame_guest_info');
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.name === 'string') {
+          return {
+            name: parsed.name,
+            email: typeof parsed.email === 'string' ? parsed.email : '',
+          };
+        }
+      } catch { /* fall through to legacy */ }
+    }
+    // Legacy key migration — frame_guest_name stored only the name string.
+    // Left in place for back-compat from stale tabs; purge in a follow-up.
+    const legacy = localStorage.getItem('frame_guest_name');
+    if (legacy) {
+      const migrated = { name: legacy, email: '' };
+      try { localStorage.setItem('frame_guest_info', JSON.stringify(migrated)); } catch {}
+      return migrated;
+    }
+    return null;
   });
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -245,7 +265,7 @@ export default function ReviewPage() {
   };
 
   const handleGuestSubmit = (info: { name: string; email: string }) => {
-    localStorage.setItem('frame_guest_name', info.name);
+    try { localStorage.setItem('frame_guest_info', JSON.stringify(info)); } catch {}
     setGuestInfo(info);
   };
 
