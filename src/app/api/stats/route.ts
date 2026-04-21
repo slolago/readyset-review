@@ -33,9 +33,11 @@ export async function GET(request: NextRequest) {
             .collection('assets')
             .where('projectId', '==', pid)
             .get();
-          assetCount += assetsSnap.size;
           for (const doc of assetsSnap.docs) {
-            const s = doc.data().size;
+            const data = doc.data();
+            if (data.deletedAt) continue; // SDC-01: exclude soft-deleted
+            assetCount += 1;
+            const s = data.size;
             storageBytes += typeof s === 'number' ? s : 0;
           }
         } catch {
