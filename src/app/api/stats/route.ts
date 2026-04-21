@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
-import { canAccessProject } from '@/lib/permissions';
-import type { Project } from '@/types';
+import { fetchAccessibleProjects } from '@/lib/projects-access';
 
 export async function GET(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -10,10 +9,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const db = getAdminDb();
-    const snap = await db.collection('projects').get();
-    const userProjects = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }) as Project)
-      .filter((p) => canAccessProject(user, p));
+    const userProjects = await fetchAccessibleProjects(user.id, user.role === 'admin');
     const projectIds = userProjects.map((p) => p.id);
 
     const collaboratorSet = new Set<string>();
@@ -23,52 +19,67 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // PERF-02: parallel asset queries per project
     let assetCount = 0;
     let storageBytes = 0;
     if (projectIds.length > 0) {
-      // Use per-project queries to avoid requiring a composite collectionGroup index
-      for (const pid of projectIds) {
-        try {
-          const assetsSnap = await db
+      const snaps = await Promise.all(
+        projectIds.map((pid) =>
+          db
             .collection('assets')
             .where('projectId', '==', pid)
-            .get();
-          for (const doc of assetsSnap.docs) {
-            const data = doc.data();
-            if (data.deletedAt) continue; // SDC-01: exclude soft-deleted
-            assetCount += 1;
-            const s = data.size;
-            storageBytes += typeof s === 'number' ? s : 0;
-          }
-        } catch (err) {
-          // Non-fatal: skip this project's assets if the query fails
-          console.error('[GET /api/stats] asset query failed for project', pid, err);
+            .get()
+            .catch((err) => {
+              console.error('[GET /api/stats] asset query failed for project', pid, err);
+              return null;
+            })
+        )
+      );
+      for (const snap of snaps) {
+        if (!snap) continue;
+        for (const doc of snap.docs) {
+          const data = doc.data();
+          if (data.deletedAt) continue; // SDC-01: exclude soft-deleted
+          assetCount += 1;
+          const s = data.size;
+          storageBytes += typeof s === 'number' ? s : 0;
         }
       }
     }
 
-    // Count review links for user's projects
+    // PERF-03: parallel review-link chunked 'in' queries
     let reviewLinkCount = 0;
-    for (let i = 0; i < projectIds.length; i += 10) {
-      const chunk = projectIds.slice(i, i + 10);
-      try {
-        const rlSnap = await db.collection('reviewLinks')
+    const chunks: string[][] = [];
+    for (let i = 0; i < projectIds.length; i += 10) chunks.push(projectIds.slice(i, i + 10));
+    const rlSnaps = await Promise.all(
+      chunks.map((chunk) =>
+        db
+          .collection('reviewLinks')
           .where('projectId', 'in', chunk)
-          .get();
-        reviewLinkCount += rlSnap.size;
-      } catch (err) {
-        // non-fatal
-        console.error('[GET /api/stats] review-link count query failed', err);
-      }
-    }
+          .get()
+          .catch((err) => {
+            console.error('[GET /api/stats] review-link count query failed', err);
+            return null;
+          })
+      )
+    );
+    for (const snap of rlSnaps) if (snap) reviewLinkCount += snap.size;
 
-    return NextResponse.json({
-      projectCount: userProjects.length,
-      assetCount,
-      collaboratorCount: collaboratorSet.size,
-      storageBytes,
-      reviewLinkCount,
-    });
+    // PERF-04: stale-while-revalidate cache header
+    return NextResponse.json(
+      {
+        projectCount: userProjects.length,
+        assetCount,
+        collaboratorCount: collaboratorSet.size,
+        storageBytes,
+        reviewLinkCount,
+      },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=0, s-maxage=60, stale-while-revalidate=300',
+        },
+      }
+    );
   } catch (err) {
     console.error('[GET /api/stats]', err);
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
