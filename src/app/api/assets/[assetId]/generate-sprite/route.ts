@@ -224,10 +224,42 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
       step(`source downloaded: ${Math.round(downloaded / 1024 / 1024)} MB in ${Date.now() - downloadStart}ms`);
 
-      // Compute the 20 timestamps spread across the video (skip first/last 2%)
+      // FMT-04: adaptive frame spacing.
+      //  - very short (<3s): a 2%-98% span clusters all frames in ~2.8s and
+      //    returns duplicate keyframes. Clamp to [0.1, duration-0.1] and
+      //    compute unique timestamps at ~5/s, then pad by repeating the
+      //    last timestamp so we still produce a 20-slot strip (client
+      //    math assumes a fixed SPRITE_FRAMES tile).
+      //  - very long (>2h): a 2%-98% span over 4+ hours produces frames
+      //    ~10min apart, too sparse for scrubbing. Cap the sampled window
+      //    to the first 2h; warn so it's visible in logs.
+      //  - normal (3s..2h): existing 2%-98% spread, 20 frames.
+      const TWO_HOURS = 7200;
+      let spanStart: number;
+      let spanEnd: number;
+      let uniqueFrames = SPRITE_FRAMES;
+      if (duration < 3) {
+        uniqueFrames = Math.max(1, Math.min(SPRITE_FRAMES, Math.floor(duration * 5)));
+        spanStart = Math.min(0.1, duration / 2);
+        spanEnd = Math.max(spanStart, duration - 0.1);
+      } else if (duration > TWO_HOURS) {
+        console.warn(`[generate-sprite] duration ${duration}s exceeds 2h cap; sampling first 2h`);
+        spanStart = TWO_HOURS * 0.02;
+        spanEnd = TWO_HOURS * 0.98;
+      } else {
+        spanStart = duration * 0.02;
+        spanEnd = duration * 0.98;
+      }
       const timestamps = Array.from({ length: SPRITE_FRAMES }, (_, i) => {
-        return duration * (0.02 + (i / (SPRITE_FRAMES - 1)) * 0.96);
+        // Distribute the first `uniqueFrames` evenly; repeat the last
+        // timestamp for any remaining slots (happens only when <3s).
+        if (i >= uniqueFrames) {
+          return uniqueFrames === 1 ? spanStart : spanEnd;
+        }
+        if (uniqueFrames === 1) return spanStart;
+        return spanStart + (i / (uniqueFrames - 1)) * (spanEnd - spanStart);
       });
+      step(`${uniqueFrames} unique timestamps across [${spanStart.toFixed(2)}s, ${spanEnd.toFixed(2)}s]`);
 
       // Extract all 20 frames IN PARALLEL from the LOCAL file. `-ss` before
       // `-i` on a local file does a reliable keyframe seek (no HTTP range
