@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireAdmin, getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -21,8 +21,11 @@ const BUILT_IN_ZONES = [
   { name: 'Meta 1:1',                ratio: '1:1',  file: '002-1x1-HotZone-for-Meta.png',                             order: 14 },
 ] as const;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const user = await getAuthenticatedUser(request);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const db = getAdminDb();
     const snap = await db.collection('safeZones').orderBy('order', 'asc').get();
 
