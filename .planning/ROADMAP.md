@@ -374,7 +374,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 72-01-PLAN.md — InlineRename click-away cancel + single-active-rename singleton across FolderBrowser (EDIT-01)
+- [x] 72-01-PLAN.md — InlineRename click-away cancel + single-active-rename singleton across FolderBrowser (EDIT-01)
 - [x] 72-02-PLAN.md — deepCopyFolder writes deletedAt: null so duplicates appear in listings (FS-01)
 
 ### Phase 73: drawing-mode-transforms
@@ -442,5 +442,5 @@ Plans:
 | 69. ssr-and-micro-optimizations | v2.1 | 1/1 | Human-verify | 2026-04-21 |
 | 70. context-menu-behavior | v2.2 | 0/? | Not started | - |
 | 71. grid-view-affordances | v2.2 | 1/1 | Complete   | 2026-04-21 |
-| 72. inline-edit-and-folder-duplicate | v2.2 | 1/2 | In Progress|  |
+| 72. inline-edit-and-folder-duplicate | v2.2 | 2/2 | Complete   | 2026-04-21 |
 | 73. drawing-mode-transforms | v2.2 | 0/? | Not started | - |
