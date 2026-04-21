@@ -386,8 +386,11 @@ Plans:
   2. Dragging a corner handle scales the single selected object
   3. Dragging the rotation handle rotates the single selected object
   4. Single-object transforms are on par with multi-object transforms — the controls are not movement-only when the selection size is one
-**Plans**: TBD
+**Plans**: 1 plan
 **UI hint**: yes
+
+Plans:
+- [ ] 73-01-PLAN.md — Restore evented=true on objects when tool is select (DRAW-01)
 
 ## Progress
 
