@@ -11,6 +11,9 @@ import { ReviewGuestForm } from '@/components/review/ReviewGuestForm';
 import { CommentSidebar } from '@/components/viewer/CommentSidebar';
 import { VideoPlayer, VideoPlayerHandle } from '@/components/viewer/VideoPlayer';
 import { ImageViewer, ImageViewerHandle } from '@/components/viewer/ImageViewer';
+import { DocumentViewer } from '@/components/viewer/DocumentViewer';
+import { HtmlViewer } from '@/components/viewer/HtmlViewer';
+import { FileTypeCard } from '@/components/viewer/FileTypeCard';
 import { Spinner } from '@/components/ui/Spinner';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -354,7 +357,7 @@ export default function ReviewPage() {
                     onLoopInChange={setRangeIn}
                     onLoopOutChange={setRangeOut}
                   />
-                ) : (
+                ) : selectedAsset.type === 'image' ? (
                   <ImageViewer
                     ref={imageRef}
                     asset={selectedAsset}
@@ -364,6 +367,12 @@ export default function ReviewPage() {
                     onAnnotationCancel={handleAnnotationCancel}
                     displayShapes={displayShapes}
                   />
+                ) : selectedAsset.subtype === 'pdf' ? (
+                  <DocumentViewer key={selectedAsset.id} asset={selectedAsset} />
+                ) : selectedAsset.subtype === 'html' ? (
+                  <HtmlViewer key={selectedAsset.id} asset={selectedAsset} />
+                ) : (
+                  <FileTypeCard key={selectedAsset.id} asset={selectedAsset} />
                 )}
               </div>
             </div>
