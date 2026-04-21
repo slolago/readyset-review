@@ -169,10 +169,17 @@ export async function POST(request: NextRequest) {
       gcsOutPath = `exports/${user.id}/${jobId}.mp4`;
 
       // Decide copy vs. re-encode.
+      // FMT-01: mp4 container OR mov+h264+aac is a valid copy target — iPhone
+      // and Premiere routinely export .mov with H.264/AAC, which is remux-safe.
+      // Any other container (mkv, webm, avi, ProRes-mov, HEVC, AV1, VP9) takes
+      // the re-encode path so we always produce a clean H.264/AAC .mp4 result.
       const videoOk = asset.videoCodec === 'h264';
-      const audioOk = asset.audioCodec === 'aac' || !asset.audioCodec;
+      const audioOk = !asset.audioCodec || asset.audioCodec === 'aac';
+      const fmt = asset.containerFormat?.toLowerCase() ?? '';
       const containerOk =
-        !asset.containerFormat || asset.containerFormat.toLowerCase().includes('mp4');
+        !fmt ||
+        fmt.includes('mp4') ||
+        (fmt.includes('mov') && videoOk && audioOk);
       const tryCopy = videoOk && audioOk && containerOk;
 
       // Copy path — near-instant when source is already h264/aac in mp4.
