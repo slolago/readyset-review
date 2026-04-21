@@ -9,6 +9,7 @@ import {
   ReviewLinkDenied,
 } from '@/lib/permissions';
 import type { Project, ReviewLink } from '@/types';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 interface RouteParams {
   params: { token: string };
@@ -234,9 +235,24 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const user = await getAuthenticatedUser(request);
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { name } = await request.json();
-    if (!name || typeof name !== 'string' || !name.trim()) {
-      return NextResponse.json({ error: 'name required' }, { status: 400 });
+    const body = await request.json();
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+    }
+
+    const ALLOWED = new Set([
+      'name',
+      'password',
+      'expiresAt',
+      'allowComments',
+      'allowDownloads',
+      'allowApprovals',
+      'showAllVersions',
+    ]);
+    for (const key of Object.keys(body)) {
+      if (!ALLOWED.has(key)) {
+        return NextResponse.json({ error: `Field '${key}' is not editable` }, { status: 400 });
+      }
     }
 
     const db = getAdminDb();
@@ -251,8 +267,64 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await doc.ref.update({ name: name.trim() });
-    return NextResponse.json({ success: true });
+    const update: Record<string, unknown> = {};
+
+    if ('name' in body) {
+      if (typeof body.name !== 'string' || !body.name.trim()) {
+        return NextResponse.json({ error: 'name must be a non-empty string' }, { status: 400 });
+      }
+      update.name = body.name.trim();
+    }
+
+    if ('password' in body) {
+      if (body.password === '' || body.password === null || body.password === undefined) {
+        update.password = FieldValue.delete();
+      } else if (typeof body.password === 'string') {
+        update.password = body.password;
+      } else {
+        return NextResponse.json({ error: 'password must be a string or null' }, { status: 400 });
+      }
+    }
+
+    if ('expiresAt' in body) {
+      if (body.expiresAt === null) {
+        update.expiresAt = null;
+      } else if (typeof body.expiresAt === 'string') {
+        const date = new Date(body.expiresAt);
+        if (Number.isNaN(date.getTime())) {
+          return NextResponse.json({ error: 'expiresAt must be a valid date string' }, { status: 400 });
+        }
+        update.expiresAt = Timestamp.fromDate(date);
+      } else {
+        return NextResponse.json({ error: 'expiresAt must be an ISO date string or null' }, { status: 400 });
+      }
+    }
+
+    // allowComments default is true (matches POST semantics) — only coerce to false on explicit false
+    if ('allowComments' in body) {
+      update.allowComments = body.allowComments !== false;
+    }
+    if ('allowDownloads' in body) {
+      update.allowDownloads = body.allowDownloads === true;
+    }
+    if ('allowApprovals' in body) {
+      update.allowApprovals = body.allowApprovals === true;
+    }
+    if ('showAllVersions' in body) {
+      update.showAllVersions = body.showAllVersions === true;
+    }
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: 'No changes' }, { status: 400 });
+    }
+
+    await doc.ref.update(update);
+    const updated = await doc.ref.get();
+    const updatedData = updated.data() as Record<string, unknown>;
+    const { password: _pw, ...safe } = updatedData;
+    return NextResponse.json({
+      link: { id: params.token, ...safe, hasPassword: !!_pw },
+    });
   } catch {
     return NextResponse.json({ error: 'Failed to update review link' }, { status: 500 });
   }
