@@ -206,7 +206,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         if (done) break;
         downloaded += value.byteLength;
         if (downloaded > MAX_BYTES) {
+          // CLN-06: fully drain + close writer and cancel reader before the
+          // finally block attempts fs.rm — otherwise /tmp cleanup races the
+          // still-open fd and throws EBUSY on Windows / Linux tmp cleanup.
           writer.destroy();
+          await reader.cancel().catch(() => {});
+          await new Promise<void>((resolve) => writer.once('close', () => resolve()));
           await updateJob(jobId, { status: 'failed', error: `source too large (>${Math.round(MAX_BYTES / 1024 / 1024)} MB)` });
           return NextResponse.json({
             error: `source too large for sprite generation (>${Math.round(MAX_BYTES / 1024 / 1024)} MB)`,
