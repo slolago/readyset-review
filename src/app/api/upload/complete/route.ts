@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
-import { getPublicUrl } from '@/lib/gcs';
+import { getPublicUrl, verifyGcsObject } from '@/lib/gcs';
 import { canUpload } from '@/lib/permissions';
 import type { Project } from '@/types';
 
@@ -30,7 +30,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const updates: Record<string, unknown> = { status: 'ready' };
+    // OBS-04: verify the GCS object actually landed before we flip status to
+    // 'ready'. A cancelled or failed PUT leaves the asset doc around with a
+    // gcsPath but no object (or a zero-byte placeholder) — mark it broken.
+    if (!asset.gcsPath) {
+      return NextResponse.json({ error: 'Asset has no gcsPath' }, { status: 400 });
+    }
+    const verify = await verifyGcsObject(asset.gcsPath);
+    if (!verify.exists || verify.size === 0) {
+      return NextResponse.json(
+        { error: verify.exists ? 'Upload is zero bytes — cancelled or failed' : 'GCS object not found' },
+        { status: 400 },
+      );
+    }
+
+    const updates: Record<string, unknown> = { status: 'ready', size: verify.size };
     if (width) updates.width = width;
     if (height) updates.height = height;
     if (duration) updates.duration = duration;

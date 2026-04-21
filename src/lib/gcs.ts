@@ -118,3 +118,26 @@ export async function downloadToFile(gcsPath: string, localPath: string): Promis
   const file = bucket.file(gcsPath);
   await file.download({ destination: localPath });
 }
+
+/**
+ * Confirm a GCS object actually exists and has non-zero size.
+ * Used by upload/complete to reject cancelled or failed uploads before
+ * flipping asset.status to 'ready'.
+ */
+export async function verifyGcsObject(
+  gcsPath: string
+): Promise<{ exists: boolean; size: number }> {
+  const storage = getStorage();
+  const bucket = storage.bucket(BUCKET_NAME);
+  const file = bucket.file(gcsPath);
+  try {
+    const [meta] = await file.getMetadata();
+    const raw = meta.size;
+    const size = typeof raw === 'string' ? parseInt(raw, 10) : (raw ?? 0);
+    return { exists: true, size: Number.isNaN(size) ? 0 : size };
+  } catch (err) {
+    const code = (err as { code?: number })?.code;
+    if (code === 404) return { exists: false, size: 0 };
+    throw err;
+  }
+}
