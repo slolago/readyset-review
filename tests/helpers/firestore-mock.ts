@@ -9,8 +9,14 @@
  *   db.batch() / batch.update() / batch.delete() / batch.set() / batch.commit()
  *   db.runTransaction(fn)
  *
- * No support for `orderBy`, compound queries, or array-contains. Tests must
- * avoid those paths (or sort in memory).
+ * Supports `array-contains` (Phase 67). Also honors FieldValue.arrayUnion /
+ * FieldValue.arrayRemove sentinels on update() when they are detected via the
+ * `__op` marker attached by our tests — real admin SDK sentinels are passed
+ * through unchanged (callers that pass them in tests should either switch to
+ * plain arrays or extend this shim).
+ *
+ * No support for `orderBy` ordering logic (chainable but ignored) or other
+ * compound query shapes.
  */
 
 type Data = Record<string, any>;
@@ -72,6 +78,30 @@ export interface MockTransaction {
 
 let idCounter = 0;
 
+/**
+ * Resolve firebase-admin FieldValue sentinels (arrayUnion / arrayRemove)
+ * against the existing stored value. Real admin sentinels carry an internal
+ * `_methodName` and `_elements` shape that we inspect duck-typed here.
+ */
+function resolveSentinels(existing: Data | undefined, patch: Data): Data {
+  const out: Data = {};
+  for (const [k, v] of Object.entries(patch)) {
+    const methodName = (v as any)?._methodName as string | undefined;
+    const elements = (v as any)?._elements as unknown[] | undefined;
+    if (methodName === 'FieldValue.arrayUnion' && Array.isArray(elements)) {
+      const prev = Array.isArray(existing?.[k]) ? [...(existing![k] as unknown[])] : [];
+      for (const e of elements) if (!prev.includes(e)) prev.push(e);
+      out[k] = prev;
+    } else if (methodName === 'FieldValue.arrayRemove' && Array.isArray(elements)) {
+      const prev = Array.isArray(existing?.[k]) ? (existing![k] as unknown[]) : [];
+      out[k] = prev.filter((x) => !elements.includes(x));
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 export function createMockDb(): MockDb {
   const store: Map<string, Map<string, Data>> = new Map();
 
@@ -101,7 +131,7 @@ export function createMockDb(): MockDb {
       const col = ensureCollection(name);
       const existing = col.get(id);
       if (!existing) throw new Error(`update non-existent ${name}/${id}`);
-      col.set(id, { ...existing, ...data });
+      col.set(id, { ...existing, ...resolveSentinels(existing, data) });
     },
     delete: async () => {
       ensureCollection(name).delete(id);
@@ -120,6 +150,8 @@ export function createMockDb(): MockDb {
           const v = (d.data() as Data)?.[w.field];
           if (w.op === '==') return v === w.value;
           if (w.op === '!=') return v !== w.value;
+          if (w.op === 'array-contains') return Array.isArray(v) && v.includes(w.value);
+          if (w.op === 'in') return Array.isArray(w.value) && (w.value as unknown[]).includes(v);
           throw new Error(`unsupported op ${w.op}`);
         });
       }
@@ -212,11 +244,13 @@ export function seedProject(
     email: `${c.userId}@example.com`,
     name: c.userId,
   }));
+  const collaboratorIds = collaborators.map((c) => c.userId);
   db.collection('projects').doc(id).set({
     name: opts.name ?? 'Project',
     description: '',
     ownerId: opts.ownerId,
     collaborators,
+    collaboratorIds,
     color: 'purple',
     createdAt: { toMillis: () => 0 },
     updatedAt: { toMillis: () => 0 },
