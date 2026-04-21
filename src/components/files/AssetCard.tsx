@@ -28,6 +28,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { InlineRename } from '@/components/ui/InlineRename';
 import { useUpload } from '@/hooks/useAssets';
+import { useAssetJobs } from '@/hooks/useAssetJobs';
 import { selectionStyle, type SelectionState } from '@/lib/selectionStyle';
 import toast from 'react-hot-toast';
 
@@ -82,6 +83,19 @@ export const AssetCard = memo(function AssetCard({
   const [spriteFailed, setSpriteFailed] = useState(false);
   const serverSpriteUrl = (asset as any).spriteSignedUrl as string | undefined;
   const spriteUrl = serverSpriteUrl || lazySpriteUrl;
+
+  // Phase 60 (OBS-01): live pipeline state on video cards.
+  // Amber dot while any job is running, red dot when a job has failed.
+  const { jobs, refetch: refetchJobs } = useAssetJobs(asset.id, asset.type === 'video' && asset.status !== 'uploading');
+  const runningJob = jobs.find((j) => j.status === 'running' || j.status === 'queued');
+  const failedJob = jobs.find((j) => j.status === 'failed');
+  const indicatorState: 'running' | 'failed' | null =
+    failedJob ? 'failed' : runningJob ? 'running' : null;
+  const indicatorTooltip = failedJob
+    ? `${failedJob.type} failed${failedJob.error ? `: ${failedJob.error}` : ''} — click to retry`
+    : runningJob
+    ? `${runningJob.type} ${runningJob.status}…`
+    : '';
 
   // When a video element loads its metadata, seek to a non-black frame
   const handleVideoMetadata = useCallback(() => {
@@ -353,6 +367,17 @@ export const AssetCard = memo(function AssetCard({
         onMouseLeave={asset.type === 'video' && signedUrl ? () => setIsHovering(false) : undefined}
         onMouseMove={asset.type === 'video' && isHovering && spriteLoaded ? handleHoverScrub : undefined}
       >
+        {/* Phase 60 job indicator — top-left, above existing badges */}
+        {indicatorState && (
+          <div
+            data-testid={`job-indicator-${indicatorState}`}
+            title={indicatorTooltip}
+            className="absolute top-1 left-1 z-20 w-2.5 h-2.5 rounded-full shadow-md ring-1 ring-black/40"
+            style={{
+              backgroundColor: indicatorState === 'failed' ? '#ef4444' : '#f59e0b',
+            }}
+          />
+        )}
         {asset.type === 'image' && signedUrl ? (
           <Image
             src={signedUrl}
