@@ -367,6 +367,8 @@ export default function AssetViewerPage() {
       {displayAsset && displayAsset.type === 'video' && (
         <ExportModal
           asset={displayAsset}
+          initialIn={rangeIn}
+          initialOut={rangeOut}
           open={showExportModal}
           onClose={() => setShowExportModal(false)}
         />
