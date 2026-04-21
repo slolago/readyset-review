@@ -167,7 +167,14 @@ export async function GET(request: NextRequest) {
                 ttlMinutes: 720,
               })
             : Promise.resolve(null),
-          asset.spriteStripGcsPath && asset.spriteStripGcsPath.includes('sprite-v2.jpg')
+          // Serve any stored sprite. The legacy `sprite-strip.jpg` filter was
+          // a cleanup-minded safeguard that turned into a regression — it
+          // excluded every sprite generated before v2.0 so existing videos
+          // had to regenerate on first hover, and any transient load failure
+          // in that path left the overlay stuck. Both v1 and v2 sprites use
+          // the same 20-frame tile layout at 160×90 per frame, so the client
+          // renderer doesn't care which one it gets.
+          asset.spriteStripGcsPath
             ? getOrCreateSignedUrl({
                 gcsPath: asset.spriteStripGcsPath,
                 cached: asset.spriteSignedUrl,

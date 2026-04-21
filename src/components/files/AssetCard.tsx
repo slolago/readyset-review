@@ -453,12 +453,23 @@ export const AssetCard = memo(function AssetCard({
           </div>
         )}
 
-        {/* Preload sprite strip image (hidden) */}
+        {/* Preload sprite strip image (hidden).
+            onError: if the signed URL 404s, CORS fails, or the JPG is corrupt,
+            spriteLoaded never flipped to true under the old code and the user
+            saw nothing (no spinner, no scrub, no feedback). Now we set
+            spriteFailed so the user knows something's off and a refresh will
+            retry fresh. Also clears the stale lazySpriteUrl so the next
+            hover re-requests. */}
         {asset.type === 'video' && spriteUrl && !spriteLoaded && (
           // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
           <img
             src={spriteUrl}
             onLoad={() => setSpriteLoaded(true)}
+            onError={() => {
+              console.warn('[sprite] preload failed for', asset.id, spriteUrl);
+              setSpriteFailed(true);
+              setLazySpriteUrl(null);
+            }}
             className="hidden"
           />
         )}
