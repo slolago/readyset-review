@@ -51,13 +51,13 @@ Synthesized from a deep pipeline-lifecycle + unhappy-path audit (2026-04-20). 5 
 
 ### Dead Data & Contract Cleanup (Phase 66)
 
-- [ ] **CLN-01**: `Asset.url` (the stored public GCS URL) is removed from the type and stops being written by `signed-url`; the bucket is private and the field was never consumed
-- [ ] **CLN-02**: Sprite URL naming unified — `spriteSignedUrl` is used consistently in both the list endpoint and the on-demand generate-sprite response; AssetCard reads one field name
-- [ ] **CLN-03**: `UploadCompleteRequest` type in `src/types/index.ts` is expanded to include `frameRate?`, `thumbnailGcsPath?`, any other field the server actually reads
-- [ ] **CLN-04**: `useAssets.fetchAssets` uses `AbortController` — folder switches no longer race stale responses over fresh ones
-- [ ] **CLN-05**: `folderIsAccessible` in review-link resolution uses the `Folder.path[]` array (already stored) for O(1) ancestry check instead of walking `parentId` with N sequential Firestore reads
-- [ ] **CLN-06**: Sprite generation cleanup: `writer.destroy()` + `reader.cancel()` awaited before the finally block tries `fs.rm`; no EBUSY on /tmp cleanup under size-exceeded path
-- [ ] **CLN-07**: Client-side pre-upload dimensions are tagged `probed: false` until probe completes; features that read dims (export, sprite, viewer aspect) can surface "pending probe" UX in the 10-30s window where client values might be stale
+- [x] **CLN-01**: `Asset.url` (the stored public GCS URL) is removed from the type and stops being written by `signed-url`; the bucket is private and the field was never consumed
+- [x] **CLN-02**: Sprite URL naming unified — `spriteSignedUrl` is used consistently in both the list endpoint and the on-demand generate-sprite response; AssetCard reads one field name
+- [x] **CLN-03**: `UploadCompleteRequest` type in `src/types/index.ts` is expanded to include `frameRate?`, `thumbnailGcsPath?`, any other field the server actually reads
+- [x] **CLN-04**: `useAssets.fetchAssets` uses `AbortController` — folder switches no longer race stale responses over fresh ones
+- [x] **CLN-05**: `folderIsAccessible` in review-link resolution uses the `Folder.path[]` array (already stored) for O(1) ancestry check instead of walking `parentId` with N sequential Firestore reads
+- [x] **CLN-06**: Sprite generation cleanup: `writer.destroy()` + `reader.cancel()` awaited before the finally block tries `fs.rm`; no EBUSY on /tmp cleanup under size-exceeded path
+- [x] **CLN-07**: Client-side pre-upload dimensions are tagged `probed: false` until probe completes; features that read dims (export, sprite, viewer aspect) can surface "pending probe" UX in the 10-30s window where client values might be stale
 
 ## Absorbed from audits
 
@@ -113,13 +113,13 @@ All 37 REQs trace to concrete audit findings — 18 specific (C-1 to L-4) + 5 sy
 | SEC-21 | Phase 65 | Complete |
 | SEC-22 | Phase 65 | Complete |
 | SEC-23 | Phase 65 | Complete |
-| CLN-01 | Phase 66 | Pending |
-| CLN-02 | Phase 66 | Pending |
-| CLN-03 | Phase 66 | Pending |
-| CLN-04 | Phase 66 | Pending |
-| CLN-05 | Phase 66 | Pending |
-| CLN-06 | Phase 66 | Pending |
-| CLN-07 | Phase 66 | Pending |
+| CLN-01 | Phase 66 | Complete |
+| CLN-02 | Phase 66 | Complete |
+| CLN-03 | Phase 66 | Complete |
+| CLN-04 | Phase 66 | Complete |
+| CLN-05 | Phase 66 | Complete |
+| CLN-06 | Phase 66 | Complete |
+| CLN-07 | Phase 66 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 31 total

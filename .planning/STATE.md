@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: Architecture Hardening
-status: active
-stopped_at: Phase 65 complete — Phase 66 (dead-data-and-contract-cleanup) ready
-last_updated: "2026-04-20T00:00:00.000Z"
-last_activity: 2026-04-20
+milestone_name: — Architecture Hardening
+status: completed
+stopped_at: Completed 66-01-PLAN.md (v2.0 final phase)
+last_updated: "2026-04-21T14:40:01.840Z"
+last_activity: 2026-04-20 — Phase 65 shipped
 progress:
-  total_phases: 7
-  completed_phases: 6
-  total_plans: 6
-  completed_plans: 6
+  total_phases: 64
+  completed_phases: 52
+  total_plans: 78
+  completed_plans: 69
   percent: 86
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-04-20)
 
 ## Current Position
 
-Phase: Phase 66 (dead-data-and-contract-cleanup) — Not started
-Status: Phase 65 complete — SEC-20..23 shipped (bcrypt hashing + legacy migration, header-only password path, MIME allow-list on upload/complete)
-Last activity: 2026-04-20 — Phase 65 shipped
+Phase: Phase 66 (dead-data-and-contract-cleanup) — Complete
+Status: Phase 66 complete — CLN-01..07 shipped (phantom-field removal, sprite naming, type completeness, AbortController, O(1) ancestry, writer teardown, probed:false tagging). v2.0 milestone complete.
+Last activity: 2026-04-21 — Phase 66 shipped (v2.0 FINAL)
 
-Progress: [████████░░] 86% (6/7 phases)
+Progress: [██████████] 100% (7/7 phases)
 
 ## Accumulated Context
 
@@ -66,6 +66,6 @@ None — ready for /gsd:plan-phase 60.
 
 ## Session Continuity
 
-Last session: 2026-04-20
-Stopped at: Phase 64 complete — ready for /gsd:plan-phase 65
+Last session: 2026-04-21T14:40:01.827Z
+Stopped at: Completed 66-01-PLAN.md (v2.0 final phase)
 Resume file: None
