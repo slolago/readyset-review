@@ -25,6 +25,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // SDC-03: Reject copying a soft-deleted source
+    if (source.deletedAt) {
+      return NextResponse.json({ error: 'Cannot copy a deleted asset' }, { status: 400 });
+    }
+
     // targetFolderId may be null (project root) or a folder id; if omitted default to same folder
     const destinationFolderId = targetFolderId !== undefined ? targetFolderId : source.folderId;
 
@@ -45,7 +50,9 @@ export async function POST(request: NextRequest) {
       .get();
     const allVersions: any[] = stackSnap.empty
       ? [source]  // fallback: just the one asset
-      : stackSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      : stackSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((a: any) => !a.deletedAt); // SDC-03: skip soft-deleted versions
 
     // Sort by version number ascending so ordering is preserved
     allVersions.sort((a: any, b: any) => (a.version || 1) - (b.version || 1));
@@ -72,6 +79,9 @@ export async function POST(request: NextRequest) {
       };
       // Firestore stores the doc id as the key, not a field
       delete copyData.id;
+      // SDC-03: never carry soft-delete markers onto a fresh copy
+      delete copyData.deletedAt;
+      delete copyData.deletedBy;
       batch.set(newRef, copyData);
     }
     await batch.commit();
