@@ -208,6 +208,16 @@ export async function POST(request: NextRequest) {
     if (outPoint !== undefined) commentData.outPoint = outPoint;
     if (annotation) commentData.annotation = annotation;
 
+    if (approvalStatus !== undefined) {
+      // Guest path: already gated above via assertReviewLinkAllows(link, 'approve').
+      // Authenticated path: project access via canPostComment is sufficient.
+      // Validate the shape — only the three legal values persist.
+      const VALID: readonly string[] = ['approved', 'needs_revision', 'in_review'];
+      if (typeof approvalStatus === 'string' && VALID.includes(approvalStatus)) {
+        commentData.approvalStatus = approvalStatus;
+      }
+    }
+
     const ref = await db.collection('comments').add(commentData);
     const doc = await ref.get();
 
