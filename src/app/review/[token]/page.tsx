@@ -84,9 +84,12 @@ export default function ReviewPage() {
     try {
       const qs = new URLSearchParams();
       const effectivePwd = pwd ?? passwordValue ?? undefined;
-      if (effectivePwd) qs.set('password', effectivePwd);
       if (folderId) qs.set('folder', folderId);
-      const res = await fetch(`/api/review-links/${token}?${qs}`);
+      // SEC-21: send password via header, not query string, so CDN/Vercel
+      // access logs don't capture it.
+      const headers: Record<string, string> = {};
+      if (effectivePwd) headers['x-review-password'] = effectivePwd;
+      const res = await fetch(`/api/review-links/${token}?${qs}`, { headers });
       if (res.status === 401) { setPasswordError(true); setLoading(false); return; }
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -142,12 +145,18 @@ export default function ReviewPage() {
   }, [selectedAsset?.id]);
 
   const fetchComments = useCallback(async (assetId: string) => {
-    const res = await fetch(`/api/comments?assetId=${assetId}&reviewToken=${token}`);
+    // SEC-21: password in header, not query string
+    const headers: Record<string, string> = {};
+    if (passwordValue) headers['x-review-password'] = passwordValue;
+    const res = await fetch(
+      `/api/comments?assetId=${assetId}&reviewToken=${token}`,
+      { headers }
+    );
     if (res.ok) {
       const json = await res.json();
       setComments(json.comments);
     }
-  }, [token]);
+  }, [token, passwordValue]);
 
   const handleSelectAsset = async (asset: Asset) => {
     setSelectedAsset(asset);
@@ -248,9 +257,11 @@ export default function ReviewPage() {
     projectId: string
   ) => {
     if (!selectedAsset || !data) return false;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (passwordValue) headers['x-review-password'] = passwordValue;
     const res = await fetch('/api/comments', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         ...commentData,
         assetId: selectedAsset.id,
