@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
-import { uploadBuffer, getPublicUrl, generateReadSignedUrl } from '@/lib/gcs';
+import { uploadBuffer, generateReadSignedUrl } from '@/lib/gcs';
 import { canGenerateSprite } from '@/lib/permissions';
 import type { Project } from '@/types';
 import path from 'path';
@@ -245,9 +245,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const spriteGcsPath = `projects/${asset.projectId}/assets/${assetId}/sprite-v2.jpg`;
       await uploadBuffer(spriteGcsPath, spriteBuffer, 'image/jpeg');
 
-      const publicUrl = getPublicUrl(spriteGcsPath);
+      // Only store the GCS path on the asset doc. The client never reads a
+      // "public URL" directly — it reads `spriteSignedUrl` which the list
+      // endpoint generates fresh from gcsPath per request. Storing a dead
+      // public URL was a phantom field (DC-02 spirit).
       await db.collection('assets').doc(assetId).update({
-        spriteStripUrl: publicUrl,
         spriteStripGcsPath: spriteGcsPath,
       });
 

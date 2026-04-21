@@ -58,10 +58,13 @@ export async function POST(request: NextRequest) {
 
     const updated = await db.collection('assets').doc(assetId).get();
 
-    // Fire-and-forget: run ffprobe to replace client-extracted metadata
-    // with server-verified values. We don't block the upload-complete response
-    // on it — the client already has acceptable metadata to start viewing.
-    // If probe fails, the Probe button in the info panel can be used manually.
+    // Fire-and-forget background jobs for video assets:
+    //   - probe:  server-verified ffprobe metadata (replaces client-extracted values)
+    //   - sprite: hover-scrub filmstrip (so the first user to hover doesn't
+    //             wait for on-demand generation)
+    // Both run in parallel, neither blocks the upload-complete response. If
+    // either fails, manual fallbacks exist (Probe button, on-demand sprite
+    // endpoint triggered by hover).
     const origin = request.nextUrl.origin;
     const authHeader = request.headers.get('Authorization');
     if (asset.type === 'video' && authHeader) {
@@ -69,6 +72,11 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: { Authorization: authHeader },
       }).catch((e) => console.warn('[upload/complete] background probe failed', e));
+
+      fetch(`${origin}/api/assets/${assetId}/generate-sprite`, {
+        method: 'POST',
+        headers: { Authorization: authHeader },
+      }).catch((e) => console.warn('[upload/complete] background sprite failed', e));
     }
 
     return NextResponse.json({ asset: { id: assetId, ...updated.data() } });

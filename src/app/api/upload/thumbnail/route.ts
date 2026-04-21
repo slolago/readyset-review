@@ -40,17 +40,25 @@ export async function POST(request: NextRequest) {
     const uploadType = formData.get('type') as string | null;
 
     if (uploadType === 'sprite') {
-      // Sprite strip upload
+      // Sprite strip upload from client (legacy path — the preferred path is
+      // now server-side generation via POST /api/assets/[id]/generate-sprite,
+      // fired from upload/complete. Kept for back-compat.)
+      //
+      // Note the path uses "sprite-strip.jpg" (NOT "sprite-v2.jpg"), so the
+      // list endpoint's `includes('sprite-v2.jpg')` filter SKIPS these old
+      // sprites, which is intentional — they're stale client-generated
+      // low-quality versions and the server path produces a better output.
       const spriteGcsPath = `projects/${projectId}/assets/${assetId}/sprite-strip.jpg`;
       const arrayBuffer = await thumbnailFile.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       await uploadBuffer(spriteGcsPath, buffer, 'image/jpeg');
-      const spriteUrl = getPublicUrl(spriteGcsPath);
+      // Store only the GCS path. The client reads `spriteSignedUrl` which is
+      // re-signed fresh per list request — storing a second URL field was
+      // dead data.
       await db.collection('assets').doc(assetId).update({
-        spriteStripUrl: spriteUrl,
         spriteStripGcsPath: spriteGcsPath,
       });
-      return NextResponse.json({ spriteStripGcsPath: spriteGcsPath, spriteStripUrl: spriteUrl });
+      return NextResponse.json({ spriteStripGcsPath: spriteGcsPath });
     }
 
     // Regular thumbnail upload

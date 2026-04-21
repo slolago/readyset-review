@@ -60,9 +60,7 @@ export interface Asset {
   thumbnailUrl: string;
   /** GCS path to the generated thumbnail. Set by upload/complete + upload/thumbnail. Absent until first thumbnail is produced. */
   thumbnailGcsPath?: string;
-  /** Public URL for the sprite strip (trickplay). Set by upload/thumbnail + generate-sprite. */
-  spriteStripUrl?: string;
-  /** GCS path for the sprite strip. Set by upload/thumbnail + generate-sprite. */
+  /** GCS path for the sprite strip (trickplay filmstrip). Set by generate-sprite (fired from upload/complete) or the legacy upload/thumbnail sprite path. The client reads `spriteSignedUrl` on list, which is re-signed fresh per request. */
   spriteStripGcsPath?: string;
   /** Free-form user-supplied description. Writable via PUT /api/assets/[assetId]. */
   description?: string;
