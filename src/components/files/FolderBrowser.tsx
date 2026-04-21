@@ -42,11 +42,12 @@ import {
 } from 'lucide-react';
 import type { Folder as FolderType, UploadItem } from '@/types';
 import type { ReviewStatus } from '@/types';
-import { getProjectColor, formatBytes, forceDownload } from '@/lib/utils';
+import { getProjectColor, formatBytes, formatRelativeTime, forceDownload } from '@/lib/utils';
 import { FILE_INPUT_ACCEPT } from '@/lib/file-types';
 import { selectionStyle } from '@/lib/selectionStyle';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { ContextMenuProvider, useContextMenuController } from '@/components/ui/ContextMenu';
+import { InlineRename } from '@/components/ui/InlineRename';
 import { buildFileBrowserActions } from './fileBrowserActions';
 import toast from 'react-hot-toast';
 import { CreateReviewLinkModal } from '@/components/review/CreateReviewLinkModal';
@@ -846,6 +847,46 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
     }
   };
 
+  // Shared folder copy/duplicate handlers — consumed by both the grid
+  // FolderCard and the list-mode FolderListRow so their menus behave identically.
+  const handleCopyFolder = async (folder: FolderType, targetParentId: string | null) => {
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/folders/copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ folderId: folder.id, targetParentId }),
+      });
+      if (res.ok) {
+        toast.success('Folder copied');
+        fetchFolders();
+      } else {
+        toast.error('Copy failed');
+      }
+    } catch {
+      toast.error('Copy failed');
+    }
+  };
+
+  const handleDuplicateFolder = async (folder: FolderType) => {
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/folders/copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ folderId: folder.id }),
+      });
+      if (res.ok) {
+        toast.success('Folder duplicated');
+        fetchFolders();
+      } else {
+        toast.error('Duplicate failed');
+      }
+    } catch {
+      toast.error('Duplicate failed');
+    }
+  };
+
   // ── Drag-to-move: folder drop target handlers ────────────────────────────
   const handleFolderDragOver = useCallback((folderId: string, e: React.DragEvent) => {
     // Only accept our custom move payload
@@ -1133,66 +1174,56 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
             <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider mb-3">
               Folders ({folders.length})
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-              {sortedFolders.map((folder) => (
-                <FolderCard
-                  key={folder.id}
-                  folder={folder}
-                  projectId={projectId}
-                  ancestorPath={childAncestorPath}
-                  isSelected={selectedIds.has(folder.id)}
-                  isDropTarget={dragOverFolderId === folder.id}
-                  onToggleSelect={(e) => toggleSelect(folder.id, e)}
-                  onDelete={() => handleDeleteFolder(folder.id)}
-                  onRename={fetchFolders}
-                  allFolders={allFolders}
-                  onBeforeCopyTo={ensureAllFolders}
-                  onCopyTo={async (targetParentId) => {
-                    try {
-                      const token = await getIdToken();
-                      const res = await fetch('/api/folders/copy', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ folderId: folder.id, targetParentId }),
-                      });
-                      if (res.ok) {
-                        toast.success('Folder copied');
-                        fetchFolders();
-                      } else {
-                        toast.error('Copy failed');
-                      }
-                    } catch {
-                      toast.error('Copy failed');
-                    }
-                  }}
-                  onDuplicate={async () => {
-                    try {
-                      const token = await getIdToken();
-                      const res = await fetch('/api/folders/copy', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ folderId: folder.id }),
-                      });
-                      if (res.ok) {
-                        toast.success('Folder duplicated');
-                        fetchFolders();
-                      } else {
-                        toast.error('Duplicate failed');
-                      }
-                    } catch {
-                      toast.error('Duplicate failed');
-                    }
-                  }}
-                  onDragStart={(e) => handleItemDragStart(folder.id, e)}
-                  onDragOver={(e) => handleFolderDragOver(folder.id, e)}
-                  onDragLeave={(e) => handleFolderDragLeave(folder.id, e)}
-                  onDrop={(e) => handleFolderDrop(folder.id, e)}
-                  onCreateReviewLink={() => setFolderReviewTarget(folder.id)}
-                  onAddToReviewLink={() => setAddToLinkTarget({ folderIds: [folder.id] })}
-                  onRequestMove={() => handleRequestMoveItem(folder.id)}
-                />
-              ))}
-            </div>
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                {sortedFolders.map((folder) => (
+                  <FolderCard
+                    key={folder.id}
+                    folder={folder}
+                    projectId={projectId}
+                    ancestorPath={childAncestorPath}
+                    isSelected={selectedIds.has(folder.id)}
+                    isDropTarget={dragOverFolderId === folder.id}
+                    onToggleSelect={(e) => toggleSelect(folder.id, e)}
+                    onDelete={() => handleDeleteFolder(folder.id)}
+                    onRename={fetchFolders}
+                    allFolders={allFolders}
+                    onBeforeCopyTo={ensureAllFolders}
+                    onCopyTo={(targetParentId) => handleCopyFolder(folder, targetParentId)}
+                    onDuplicate={() => handleDuplicateFolder(folder)}
+                    onDragStart={(e) => handleItemDragStart(folder.id, e)}
+                    onDragOver={(e) => handleFolderDragOver(folder.id, e)}
+                    onDragLeave={(e) => handleFolderDragLeave(folder.id, e)}
+                    onDrop={(e) => handleFolderDrop(folder.id, e)}
+                    onCreateReviewLink={() => setFolderReviewTarget(folder.id)}
+                    onAddToReviewLink={() => setAddToLinkTarget({ folderIds: [folder.id] })}
+                    onRequestMove={() => handleRequestMoveItem(folder.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <FolderListView
+                folders={sortedFolders}
+                projectId={projectId}
+                ancestorPath={childAncestorPath}
+                allFolders={allFolders}
+                selectedIds={selectedIds}
+                dragOverFolderId={dragOverFolderId}
+                onToggleSelect={toggleSelect}
+                onDelete={handleDeleteFolder}
+                onRenamed={fetchFolders}
+                onBeforeCopyTo={ensureAllFolders}
+                onCopyTo={handleCopyFolder}
+                onDuplicate={handleDuplicateFolder}
+                onCreateReviewLink={(id) => setFolderReviewTarget(id)}
+                onAddToReviewLink={(id) => setAddToLinkTarget({ folderIds: [id] })}
+                onRequestMove={handleRequestMoveItem}
+                onDragStart={handleItemDragStart}
+                onDragOver={handleFolderDragOver}
+                onDragLeave={handleFolderDragLeave}
+                onDrop={handleFolderDrop}
+              />
+            )}
           </div>
         )}
 
@@ -1827,6 +1858,319 @@ const FolderCard = React.memo(function FolderCard({
     </div>
   );
 });
+
+// ── FolderListView ───────────────────────────────────────────────────────────
+
+interface FolderListViewProps {
+  folders: FolderType[];
+  projectId: string;
+  ancestorPath?: string;
+  allFolders: FolderType[];
+  selectedIds: Set<string>;
+  dragOverFolderId: string | null;
+  onToggleSelect: (id: string, e: React.MouseEvent) => void;
+  onDelete: (folderId: string) => void;
+  onRenamed: () => void;
+  onBeforeCopyTo: () => Promise<void>;
+  onCopyTo: (folder: FolderType, targetParentId: string | null) => void;
+  onDuplicate: (folder: FolderType) => void;
+  onCreateReviewLink: (folderId: string) => void;
+  onAddToReviewLink: (folderId: string) => void;
+  onRequestMove: (folderId: string) => void;
+  onDragStart: (folderId: string, e: React.DragEvent) => void;
+  onDragOver: (folderId: string, e: React.DragEvent) => void;
+  onDragLeave: (folderId: string, e: React.DragEvent) => void;
+  onDrop: (folderId: string, e: React.DragEvent) => void;
+}
+
+const FolderListView = React.memo(function FolderListView({
+  folders,
+  projectId,
+  ancestorPath,
+  allFolders,
+  selectedIds,
+  dragOverFolderId,
+  onToggleSelect,
+  onDelete,
+  onRenamed,
+  onBeforeCopyTo,
+  onCopyTo,
+  onDuplicate,
+  onCreateReviewLink,
+  onAddToReviewLink,
+  onRequestMove,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: FolderListViewProps) {
+  const headerCellClass = 'py-2 px-3 text-xs font-medium text-frame-textMuted uppercase tracking-wider';
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="border-b border-frame-border text-left">
+          <th className={headerCellClass} style={{ width: '2.5rem' }} />
+          <th className={`${headerCellClass} w-12`} />
+          <th className={headerCellClass}>Name</th>
+          <th className={headerCellClass}>Date created</th>
+          <th className={`${headerCellClass} w-12`} />
+        </tr>
+      </thead>
+      <tbody>
+        {folders.map((folder) => (
+          <FolderListRow
+            key={folder.id}
+            folder={folder}
+            projectId={projectId}
+            ancestorPath={ancestorPath}
+            allFolders={allFolders}
+            isSelected={selectedIds.has(folder.id)}
+            isDropTarget={dragOverFolderId === folder.id}
+            onToggleSelect={(e) => onToggleSelect(folder.id, e)}
+            onDelete={() => onDelete(folder.id)}
+            onRenamed={onRenamed}
+            onBeforeCopyTo={onBeforeCopyTo}
+            onCopyTo={(targetParentId) => onCopyTo(folder, targetParentId)}
+            onDuplicate={() => onDuplicate(folder)}
+            onCreateReviewLink={() => onCreateReviewLink(folder.id)}
+            onAddToReviewLink={() => onAddToReviewLink(folder.id)}
+            onRequestMove={() => onRequestMove(folder.id)}
+            onDragStart={(e) => onDragStart(folder.id, e)}
+            onDragOver={(e) => onDragOver(folder.id, e)}
+            onDragLeave={(e) => onDragLeave(folder.id, e)}
+            onDrop={(e) => onDrop(folder.id, e)}
+          />
+        ))}
+      </tbody>
+    </table>
+  );
+});
+
+// ── FolderListRow ────────────────────────────────────────────────────────────
+
+interface FolderListRowProps {
+  folder: FolderType;
+  projectId: string;
+  ancestorPath?: string;
+  allFolders: FolderType[];
+  isSelected: boolean;
+  isDropTarget: boolean;
+  onToggleSelect: (e: React.MouseEvent) => void;
+  onDelete: () => void;
+  onRenamed: () => void;
+  onBeforeCopyTo: () => Promise<void>;
+  onCopyTo: (targetParentId: string | null) => void;
+  onDuplicate: () => void;
+  onCreateReviewLink: () => void;
+  onAddToReviewLink: () => void;
+  onRequestMove: () => void;
+  onDragStart: (e: React.DragEvent) => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: (e: React.DragEvent) => void;
+  onDrop: (e: React.DragEvent) => void;
+}
+
+function FolderListRow({
+  folder,
+  projectId,
+  ancestorPath,
+  allFolders,
+  isSelected,
+  isDropTarget,
+  onToggleSelect,
+  onDelete,
+  onRenamed,
+  onBeforeCopyTo,
+  onCopyTo,
+  onDuplicate,
+  onCreateReviewLink,
+  onAddToReviewLink,
+  onRequestMove,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: FolderListRowProps) {
+  const router = useRouter();
+  const { getIdToken } = useAuth();
+  const ctxMenu = useContextMenuController();
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [showFolderCopyModal, setShowFolderCopyModal] = useState(false);
+  // CTX-05 defense: suppress the synthetic click some platforms fire
+  // immediately after contextmenu+mouseup. Set in onContextMenu, checked +
+  // cleared in onClick.
+  const suppressNextClickRef = useRef(false);
+
+  const handleOpenCopyModal = async () => {
+    await onBeforeCopyTo();
+    setShowFolderCopyModal(true);
+  };
+
+  const commitFolderRename = async (next: string) => {
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === folder.name) {
+      setIsRenaming(false);
+      return;
+    }
+    try {
+      const token = await getIdToken();
+      const res = await fetch(`/api/folders/${folder.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (res.ok) {
+        toast.success('Renamed');
+        onRenamed();
+      } else {
+        toast.error('Rename failed');
+      }
+    } catch {
+      toast.error('Rename failed');
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  const folderActions = buildFileBrowserActions('folder', {
+    onOpen: () => router.push(`/projects/${projectId}/folders/${folder.id}${ancestorPath ? `?path=${ancestorPath}` : ''}`),
+    onRename: () => setIsRenaming(true),
+    onDuplicate,
+    onCopyTo: handleOpenCopyModal,
+    onMoveTo: onRequestMove,
+    onCreateReviewLink,
+    onAddToReviewLink,
+    onDelete,
+    icons: {
+      open: <FolderOpen className="w-4 h-4" />,
+      rename: <Pencil className="w-4 h-4" />,
+      duplicate: <CopyPlus className="w-4 h-4" />,
+      copyTo: <Copy className="w-4 h-4" />,
+      moveTo: <Move className="w-4 h-4" />,
+      createReviewLink: <LinkIcon className="w-4 h-4" />,
+      addToReviewLink: <LinkIcon className="w-4 h-4" />,
+      delete: <Trash2 className="w-4 h-4" />,
+    },
+  });
+
+  // Date created — mirror AssetListRow's timestamp-shape fallback (Firestore
+  // REST payloads arrive as `{ _seconds }`, client SDK shapes expose `toDate()`).
+  const date =
+    typeof folder.createdAt?.toDate === 'function'
+      ? folder.createdAt.toDate()
+      : new Date((folder.createdAt as any)?._seconds * 1000 || Date.now());
+
+  return (
+    <>
+      <tr
+        data-selectable={folder.id}
+        draggable
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        onMouseDown={(e) => {
+          if (e.button === 2) e.preventDefault();
+        }}
+        onClick={(e) => {
+          if (e.button !== 0) return;
+          if (suppressNextClickRef.current) {
+            suppressNextClickRef.current = false;
+            return;
+          }
+          if (isRenaming) return;
+          const target = e.target as HTMLElement;
+          if (target.closest('[role="menu"]')) return;
+          const url = `/projects/${projectId}/folders/${folder.id}${ancestorPath ? `?path=${ancestorPath}` : ''}`;
+          router.push(url);
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          suppressNextClickRef.current = true;
+          setTimeout(() => { suppressNextClickRef.current = false; }, 300);
+          ctxMenu.open(`folder-${folder.id}`, { x: e.clientX, y: e.clientY }, folderActions);
+        }}
+        className={`cursor-pointer hover:bg-frame-card/50 transition-colors border-b border-frame-border/40 ${
+          isSelected ? 'bg-frame-accent/10' : ''
+        } ${isDropTarget ? 'ring-2 ring-inset ring-frame-accent bg-frame-accent/10' : ''}`}
+      >
+        {/* Checkbox */}
+        <td
+          className="px-3 py-2 cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(e); }}
+        >
+          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors pointer-events-none ${
+            isSelected ? 'bg-frame-accent border-frame-accent' : 'bg-transparent border-white/30'
+          }`}>
+            {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+          </div>
+        </td>
+
+        {/* Folder icon */}
+        <td className="px-3 py-2 w-12">
+          <div className="w-10 h-10 rounded bg-frame-bg flex items-center justify-center">
+            <Folder className="w-5 h-5 text-frame-accent/70" />
+          </div>
+        </td>
+
+        {/* Name */}
+        <td
+          className="px-3 py-2"
+          onClick={(e) => { if (isRenaming) e.stopPropagation(); }}
+        >
+          {isRenaming ? (
+            <InlineRename
+              value={folder.name}
+              onCommit={commitFolderRename}
+              onCancel={() => setIsRenaming(false)}
+            />
+          ) : (
+            <span className="font-medium text-white truncate block max-w-[240px]" title={folder.name}>{folder.name}</span>
+          )}
+        </td>
+
+        {/* Date created */}
+        <td className="px-3 py-2" title={date.toLocaleDateString()}>
+          <span className="text-frame-textSecondary">{formatRelativeTime(date)}</span>
+        </td>
+
+        {/* Three-dots */}
+        <td className="px-3 py-2 w-12">
+          <div onClick={(e) => e.stopPropagation()}>
+            <Dropdown
+              trigger={
+                <button className="w-7 h-7 flex items-center justify-center rounded bg-black/60 backdrop-blur-sm text-white/80 hover:text-white hover:bg-black/80 transition-colors">
+                  <MoreHorizontal className="w-4 h-4" />
+                </button>
+              }
+              items={folderActions.map((a) => ({
+                label: a.label,
+                icon: a.icon,
+                onClick: a.onClick,
+                danger: a.danger,
+                divider: a.dividerBefore,
+              }))}
+            />
+          </div>
+        </td>
+      </tr>
+      {showFolderCopyModal && (
+        <MoveModal
+          folders={allFolders}
+          currentFolderId={null}
+          selectedCount={0}
+          title="Copy to folder"
+          onMove={(targetParentId) => {
+            onCopyTo(targetParentId);
+            setShowFolderCopyModal(false);
+          }}
+          onClose={() => setShowFolderCopyModal(false)}
+        />
+      )}
+    </>
+  );
+}
 
 // ── MoveModal ────────────────────────────────────────────────────────────────
 

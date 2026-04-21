@@ -359,7 +359,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 71-01-PLAN.md — Folders-as-rows in list view + raise asset three-dots above hover preview (VIEW-01, VIEW-02)
+- [x] 71-01-PLAN.md — Folders-as-rows in list view + raise asset three-dots above hover preview (VIEW-01, VIEW-02)
 
 ### Phase 72: inline-edit-and-folder-duplicate
 **Goal**: Inline rename is safely cancellable and never double-mounted, and folder Duplicate actually persists a copy instead of firing a success toast on nothing
@@ -437,6 +437,6 @@ Plans:
 | 68. client-init-waterfall | v2.1 | 1/1 | Human-verify | 2026-04-21 |
 | 69. ssr-and-micro-optimizations | v2.1 | 1/1 | Human-verify | 2026-04-21 |
 | 70. context-menu-behavior | v2.2 | 0/? | Not started | - |
-| 71. grid-view-affordances | v2.2 | 0/? | Not started | - |
+| 71. grid-view-affordances | v2.2 | 1/1 | Complete   | 2026-04-21 |
 | 72. inline-edit-and-folder-duplicate | v2.2 | 0/? | Not started | - |
 | 73. drawing-mode-transforms | v2.2 | 0/? | Not started | - |

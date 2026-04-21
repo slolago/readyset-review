@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.2
-milestone_name: Dashboard & Annotation UX Fixes
-status: roadmap_ready
-stopped_at: Roadmap created — 4 phases (70–73), ready for Phase 70 planning
-last_updated: "2026-04-21T21:30:00.000Z"
-last_activity: 2026-04-21
+milestone_name: — Dashboard & Annotation UX Fixes
+status: "Phase 71 complete (VIEW-01, VIEW-02). Awaiting Phase 72."
+stopped_at: Completed 71-01-PLAN.md
+last_updated: "2026-04-21T21:01:41.997Z"
+last_activity: 2026-04-21 — Roadmap for v2.2 created, 9/9 requirements mapped
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-04-21)
 
 ## Current Position
 
-Phase: 70 (context-menu-behavior) — not started
-Plan: —
-Status: Roadmap ready, awaiting `/gsd:plan-phase 70`
-Last activity: 2026-04-21 — Roadmap for v2.2 created, 9/9 requirements mapped
+Phase: 71 (grid-view-affordances) — complete
+Plan: 71-01-PLAN.md — shipped
+Status: Phase 71 complete (VIEW-01, VIEW-02). Awaiting next phase.
+Last activity: 2026-04-21 — Phase 71 plan 01 shipped: folders list view + asset three-dots layering
 
 ## v2.2 Phase Structure
 
@@ -84,6 +83,6 @@ None — ready to plan Phase 70.
 
 ## Session Continuity
 
-Last session: 2026-04-21
-Stopped at: Roadmap for v2.2 created — 4 phases (70, 71, 72, 73) defined with 100% requirement coverage
-Resume file: None — run `/gsd:plan-phase 70` to start
+Last session: 2026-04-21T21:01:41.991Z
+Stopped at: Completed 71-01-PLAN.md
+Resume file: None

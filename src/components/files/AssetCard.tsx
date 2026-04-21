@@ -511,10 +511,14 @@ export const AssetCard = memo(function AssetCard({
           />
         )}
 
-        {/* Sprite strip hover overlay — pure CSS, no video decoding */}
+        {/* Sprite strip hover overlay — pure CSS, no video decoding.
+            pointer-events-none: onMouseMove lives on the parent thumbnail div
+            (not this overlay); making the overlay transparent to the mouse
+            lets events reach the z-20 three-dots wrapper above and the
+            parent handler below via bubbling. */}
         {asset.type === 'video' && spriteUrl && isHovering && spriteLoaded && (
           <div
-            className="absolute inset-0 z-[1] bg-black"
+            className="absolute inset-0 z-[1] bg-black pointer-events-none"
             style={{
               backgroundImage: `url(${spriteUrl})`,
               backgroundSize: `${20 * 100}% 100%`,
@@ -526,7 +530,7 @@ export const AssetCard = memo(function AssetCard({
 
         {/* Scrub progress bar */}
         {asset.type === 'video' && isHovering && spriteLoaded && (
-          <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-black/40 z-[2]">
+          <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-black/40 z-[2] pointer-events-none">
             <div
               className="h-full bg-frame-accent"
               style={{ width: `${scrubPct * 100}%` }}
@@ -536,7 +540,7 @@ export const AssetCard = memo(function AssetCard({
 
         {/* Loading indicator while sprite is generating */}
         {asset.type === 'video' && isHovering && generatingSprite && !spriteLoaded && (
-          <div className="absolute bottom-1 right-1 z-[2] bg-black/70 backdrop-blur-sm rounded-full p-1">
+          <div className="absolute bottom-1 right-1 z-[2] bg-black/70 backdrop-blur-sm rounded-full p-1 pointer-events-none">
             <div className="w-3 h-3 border-2 border-frame-accent border-t-transparent rounded-full animate-spin" />
           </div>
         )}
@@ -611,7 +615,7 @@ export const AssetCard = memo(function AssetCard({
         {/* Actions */}
         {!isUploading && !hideActions && (
           <div
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={(e) => e.stopPropagation()}
           >
             <Dropdown

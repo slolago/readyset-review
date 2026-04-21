@@ -16,8 +16,8 @@
 
 ### Grid / list affordances
 
-- [ ] **VIEW-01**: The list/grid view toggle is available and functional when the current folder contains only folders (no assets). Switching to list view renders folders as rows matching the existing list view for mixed contents.
-- [ ] **VIEW-02**: On an asset card in grid view, the three-dots overflow button is reachable and clickable. Hovering the card shows the button; moving the cursor over the button keeps it visible and interactive. The real-time hover preview does not consume pointer events over the three-dots hit region (z-order, pointer-events, or an explicit hover-preview exclusion zone) so the button behaves identically to the three-dots on folder cards.
+- [x] **VIEW-01**: The list/grid view toggle is available and functional when the current folder contains only folders (no assets). Switching to list view renders folders as rows matching the existing list view for mixed contents.
+- [x] **VIEW-02**: On an asset card in grid view, the three-dots overflow button is reachable and clickable. Hovering the card shows the button; moving the cursor over the button keeps it visible and interactive. The real-time hover preview does not consume pointer events over the three-dots hit region (z-order, pointer-events, or an explicit hover-preview exclusion zone) so the button behaves identically to the three-dots on folder cards.
 
 ### Inline edit + mutations
 
@@ -64,8 +64,8 @@ See `.planning/MILESTONES.md` — v1.7 through v2.1 shipped.
 | CTX-03 | Phase 70 | Pending |
 | CTX-04 | Phase 70 | Pending |
 | CTX-05 | Phase 70 | Pending |
-| VIEW-01 | Phase 71 | Pending |
-| VIEW-02 | Phase 71 | Pending |
+| VIEW-01 | Phase 71 | Complete |
+| VIEW-02 | Phase 71 | Complete |
 | EDIT-01 | Phase 72 | Pending |
 | FS-01 | Phase 72 | Pending |
 | DRAW-01 | Phase 73 | Pending |
