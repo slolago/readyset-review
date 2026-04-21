@@ -121,6 +121,10 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
   const [timecodeMode, setTimecodeMode] = useState<'mmss' | 'smpte'>('mmss');
   const [dimsA, setDimsA] = useState<{ w: number; h: number } | null>(null);
   const [dimsB, setDimsB] = useState<{ w: number; h: number } | null>(null);
+  // Per-side load errors for image mode (broken URL, CORS, SVG with no
+  // intrinsic size). Surfaced inline so mediaReady doesn't spin forever.
+  const [errA, setErrA] = useState(false);
+  const [errB, setErrB] = useState(false);
 
   // VU meter show/hide — user preference persisted across sessions.
   const [showVU, setShowVU] = useState(() => {
@@ -249,6 +253,13 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
 
   // Reset zoom when switching versions or view mode (context change)
   useEffect(() => { resetZoom(); }, [selectedIdA, selectedIdB, viewMode, resetZoom]);
+
+  // When a side changes its asset (user picked a different version), clear
+  // that side's cached dims + error so the spinner comes back until the new
+  // media loads. Without this, the frame briefly sizes to the OLD aspect
+  // ratio while the new image/video is still loading.
+  useEffect(() => { setDimsA(null); setErrA(false); }, [selectedIdA]);
+  useEffect(() => { setDimsB(null); setErrB(false); }, [selectedIdB]);
 
   // Active side = the master for playback sync (user listens to it).
   const masterRef = useCallback((): HTMLVideoElement | null => {
@@ -714,6 +725,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
                     playsInline
                     preload="auto"
                     onLoadedMetadata={handleMetaB}
+                    onError={() => setErrB(true)}
                   />
                   <video
                     ref={videoARef}
@@ -725,20 +737,62 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
                     playsInline
                     preload="auto"
                     onLoadedMetadata={handleMetaA}
+                    onError={() => setErrA(true)}
                   />
                 </>
               ) : isImage ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={urlB} alt={`V${assetB.version}`} className="object-contain" style={videoStyleB} draggable={false} onLoad={(e) => { const t = e.currentTarget; if (t.naturalWidth) setDimsB({ w: t.naturalWidth, h: t.naturalHeight }); }} />
+                  <img
+                    src={urlB}
+                    alt={`V${assetB.version}`}
+                    className="object-contain"
+                    style={videoStyleB}
+                    draggable={false}
+                    onLoad={(e) => {
+                      const t = e.currentTarget;
+                      // SVGs without an intrinsic size report naturalWidth=0.
+                      // Fall back to the element's layout box so mediaReady
+                      // still flips and the frame uses a sensible 1:1 aspect.
+                      const w = t.naturalWidth || t.clientWidth || 1;
+                      const h = t.naturalHeight || t.clientHeight || 1;
+                      setDimsB({ w, h });
+                    }}
+                    onError={() => setErrB(true)}
+                  />
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={urlA} alt={`V${assetA.version}`} className="object-contain" style={videoStyleA} draggable={false} onLoad={(e) => { const t = e.currentTarget; if (t.naturalWidth) setDimsA({ w: t.naturalWidth, h: t.naturalHeight }); }} />
+                  <img
+                    src={urlA}
+                    alt={`V${assetA.version}`}
+                    className="object-contain"
+                    style={videoStyleA}
+                    draggable={false}
+                    onLoad={(e) => {
+                      const t = e.currentTarget;
+                      const w = t.naturalWidth || t.clientWidth || 1;
+                      const h = t.naturalHeight || t.clientHeight || 1;
+                      setDimsA({ w, h });
+                    }}
+                    onError={() => setErrA(true)}
+                  />
                 </>
               ) : null}
             </div>
 
+            {/* Load error — replaces the spinner when either side fails
+                to load. Otherwise an unreadable signed URL would spin
+                forever. */}
+            {(errA || errB) && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 backdrop-blur-sm">
+                <AlertCircle className="w-7 h-7 text-red-400" />
+                <p className="text-xs text-white/80">
+                  Failed to load {errA && errB ? 'both versions' : errA ? `V${assetA.version}` : `V${assetB.version}`}
+                </p>
+              </div>
+            )}
+
             {/* Loading spinner shown only until media is ready */}
-            {!mediaReady && (
+            {!mediaReady && !errA && !errB && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-6 h-6 border-2 border-white/20 border-t-white/70 rounded-full animate-spin" />
               </div>
