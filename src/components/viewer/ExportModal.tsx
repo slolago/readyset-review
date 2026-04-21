@@ -43,7 +43,12 @@ export function ExportModal({
   onClose,
 }: ExportModalProps) {
   const { getIdToken } = useAuth();
-  const duration = Math.max(0.1, asset.duration ?? 0.1);
+  const rawDuration = asset.duration ?? 0;
+  const isWaitingForDuration = rawDuration <= 0;
+  // Keep `duration` defined for trim math when duration IS known; when waiting
+  // we short-circuit the trim UI entirely so the stale 0.1 fallback is never
+  // rendered.
+  const duration = Math.max(0.1, rawDuration);
   const previewUrl = (asset as unknown as { signedUrl?: string }).signedUrl;
 
   const [format, setFormat] = useState<ExportFormat>('mp4');
@@ -259,6 +264,18 @@ export function ExportModal({
           </div>
         )}
 
+        {isWaitingForDuration ? (
+          <div className="px-5 py-10 text-center">
+            <div className="text-sm text-white font-medium mb-1">
+              Duration not available yet
+            </div>
+            <div className="text-xs text-frame-textMuted">
+              This asset is still processing. Export will be available once
+              metadata is ready — try again in a moment.
+            </div>
+          </div>
+        ) : (
+          <>
         {/* Trim bar */}
         <div className="px-5 pt-4">
           <div className="flex items-center justify-between text-[11px] text-frame-textSecondary mb-1.5">
@@ -348,6 +365,9 @@ export function ExportModal({
           </div>
         </div>
 
+          </>
+        )}
+
         {/* Footer — submit / status / download */}
         <div className="px-5 py-4 mt-4 border-t border-frame-border flex items-center justify-between gap-3">
           <div className="text-[11px] text-frame-textMuted min-h-[1em]">
@@ -357,7 +377,14 @@ export function ExportModal({
             )}
           </div>
 
-          {ui === 'ready' && signedUrl ? (
+          {isWaitingForDuration ? (
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-semibold text-white bg-frame-border hover:bg-frame-borderLight rounded-xl"
+            >
+              Close
+            </button>
+          ) : ui === 'ready' && signedUrl ? (
             <button
               onClick={handleDownload}
               className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-frame-green hover:brightness-110 rounded-xl transition-all"
