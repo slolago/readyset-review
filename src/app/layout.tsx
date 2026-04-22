@@ -28,6 +28,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <link rel="preconnect" href="https://firestore.googleapis.com" crossOrigin="" />
+        <link rel="preconnect" href="https://storage.googleapis.com" crossOrigin="" />
+      </head>
       <body className={`${inter.className} bg-frame-bg text-frame-textPrimary min-h-screen`}>
         <AuthProvider>
           <ConfirmProvider>

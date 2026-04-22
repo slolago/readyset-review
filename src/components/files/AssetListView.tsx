@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect, memo } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   Film, Image as ImageIcon, ChevronUp, ChevronDown, Pencil, Copy, CopyPlus,
   Move, Download, Link as LinkIcon, Trash2, ExternalLink, Check,
@@ -485,11 +486,11 @@ function AssetListRow({
 
         {/* Thumbnail */}
         <td className="px-3 py-2 w-12">
-          <div className="w-10 h-10 rounded overflow-hidden bg-frame-bg flex-shrink-0 flex items-center justify-center">
+          <div className="relative w-10 h-10 rounded overflow-hidden bg-frame-bg flex-shrink-0 flex items-center justify-center">
             {asset.type === 'image' && signedUrl ? (
-              <img src={signedUrl} alt={asset.name} className="w-full h-full object-cover" />
+              <Image src={signedUrl} alt={asset.name} fill sizes="40px" className="object-cover" unoptimized />
             ) : asset.type === 'video' && thumbnailSignedUrl ? (
-              <img src={thumbnailSignedUrl} alt={asset.name} className="w-full h-full object-cover" />
+              <Image src={thumbnailSignedUrl} alt={asset.name} fill sizes="40px" className="object-cover" unoptimized />
             ) : (() => {
               const Icon = ICON_COMPONENTS[TYPE_META[asset.type].iconName];
               return <Icon className="w-5 h-5 text-frame-textMuted" />;
