@@ -253,23 +253,30 @@ export async function POST(request: NextRequest) {
       // 2GB RAM: 480p, 12 fps, Bayer dither. `split` keeps all decoded
       // frames in memory between the two branches, so at 45s × 12fps ×
       // 480×270 RGBA ≈ 280MB peak — well under the limit.
+      //
+      // The [out] label + `-map "[out]"` are NOT optional: the filter
+      // graph has two output streams (the 1-frame palette [p] and the
+      // multi-frame paletteuse result). Without an explicit map, ffmpeg's
+      // auto-selection can pick [p] and write a single-frame static GIF.
+      // Naming the final stream and mapping it removes the ambiguity.
       const GIF_FPS = 12;
       const GIF_SCALE = 'scale=480:-2:flags=lanczos';
       const filter =
         `fps=${GIF_FPS},${GIF_SCALE},split[a][b];` +
         `[a]palettegen=stats_mode=diff[p];` +
-        `[b][p]paletteuse=dither=bayer:bayer_scale=5`;
+        `[b][p]paletteuse=dither=bayer:bayer_scale=5[out]`;
 
-      // `-ss`/`-t` before `-i` bound the input decode window to the
-      // requested range. `-loop 0` on the OUTPUT sets the GIF to loop
-      // infinitely in viewers — different concept from the input-loop
-      // flag the old pipeline (mis)used.
+      // `-ss` before `-i` + `-t` after `-i` mirrors the MP4 re-encode
+      // pattern that works reliably on short HTTP clips: byte-range seek
+      // into the source, then cap the OUTPUT duration (not the input).
+      // `-loop 0` on the output sets the GIF to loop infinitely in viewers.
       const gifArgs = [
         '-y',
         '-ss', String(inPoint),
-        '-t', String(clipDur),
         '-i', sourceUrl,
+        '-t', String(clipDur),
         '-filter_complex', filter,
+        '-map', '[out]',
         '-loop', '0',
         '-threads', '0',
         outPath,
