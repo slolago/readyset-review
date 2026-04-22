@@ -572,6 +572,16 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
     setSelectedIds(new Set(ids));
   }, []);
 
+  // PERF-23: stable callbacks so AssetGrid's React.memo shallow-compare holds.
+  const handleCreateReviewLinkForAsset = useCallback((assetId: string) => {
+    setSelectionReviewIds([assetId]);
+    setShowReviewModal(true);
+  }, []);
+
+  const handleAddToReviewLinkForAsset = useCallback((assetId: string) => {
+    setAddToLinkTarget({ assetIds: [assetId] });
+  }, []);
+
   // Global keyboard shortcuts — Delete/Backspace to delete selection,
   // Escape to clear selection, Ctrl/Cmd+A to select all.
   // Only fire when focus is not in an input/textarea/contenteditable.
@@ -1295,8 +1305,8 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
             onToggleSelect={toggleSelect}
             onAssetDragStart={handleItemDragStart}
             onRequestMove={handleRequestMoveItem}
-            onCreateReviewLink={(assetId) => { setSelectionReviewIds([assetId]); setShowReviewModal(true); }}
-            onAddToReviewLink={(assetId) => setAddToLinkTarget({ assetIds: [assetId] })}
+            onCreateReviewLink={handleCreateReviewLinkForAsset}
+            onAddToReviewLink={handleAddToReviewLinkForAsset}
             dragOverAssetId={dragOverAssetId}
             onAssetDragOver={handleAssetDragOver}
             onAssetDragLeave={handleAssetDragLeave}
