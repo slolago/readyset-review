@@ -9,12 +9,13 @@ import { DocumentViewer } from '@/components/viewer/DocumentViewer';
 import { HtmlViewer } from '@/components/viewer/HtmlViewer';
 import { FileTypeCard } from '@/components/viewer/FileTypeCard';
 import { CommentSidebar } from '@/components/viewer/CommentSidebar';
+import { CommentSidebarSkeleton } from '@/components/viewer/CommentSidebarSkeleton';
 import { Spinner } from '@/components/ui/Spinner';
 import { useProject } from '@/hooks/useProject';
 import Link from 'next/link';
 import { ChevronLeft, Share2, Download, CheckCircle2, AlertCircle, Clock, X, Tag } from 'lucide-react';
 import { forceDownload } from '@/lib/utils';
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, Suspense } from 'react';
 import { CreateReviewLinkModal } from '@/components/review/CreateReviewLinkModal';
 import { ExportModal } from '@/components/viewer/ExportModal';
 import { VersionSwitcher } from '@/components/viewer/VersionSwitcher';
@@ -36,7 +37,7 @@ export default function AssetViewerPage() {
   const [activeVersion, setActiveVersion] = useState<Asset | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const displayAsset = activeVersion || asset;
-  const { comments, addComment, resolveComment, deleteComment, editComment } = useComments(displayAsset?.id);
+  const { comments, loading: commentsLoading, addComment, resolveComment, deleteComment, editComment } = useComments(displayAsset?.id);
   const [currentTime, setCurrentTime] = useState(0);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -343,31 +344,37 @@ export default function AssetViewerPage() {
           ) : null}
         </div>
 
-        <CommentSidebar
-          asset={displayAsset || asset}
-          comments={comments}
-          currentTime={currentTime}
-          projectId={projectId}
-          isAnnotationMode={isAnnotationMode}
-          pendingAnnotation={pendingAnnotation}
-          onRequestAnnotation={handleRequestAnnotation}
-          onCaptureAnnotation={handleCaptureAnnotationFromSidebar}
-          onClearAnnotation={handleClearAnnotation}
-          activeAnnotationCommentId={activeAnnotationCommentId}
-          selectedCommentId={selectedCommentId}
-          onShowAnnotation={handleShowAnnotation}
-          onHideAnnotation={handleHideAnnotation}
-          onAddComment={addComment}
-          onResolveComment={resolveComment}
-          onDeleteComment={deleteComment}
-          onEditComment={editComment}
-          onSeek={handleSeek}
-          onSelectComment={setSelectedCommentId}
-          inPoint={rangeIn}
-          outPoint={rangeOut}
-          onInPointChange={setRangeIn}
-          onOutPointChange={setRangeOut}
-        />
+        <Suspense fallback={<CommentSidebarSkeleton />}>
+          {commentsLoading && comments.length === 0 ? (
+            <CommentSidebarSkeleton />
+          ) : (
+            <CommentSidebar
+              asset={displayAsset || asset}
+              comments={comments}
+              currentTime={currentTime}
+              projectId={projectId}
+              isAnnotationMode={isAnnotationMode}
+              pendingAnnotation={pendingAnnotation}
+              onRequestAnnotation={handleRequestAnnotation}
+              onCaptureAnnotation={handleCaptureAnnotationFromSidebar}
+              onClearAnnotation={handleClearAnnotation}
+              activeAnnotationCommentId={activeAnnotationCommentId}
+              selectedCommentId={selectedCommentId}
+              onShowAnnotation={handleShowAnnotation}
+              onHideAnnotation={handleHideAnnotation}
+              onAddComment={addComment}
+              onResolveComment={resolveComment}
+              onDeleteComment={deleteComment}
+              onEditComment={editComment}
+              onSeek={handleSeek}
+              onSelectComment={setSelectedCommentId}
+              inPoint={rangeIn}
+              outPoint={rangeOut}
+              onInPointChange={setRangeIn}
+              onOutPointChange={setRangeOut}
+            />
+          )}
+        </Suspense>
       </div>
 
       {showReviewModal && (

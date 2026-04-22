@@ -64,6 +64,9 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   const animRef    = useRef<number>(0);
 
   const [playing, setPlaying] = useState(false);
+  // PERF-13: VUMeter creates AudioContext + captureStream on mount, which
+  // costs 20–50ms and requires a user gesture anyway. Defer until first play.
+  const [audioReady, setAudioReady] = useState(false);
   const [buffering, setBuffering] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -94,6 +97,13 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   // VideoPlayer on displayAsset.id, so this effect covers version switches too.
   const [loop, setLoop] = useState(false);
   useEffect(() => { setLoop(false); }, [asset.id]);
+  // PERF-12: pre-warm the Fabric module cache in the background so the first
+  // click of "Annotate" doesn't pay the 200–400ms parse+download cost.
+  // AnnotationCanvas still dynamic-imports lazily — this just ensures the
+  // module is already cached by the time it asks for it.
+  useEffect(() => {
+    import('fabric').catch(() => {});
+  }, []);
   // Tracks whether the last rAF tick was inside [loopIn, loopOut]. Used to give
   // a one-cycle grace when the user seeks outside the range during loop playback.
   const insideRangeRef = useRef(true);
@@ -330,7 +340,8 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     if (!v) return;
     onUserInteraction?.();
     if (v.paused) {
-      vuMeterRef.current?.resume(); // inside user gesture → AudioContext.resume() is permitted
+      setAudioReady(true);               // PERF-13: mount VUMeter on first play
+      vuMeterRef.current?.resume();      // no-op on very first play (ref not yet attached)
       v.play().catch(() => {});
       setPlaying(true);
     } else {
@@ -445,8 +456,9 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           ref={videoRef}
           src={(asset as any).signedUrl as string | undefined}
           crossOrigin="anonymous"
+          poster={asset.thumbnailUrl ?? ''}
           className="w-full h-full object-contain"
-          playsInline preload="auto"
+          playsInline preload="metadata"
           onLoadedMetadata={(e) => { setDuration(e.currentTarget.duration); computeVideoRect(); setLoadError(null); }}
           onPlay={() => { setPlaying(true); setBuffering(false); }}
           onPlaying={() => setBuffering(false)}
@@ -543,7 +555,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       </div>
 
       {/* VU Meter — right side strip (toggleable) */}
-      {showVU && (
+      {showVU && audioReady && (
         <div className="flex-shrink-0 w-24 flex flex-col bg-[#0a0a0a] border-l border-white/5">
           <div className={`flex-1 min-h-0 flex flex-col transition-opacity ${muted ? 'opacity-30' : 'opacity-100'}`}>
             <VUMeter ref={vuMeterRef} videoRefs={[videoRef]} isPlaying={playing && !muted} />
