@@ -231,58 +231,55 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'ffmpeg failed', jobId, stderr: stderr.slice(-500) }, { status: 500 });
       }
     } else {
-      // format === 'gif' — two-pass palette.
-      const palettePath = path.join(os.tmpdir(), `palette-${jobId}.png`);
+      // format === 'gif' — single-pass palette via the `split` filter.
+      //
+      // Canonical FFmpeg recipe (https://trac.ffmpeg.org/wiki/Encode/GIF):
+      // decode the trimmed source once, split it into two streams, run
+      // palettegen on one and paletteuse on the other with the generated
+      // palette. One ffmpeg spawn, one decode, no temp PNG.
+      //
+      // Why this replaces the old two-pass path: the previous code used
+      // `-loop 1 -i palette.png` as a still-image input, which on the
+      // @ffmpeg-installer builds ships with makes paletteuse wait forever
+      // on an unbounded `[1:v]` stream — the whole pipeline hangs until
+      // the Vercel 60s timeout trips. The single-pass graph has no
+      // separate palette input, so no loop-flag ambiguity.
       outPath = path.join(os.tmpdir(), `export-${jobId}.gif`);
-      tempsToClean.push(palettePath, outPath);
+      tempsToClean.push(outPath);
       contentType = 'image/gif';
       gcsOutPath = `exports/${user.id}/${jobId}.gif`;
 
-      // GIFs are expensive — two full decode passes. Defaults tuned for
-      // speed on serverless: 480p (not 720p), 12 fps (not 15), lighter
-      // dithering. Still looks fine for review/share clips.
+      // Defaults tuned for speed on a 60s-capped serverless function at
+      // 2GB RAM: 480p, 12 fps, Bayer dither. `split` keeps all decoded
+      // frames in memory between the two branches, so at 45s × 12fps ×
+      // 480×270 RGBA ≈ 280MB peak — well under the limit.
       const GIF_FPS = 12;
       const GIF_SCALE = 'scale=480:-2:flags=lanczos';
+      const filter =
+        `fps=${GIF_FPS},${GIF_SCALE},split[a][b];` +
+        `[a]palettegen=stats_mode=diff[p];` +
+        `[b][p]paletteuse=dither=bayer:bayer_scale=5`;
 
-      // Pass 1 — palettegen. `-t` BEFORE `-i` binds to that input, so it
-      // bounds the source decode window correctly.
-      const paletteArgs = [
+      // `-ss`/`-t` before `-i` bound the input decode window to the
+      // requested range. `-loop 0` on the OUTPUT sets the GIF to loop
+      // infinitely in viewers — different concept from the input-loop
+      // flag the old pipeline (mis)used.
+      const gifArgs = [
         '-y',
         '-ss', String(inPoint),
         '-t', String(clipDur),
         '-i', sourceUrl,
-        '-vf', `fps=${GIF_FPS},${GIF_SCALE},palettegen=stats_mode=diff`,
-        '-threads', '0',
-        palettePath,
-      ];
-      // Pass 2 — paletteuse. Source + palette PNG. Palette is a still
-      // image so we `-loop 1` it as an input, otherwise ffmpeg caps the
-      // output to the palette's implicit 0-second duration and produces
-      // a single frame. `-ss`/`-t` before the source `-i` binds to it.
-      const useArgs = [
-        '-y',
-        '-ss', String(inPoint),
-        '-t', String(clipDur),
-        '-i', sourceUrl,
-        '-loop', '1',
-        '-i', palettePath,
-        '-filter_complex', `[0:v]fps=${GIF_FPS},${GIF_SCALE}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5`,
+        '-filter_complex', filter,
         '-loop', '0',
         '-threads', '0',
         outPath,
       ];
 
-      const p1 = await runFfmpeg(ffmpegPath, paletteArgs);
-      if (p1.code !== 0) {
-        await updateExportJob(jobId, { status: 'failed', error: p1.stderr.slice(-500) });
+      const { code, stderr } = await runFfmpeg(ffmpegPath, gifArgs);
+      if (code !== 0) {
+        await updateExportJob(jobId, { status: 'failed', error: stderr.slice(-500) });
         await Promise.all(tempsToClean.map(safeUnlink));
-        return NextResponse.json({ error: 'palettegen failed', jobId, stderr: p1.stderr.slice(-500) }, { status: 500 });
-      }
-      const p2 = await runFfmpeg(ffmpegPath, useArgs);
-      if (p2.code !== 0) {
-        await updateExportJob(jobId, { status: 'failed', error: p2.stderr.slice(-500) });
-        await Promise.all(tempsToClean.map(safeUnlink));
-        return NextResponse.json({ error: 'paletteuse failed', jobId, stderr: p2.stderr.slice(-500) }, { status: 500 });
+        return NextResponse.json({ error: 'gif encode failed', jobId, stderr: stderr.slice(-500) }, { status: 500 });
       }
     }
 
