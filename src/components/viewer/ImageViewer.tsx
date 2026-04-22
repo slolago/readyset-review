@@ -160,7 +160,7 @@ export const ImageViewer = forwardRef<ImageViewerHandle, ImageViewerProps>(funct
         )}
 
         {/* Read-only display of a saved comment's annotation */}
-        {!isAnnotationMode && displayShapes && dimensions.width > 0 && (
+        {!isAnnotationMode && displayShapes && displayShapes !== '[]' && dimensions.width > 0 && (
           <div style={{ position: 'absolute', top: 0, left: 0, width: dimensions.width, height: dimensions.height, pointerEvents: 'none' }}>
             <AnnotationCanvas
               key={`readonly-${displayShapes}`}
