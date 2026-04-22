@@ -98,9 +98,7 @@ export function useRenameController(): RenameController {
 export function FolderBrowser(props: FolderBrowserProps) {
   return (
     <ContextMenuProvider>
-      <RenameProvider>
-        <FolderBrowserInner {...props} />
-      </RenameProvider>
+      <FolderBrowserInner {...props} />
     </ContextMenuProvider>
   );
 }
@@ -1169,7 +1167,9 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
       <input ref={fileInputRef} type="file" className="hidden" multiple accept={FILE_INPUT_ACCEPT} onChange={handleFileInputChange} />
       <input ref={folderInputRef} type="file" className="hidden" {...({ webkitdirectory: '' } as any)} onChange={handleFolderInputChange} />
 
-      {/* Content */}
+      {/* Content — PERF-23: RenameProvider narrowed to the rename-capable surface
+          so rename-state changes do not invalidate header / breadcrumb / action bar. */}
+      <RenameProvider>
       <div
         ref={contentRef}
         className="flex-1 overflow-y-auto p-8 space-y-6 relative outline-none select-none"
@@ -1330,6 +1330,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
           </div>
         )}
       </div>
+      </RenameProvider>
 
       {/* Multi-select action bar */}
       {selectedIds.size > 0 && (
