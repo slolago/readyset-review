@@ -10,7 +10,7 @@ import { VUMeter, type VUMeterHandle } from './VUMeter';
 import { PlayerBgPicker } from './PlayerBgPicker';
 import { usePlayerBg } from '@/hooks/usePlayerBg';
 import { formatDuration } from '@/lib/utils';
-import { Play, Pause, Volume2, VolumeX, ChevronLeft, ChevronRight, Pencil, X, Maximize, Download, Activity, Scissors, Repeat } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, ChevronLeft, ChevronRight, Pencil, X, Maximize, Download, Activity, Scissors, Repeat, ArrowDownToLine } from 'lucide-react';
 import { forceDownload } from '@/lib/utils';
 
 interface VideoPlayerProps {
@@ -436,6 +436,34 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   };
 
   const displayTime = (t: number) => timecodeMode === 'smpte' ? formatSMPTE(t) : formatDuration(t);
+
+  // Capture the currently-visible video frame as a JPEG and trigger a
+  // download. Works because the `<video>` element carries
+  // `crossOrigin="anonymous"` (required to avoid canvas tainting on the
+  // GCS signed URL — without it `canvas.toBlob` throws SecurityError).
+  const handleDownloadStill = useCallback(() => {
+    const v = videoRef.current;
+    if (!v || !v.videoWidth || !v.videoHeight) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = v.videoWidth;
+    canvas.height = v.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    try {
+      ctx.drawImage(v, 0, 0);
+    } catch {
+      return; // tainted canvas — signed URL CORS misconfigured
+    }
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const baseName = asset.name.replace(/\.[^.]+$/, '');
+      const tsLabel = formatSMPTE(v.currentTime).replace(/:/g, '-');
+      forceDownload(url, `${baseName}-${tsLabel}.jpg`);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, 'image/jpeg', 0.95);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asset.name]);
 
   const timedComments = comments
     .filter((c) => c.timestamp !== undefined && !c.outPoint)
@@ -875,6 +903,22 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
               Export
             </button>
           )}
+
+          {/* Download still — captures the current video frame as a JPEG.
+              Icon-only button with a Frame.io-style pill tooltip appearing
+              to the left on hover, to keep the controls row compact. */}
+          <div className="relative group/still">
+            <button
+              onClick={handleDownloadStill}
+              aria-label="Download still"
+              className="w-7 h-7 flex items-center justify-center text-white/60 hover:text-white transition-colors"
+            >
+              <ArrowDownToLine className="w-4 h-4" />
+            </button>
+            <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 px-2.5 py-1 bg-[#1e1e1e] border border-white/10 rounded-md shadow-lg text-xs font-medium text-white whitespace-nowrap opacity-0 group-hover/still:opacity-100 pointer-events-none transition-opacity">
+              Download still
+            </div>
+          </div>
 
           {/* Download — visible when downloadUrl is provided */}
           {downloadUrl && (
