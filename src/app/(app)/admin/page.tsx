@@ -67,14 +67,11 @@ export default function AdminPage() {
   }, [getIdToken]);
 
   useEffect(() => {
-    if (user?.role === 'admin') fetchUsers();
-  }, [user, fetchUsers]);
-
-  useEffect(() => {
-    if (activeTab === 'projects' && projects.length === 0 && !projectsLoading) {
-      fetchProjects();
-    }
-  }, [activeTab, projects.length, projectsLoading, fetchProjects]);
+    if (user?.role !== 'admin') return;
+    // Fire both fetches in the same tick — Projects tab becomes instant.
+    fetchUsers();
+    fetchProjects();
+  }, [user, fetchUsers, fetchProjects]);
 
   const handleRoleChange = async (userId: string, role: 'admin' | 'manager' | 'editor' | 'viewer') => {
     try {
