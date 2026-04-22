@@ -17,9 +17,9 @@ Synthesized from a 4-stream app-wide perf audit (pages, viewer/player, data laye
 
 ### Page loading + Server Components (Phase 75)
 
-- [ ] **PERF-15**: `loading.tsx` skeletons added for `/projects`, `/projects/[id]`, `/projects/[id]/folders/[folderId]`, `/projects/[id]/trash`, and `/admin`. The nested-folder Suspense `fallback={null}` is replaced with a skeleton. No blank white screens on drill-down.
-- [ ] **PERF-16**: 10 pure presentational components flip from Client to Server: `Avatar`, `Badge`, `Spinner`, `Breadcrumb`, `FileTypeCard`, `ReviewHeader`, `CommentTimestamp`, `ReviewStatusBadge`, `Button` (when rendered without `onClick`), `ProjectCard` shell. Each removes hydration cost for a frequently-rendered primitive.
-- [ ] **PERF-17**: Admin panel eagerly fetches both users AND projects tabs on mount (currently the Projects tab fetches on first click → ~500ms blank state). Layout uses `Promise.all` to fire both on the server component where possible.
+- [x] **PERF-15**: `loading.tsx` skeletons added for `/projects`, `/projects/[id]`, `/projects/[id]/folders/[folderId]`, `/projects/[id]/trash`, and `/admin`. The nested-folder Suspense `fallback={null}` is replaced with a skeleton. No blank white screens on drill-down.
+- [x] **PERF-16**: 10 pure presentational components flip from Client to Server: `Avatar`, `Badge`, `Spinner`, `Breadcrumb`, `FileTypeCard`, `ReviewHeader`, `CommentTimestamp`, `ReviewStatusBadge`, `Button` (when rendered without `onClick`), `ProjectCard` shell. Each removes hydration cost for a frequently-rendered primitive.
+- [x] **PERF-17**: Admin panel eagerly fetches both users AND projects tabs on mount (currently the Projects tab fetches on first click → ~500ms blank state). Layout uses `Promise.all` to fire both on the server component where possible.
 
 ### Asset viewer restructure (Phase 76)
 
@@ -77,9 +77,9 @@ See `.planning/MILESTONES.md` — v1.7 through v2.2 shipped.
 | PERF-12 | Phase 74 | Pending |
 | PERF-13 | Phase 74 | Pending |
 | PERF-14 | Phase 74 | Pending |
-| PERF-15 | Phase 75 | Pending |
-| PERF-16 | Phase 75 | Pending |
-| PERF-17 | Phase 75 | Pending |
+| PERF-15 | Phase 75 | Complete |
+| PERF-16 | Phase 75 | Complete |
+| PERF-17 | Phase 75 | Complete |
 | PERF-18 | Phase 76 | Pending |
 | PERF-19 | Phase 76 | Pending |
 | PERF-20 | Phase 76 | Pending |

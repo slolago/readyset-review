@@ -368,7 +368,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 75-01-PLAN.md — PERF-15 loading.tsx skeletons + PERF-16 6–10 Server Component flips + PERF-17 admin parallel eager fetch
+- [x] 75-01-PLAN.md — PERF-15 loading.tsx skeletons + PERF-16 6–10 Server Component flips + PERF-17 admin parallel eager fetch
 
 ### Phase 76: asset-viewer-restructure
 **Goal**: Heavy modals dynamic-import on demand, comments feel instant via optimistic updates, annotation overlay lifecycle is clean, version compare toggles without dangling resources
@@ -459,7 +459,7 @@ Plans:
 | 72. inline-edit-and-folder-duplicate | v2.2 | 2/2 | Human-verify | 2026-04-21 |
 | 73. drawing-mode-transforms | v2.2 | 1/1 | Human-verify | 2026-04-21 |
 | 74. viewer-critical-path | v2.3 | 0/1 | Planned | - |
-| 75. page-loading-and-server-components | v2.3 | 0/1 | Planned      | - |
+| 75. page-loading-and-server-components | v2.3 | 1/1 | Complete   | 2026-04-22 |
 | 76. asset-viewer-restructure | v2.3 | 0/? | Not started | - |
 | 77. folder-browser-decomposition | v2.3 | 0/? | Not started | - |
 | 78. data-layer-bundle-and-network | v2.3 | 0/? | Not started | - |
