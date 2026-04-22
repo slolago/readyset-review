@@ -60,6 +60,30 @@ export function useComments(assetId?: string, reviewToken?: string) {
     projectId: string
   ): Promise<boolean> => {
     if (!assetId) return false;
+
+    // Build optimistic comment. Use a `temp-` prefixed id so reconciliation
+    // can match by tempId and server-assigned ids never collide.
+    const tempId = `temp-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`}`;
+    const optimistic = {
+      id: tempId,
+      assetId,
+      projectId,
+      authorId: null,
+      authorName: commentData.authorName ?? '',
+      authorEmail: commentData.authorEmail,
+      text: commentData.text,
+      timestamp: commentData.timestamp,
+      inPoint: commentData.inPoint,
+      outPoint: commentData.outPoint,
+      annotation: commentData.annotation,
+      parentId: commentData.parentId ?? null,
+      reviewLinkId: commentData.reviewLinkId,
+      resolved: false,
+      createdAt: new Date().toISOString(),
+    } as unknown as Comment;
+
+    setComments((prev) => [...prev, optimistic]);
+
     try {
       const headers: HeadersInit = { 'Content-Type': 'application/json' };
       if (!reviewToken) {
@@ -71,10 +95,27 @@ export function useComments(assetId?: string, reviewToken?: string) {
         headers,
         body: JSON.stringify({ ...commentData, assetId, projectId }),
       });
-      if (!res.ok) return false;
-      await fetchComments();
+      if (!res.ok) {
+        // Rollback the temp comment.
+        setComments((prev) => prev.filter((c) => c.id !== tempId));
+        return false;
+      }
+      // POST returns `{ comment: { id, ...data } }` — swap the temp in place
+      // so sibling order stays and thread/reply parentId survives.
+      const body = (await res.json()) as { comment?: Comment };
+      const real = body.comment;
+      if (real) {
+        setComments((prev) => prev.map((c) => (c.id === tempId ? real : c)));
+      } else {
+        // Defensive: if server didn't return a comment object, drop the temp
+        // and refetch to reconcile from the server.
+        setComments((prev) => prev.filter((c) => c.id !== tempId));
+        await fetchComments();
+      }
       return true;
     } catch {
+      // Network error / JSON parse error — same rollback.
+      setComments((prev) => prev.filter((c) => c.id !== tempId));
       return false;
     }
   };
