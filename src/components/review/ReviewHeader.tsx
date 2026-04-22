@@ -1,5 +1,3 @@
-'use client';
-
 import Image from 'next/image';
 import { MessageSquare, Eye, Clock } from 'lucide-react';
 import type { ReviewLink } from '@/types';
