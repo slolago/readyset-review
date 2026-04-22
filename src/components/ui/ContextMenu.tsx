@@ -129,8 +129,20 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
   );
 }
 
+// Safe default returned when a consumer (like AssetCard) is rendered outside
+// a ContextMenuProvider — e.g. the guest /review/[token] page, which imports
+// AssetCard directly without wrapping in a FolderBrowser. Previously this
+// hook threw, which crashed the whole review route with a generic "Application
+// error" and no assets. A no-op default matches the RenameController pattern
+// (non-fatal when no provider is above) — callers that render a context menu
+// always also render a ContextMenuProvider ancestor, so this path is purely
+// defensive for surfaces like the review page and standalone AssetCard usages.
+const NOOP_CONTROLLER: ContextMenuController = {
+  openKey: null,
+  open: () => {},
+  close: () => {},
+};
+
 export function useContextMenuController(): ContextMenuController {
-  const ctx = useContext(Ctx);
-  if (!ctx) throw new Error('useContextMenuController must be used inside ContextMenuProvider');
-  return ctx;
+  return useContext(Ctx) ?? NOOP_CONTROLLER;
 }
