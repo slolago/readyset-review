@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: — App-Wide Performance Polish
 status: completed
-stopped_at: Completed 76-01-PLAN.md
-last_updated: "2026-04-22T12:31:31.293Z"
-last_activity: 2026-04-22 — shipped 76-01 (next/dynamic 5 modals + optimistic comments + annotation guard + compare keys)
+stopped_at: Completed 77-01-PLAN.md
+last_updated: "2026-04-22T12:52:17.591Z"
+last_activity: 2026-04-22 — shipped 77-01 (useProject parallel fetch + AssetGrid callback stabilization + RenameProvider scope narrowing)
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 4
+  total_plans: 4
+  completed_plans: 4
 ---
 
 # State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-04-21)
 
 ## Current Position
 
-Phase: 76 (asset-viewer-restructure) — complete
-Plan: 76-01 — shipped
-Status: Phase 76 done; awaiting next autonomous wave (77 folder-browser-decomposition)
-Last activity: 2026-04-22 — shipped 76-01 (next/dynamic 5 modals + optimistic comments + annotation guard + compare keys)
+Phase: 77 (folder-browser-decomposition) — complete
+Plan: 77-01 — shipped
+Status: Phase 77 done; awaiting next autonomous wave (78 data-layer-bundle-and-network)
+Last activity: 2026-04-22 — shipped 77-01 (useProject parallel fetch + AssetGrid callback stabilization + RenameProvider scope narrowing)
 
 ## v2.3 Phase Structure
 
@@ -55,7 +55,8 @@ Synthesized from 4 parallel explore agents:
 ### Key decisions (carried from prior milestones)
 
 - `ContextMenuProvider` + `useContextMenuController` singleton pattern (v2.2) — reuse for any new provider work
-- `RenameController` context scope (v2.2) — narrowing its wrap is PERF-23's job
+- `RenameController` context (v2.2) — narrowed in Phase 77 to wrap only the content surface, not the whole FolderBrowserInner
+- Parallel mount-effect fetches via `Promise.all` (Phase 77) — fire-and-forget pattern when each callback has internal try/catch
 - `deepCopyFolder` requires `deletedAt: null` on every `.set()` to honor the Phase 63 composite-index query
 - `fetchAccessibleProjects` (v2.1) is the reusable access-check pattern for any admin/list route
 - `src/lib/signed-url-cache.ts::getOrCreateSignedUrl` is the single entry point for signed-URL regeneration
@@ -83,6 +84,6 @@ None — starting v2.3 autonomous execution.
 
 ## Session Continuity
 
-Last session: 2026-04-22T12:31:31.287Z
-Stopped at: Completed 76-01-PLAN.md
+Last session: 2026-04-22T12:52:17.585Z
+Stopped at: Completed 77-01-PLAN.md
 Resume file: None

@@ -30,8 +30,8 @@ Synthesized from a 4-stream app-wide perf audit (pages, viewer/player, data laye
 
 ### Folder browser decomposition (Phase 77)
 
-- [ ] **PERF-22**: `useProject(projectId)` fires `fetchProject()` + `fetchFolders(null)` in **parallel** via `Promise.all`, not serially. Eliminates the 200–400ms waterfall on every project root landing.
-- [ ] **PERF-23**: `FolderBrowser` monolith (2,291 LOC) is decomposed: `AssetGrid`, `AssetListView`, breadcrumb, and header extracted into `React.memo`-wrapped subcomponents so rename-state changes don't cascade through 200+ asset cards. `RenameProvider` scope narrows to wrap only the grid/list surface, not the breadcrumb + header.
+- [x] **PERF-22**: `useProject(projectId)` fires `fetchProject()` + `fetchFolders(null)` in **parallel** via `Promise.all`, not serially. Eliminates the 200–400ms waterfall on every project root landing.
+- [x] **PERF-23**: `FolderBrowser` monolith (2,291 LOC) is decomposed: `AssetGrid`, `AssetListView`, breadcrumb, and header extracted into `React.memo`-wrapped subcomponents so rename-state changes don't cascade through 200+ asset cards. `RenameProvider` scope narrows to wrap only the grid/list surface, not the breadcrumb + header.
 
 ### Data layer + bundle + network (Phase 78)
 
@@ -84,8 +84,8 @@ See `.planning/MILESTONES.md` — v1.7 through v2.2 shipped.
 | PERF-19 | Phase 76 | Complete |
 | PERF-20 | Phase 76 | Complete |
 | PERF-21 | Phase 76 | Complete |
-| PERF-22 | Phase 77 | Pending |
-| PERF-23 | Phase 77 | Pending |
+| PERF-22 | Phase 77 | Complete |
+| PERF-23 | Phase 77 | Complete |
 | PERF-24 | Phase 78 | Pending |
 | PERF-25 | Phase 78 | Pending |
 | PERF-26 | Phase 78 | Pending |
