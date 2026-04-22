@@ -22,9 +22,15 @@ import { useContextMenuController } from '@/components/ui/ContextMenu';
 import { useRenameController } from './FolderBrowser';
 import { buildFileBrowserActions } from './fileBrowserActions';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
+import dynamic from 'next/dynamic';
+import { ModalSkeleton } from '@/components/ui/ModalSkeleton';
 import { SmartCopyModal } from './SmartCopyModal';
-import { VersionStackModal } from './VersionStackModal';
 import { StackOntoModal } from './StackOntoModal';
+
+const VersionStackModal = dynamic(
+  () => import('./VersionStackModal').then((m) => m.VersionStackModal),
+  { ssr: false, loading: () => <ModalSkeleton /> }
+);
 import { useAuth } from '@/hooks/useAuth';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { InlineRename } from '@/components/ui/InlineRename';

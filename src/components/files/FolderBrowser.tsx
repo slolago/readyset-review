@@ -50,9 +50,18 @@ import { ContextMenuProvider, useContextMenuController } from '@/components/ui/C
 import { InlineRename } from '@/components/ui/InlineRename';
 import { buildFileBrowserActions } from './fileBrowserActions';
 import toast from 'react-hot-toast';
-import { CreateReviewLinkModal } from '@/components/review/CreateReviewLinkModal';
+import dynamic from 'next/dynamic';
+import { ModalSkeleton } from '@/components/ui/ModalSkeleton';
 import { AddToReviewLinkModal } from '@/components/review/AddToReviewLinkModal';
-import { AssetCompareModal } from './AssetCompareModal';
+
+const CreateReviewLinkModal = dynamic(
+  () => import('@/components/review/CreateReviewLinkModal').then((m) => m.CreateReviewLinkModal),
+  { ssr: false, loading: () => <ModalSkeleton /> }
+);
+const AssetCompareModal = dynamic(
+  () => import('./AssetCompareModal').then((m) => m.AssetCompareModal),
+  { ssr: false, loading: () => <ModalSkeleton /> }
+);
 
 interface FolderBrowserProps {
   projectId: string;

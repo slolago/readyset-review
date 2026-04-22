@@ -6,8 +6,14 @@ import { useRouter } from 'next/navigation';
 import { UserTable } from '@/components/admin/UserTable';
 import { ProjectsTable } from '@/components/admin/ProjectsTable';
 import { CreateUserModal } from '@/components/admin/CreateUserModal';
-import { UserDrawer } from '@/components/admin/UserDrawer';
+import dynamic from 'next/dynamic';
+import { ModalSkeleton } from '@/components/ui/ModalSkeleton';
 import type { User } from '@/types';
+
+const UserDrawer = dynamic(
+  () => import('@/components/admin/UserDrawer').then((m) => m.UserDrawer),
+  { ssr: false, loading: () => <ModalSkeleton /> }
+);
 import { Shield, UserPlus, Users, FolderOpen, LayoutGrid, UserX } from 'lucide-react';
 import { SafeZonesManager } from '@/components/admin/SafeZonesManager';
 import { ProjectPermissionsPanel } from '@/components/admin/ProjectPermissionsPanel';

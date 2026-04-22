@@ -29,8 +29,14 @@ import { useContextMenuController } from '@/components/ui/ContextMenu';
 import { useRenameController } from './FolderBrowser';
 import { buildFileBrowserActions } from './fileBrowserActions';
 import { ReviewStatusBadge } from '@/components/ui/ReviewStatusBadge';
+import dynamic from 'next/dynamic';
+import { ModalSkeleton } from '@/components/ui/ModalSkeleton';
 import { SmartCopyModal } from './SmartCopyModal';
-import { VersionStackModal } from './VersionStackModal';
+
+const VersionStackModal = dynamic(
+  () => import('./VersionStackModal').then((m) => m.VersionStackModal),
+  { ssr: false, loading: () => <ModalSkeleton /> }
+);
 import type { ReviewStatus, Folder } from '@/types';
 import toast from 'react-hot-toast';
 import type { Asset } from '@/types';

@@ -16,8 +16,17 @@ import Link from 'next/link';
 import { ChevronLeft, Share2, Download, CheckCircle2, AlertCircle, Clock, X, Tag } from 'lucide-react';
 import { forceDownload } from '@/lib/utils';
 import { useState, useCallback, useRef, useEffect, Suspense } from 'react';
-import { CreateReviewLinkModal } from '@/components/review/CreateReviewLinkModal';
-import { ExportModal } from '@/components/viewer/ExportModal';
+import dynamic from 'next/dynamic';
+import { ModalSkeleton } from '@/components/ui/ModalSkeleton';
+
+const CreateReviewLinkModal = dynamic(
+  () => import('@/components/review/CreateReviewLinkModal').then((m) => m.CreateReviewLinkModal),
+  { ssr: false, loading: () => <ModalSkeleton /> }
+);
+const ExportModal = dynamic(
+  () => import('@/components/viewer/ExportModal').then((m) => m.ExportModal),
+  { ssr: false, loading: () => <ModalSkeleton /> }
+);
 import { VersionSwitcher } from '@/components/viewer/VersionSwitcher';
 import { VersionComparison } from '@/components/viewer/VersionComparison';
 import type { Comment, Asset } from '@/types';
