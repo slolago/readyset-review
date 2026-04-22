@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
@@ -22,8 +22,8 @@ interface DropdownProps {
 export function Dropdown({ trigger, items, align = 'right', className }: DropdownProps) {
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
-  const [flipUp, setFlipUp] = useState(false);
-  const [panelHeight, setPanelHeight] = useState<number | null>(null);
+  const [pos, setPos] = useState<{ top: number; left?: number; right?: number }>({ top: 0 });
+  const [measured, setMeasured] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -35,33 +35,54 @@ export function Dropdown({ trigger, items, align = 'right', className }: Dropdow
     if (open && triggerRef.current) {
       setRect(triggerRef.current.getBoundingClientRect());
       setActiveIndex(0);
-      // Reset measured height so the next open re-measures against the
-      // current viewport (the menu's content might have changed).
-      setPanelHeight(null);
-      setFlipUp(false);
+      setMeasured(false);
     } else if (!open) {
       setActiveIndex(-1);
     }
   }, [open]);
 
-  // Measure the panel once it's in the DOM, then decide whether to flip.
-  // The panel is initially rendered invisibly below the trigger; if it
-  // would overflow the viewport bottom AND flipping up gives more room,
-  // we swap to `bottom: viewport - rect.top` anchoring. Measures against
-  // the actual content — avoids hardcoded item-count heuristics.
-  useEffect(() => {
+  // Same pattern as the right-click ContextMenu: measure the panel's
+  // natural content height with useLayoutEffect (synchronous, before paint)
+  // and compute a pixel `top` that keeps the panel inside the viewport.
+  // No maxHeight/overflow applied during measurement — that would clamp
+  // the measured height and defeat the flip check. Clamp is done AFTER
+  // deciding flip direction.
+  useLayoutEffect(() => {
     if (!open || !rect || !panelRef.current) return;
-    const measured = panelRef.current.getBoundingClientRect().height;
-    setPanelHeight(measured);
+    const pad = 8;
+    const panelEl = panelRef.current;
+    const panelRect = panelEl.getBoundingClientRect();
+    // Natural content height (in case overflow shrunk the box to fit below).
+    const naturalHeight = Math.max(panelRect.height, panelEl.scrollHeight);
+    const spaceBelow = window.innerHeight - rect.bottom - 6 - pad;
+    const spaceAbove = rect.top - 6 - pad;
 
-    const spaceBelow = window.innerHeight - rect.bottom - 6;
-    const spaceAbove = rect.top - 6;
-    // Flip only when the menu actually overflows below AND there's more
-    // room above — avoids flipping up when the menu fits fine both ways.
-    if (measured > spaceBelow && spaceAbove > spaceBelow) {
-      setFlipUp(true);
+    let top: number;
+    if (naturalHeight <= spaceBelow) {
+      // Fits below — standard drop-down.
+      top = rect.bottom + 6;
+    } else if (naturalHeight <= spaceAbove) {
+      // Doesn't fit below but fits above — flip up, bottom edge at trigger top.
+      top = rect.top - 6 - naturalHeight;
+    } else {
+      // Doesn't fit either way — pick the side with more room and clamp.
+      if (spaceAbove > spaceBelow) {
+        top = pad;
+      } else {
+        top = rect.bottom + 6;
+      }
     }
-  }, [open, rect, items.length]);
+    // Final clamp so we never render above 0 or below viewport bottom.
+    top = Math.max(pad, Math.min(top, window.innerHeight - naturalHeight - pad));
+
+    const horizontal: { left?: number; right?: number } =
+      align === 'right'
+        ? { right: window.innerWidth - rect.right }
+        : { left: rect.left };
+
+    setPos({ top, ...horizontal });
+    setMeasured(true);
+  }, [open, rect, items.length, align]);
 
   // Focus active item when it changes (roving tabindex)
   useEffect(() => {
@@ -160,25 +181,30 @@ export function Dropdown({ trigger, items, align = 'right', className }: Dropdow
             onKeyDown={handlePanelKeyDown}
             style={{
               position: 'fixed',
-              // Flip-up anchors at the BOTTOM edge so long menus grow
-              // upward from the trigger — viewport-bottom overflow fixed.
-              // Before measurement (first paint) we render at the default
-              // below position but invisible, so the flip decision can
-              // happen before the user sees anything.
-              ...(flipUp
-                ? { bottom: window.innerHeight - rect.top + 6 }
-                : { top: rect.bottom + 6 }),
-              ...(align === 'right'
-                ? { right: window.innerWidth - rect.right }
-                : { left: rect.left }),
-              // Cap height if the menu still can't fit (narrow viewport)
-              // so the menu becomes scrollable instead of clipped.
-              maxHeight: `${Math.max(120, window.innerHeight - 24)}px`,
-              overflowY: 'auto',
+              // First paint: anchor to trigger bottom + invisible so we can
+              // measure the NATURAL panel height before deciding the final
+              // position. useLayoutEffect above fires synchronously before
+              // paint, so the user never sees the pre-flip position.
+              top: measured ? pos.top : rect.bottom + 6,
+              ...(measured
+                ? ('left' in pos && pos.left !== undefined
+                    ? { left: pos.left }
+                    : 'right' in pos && pos.right !== undefined
+                      ? { right: pos.right }
+                      : {})
+                : align === 'right'
+                  ? { right: window.innerWidth - rect.right }
+                  : { left: rect.left }),
+              // maxHeight kicks in only AFTER measuring — if the menu
+              // doesn't fit either above or below (very short viewport),
+              // cap + scroll. Keeping it off during measurement is critical,
+              // otherwise the measured height is capped and the flip logic
+              // can't see the real overflow.
+              ...(measured
+                ? { maxHeight: `${window.innerHeight - 16}px`, overflowY: 'auto' as const }
+                : {}),
               zIndex: 9999,
-              // Hide until we've measured + decided on flip direction to
-              // avoid a visible jump on the first paint.
-              visibility: panelHeight === null ? 'hidden' : 'visible',
+              visibility: measured ? 'visible' : 'hidden',
             }}
             className="bg-frame-card border border-frame-border rounded-xl shadow-2xl py-1 min-w-[160px] animate-fade-in"
           >
