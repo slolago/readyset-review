@@ -68,13 +68,20 @@ Explicit exclusions with reasoning.
 
 ## Traceability
 
-Maps REQ-IDs to phases. Filled by roadmapper.
+Maps REQ-IDs to phases. Updated 2026-04-23.
 
 | REQ | Phase | Notes |
 |-----|-------|-------|
-| STAMP-01..03 | TBD | Core stamping |
-| STAMP-04..05 | TBD | Asset caching + delivery isolation |
-| STAMP-06..07 | TBD | Invalidation |
-| STAMP-08..11 | TBD | Reliability |
-| STAMP-12 | TBD | UX |
-| STAMP-13 | TBD | Deployment spike |
+| STAMP-13 | Phase 79 | Platform spike — perl on Vercel, updatedAt coverage, Data field format |
+| STAMP-01 | Phase 80 | Core stamp fields written by stamp route |
+| STAMP-02 | Phase 80 | Attrib append semantics (read-normalize-spread-append) |
+| STAMP-03 | Phase 80 | Format-agnostic: video + image via same route |
+| STAMP-10 | Phase 80 | Concurrent dedup (findOrCreateStampJob) |
+| STAMP-11 | Phase 80 | Timezone-safe Created field |
+| STAMP-04 | Phase 81 | stampedGcsPath cache shared across review links |
+| STAMP-05 | Phase 81 | Internal /api/assets keeps original; decorate() uses stampedGcsPath for guests |
+| STAMP-09 | Phase 81 | Fully async stamp jobs — no blocking in review-link POST |
+| STAMP-06 | Phase 82 | Rename invalidates stamp; old GCS object deleted on re-stamp |
+| STAMP-07 | Phase 82 | New version upload invalidates stamp on that version only |
+| STAMP-08 | Phase 82 | Stamp failure never blocks link creation; decorate() falls back to original |
+| STAMP-12 | Phase 82 | "Applying metadata..." spinner in CreateReviewLinkModal |
