@@ -72,7 +72,7 @@ None — v2.4 shipped end-to-end. Awaiting next feature/fix input from user.
 
 ### Blockers/Concerns
 
-- **Vercel auto-deploy may be misconfigured for the `vercel` remote** — the push lands (confirmed via `git ls-remote`), but the deploy doesn't fire within observed window. Check Vercel dashboard GitHub integration for the `readyset-review-vercel` repo.
+- **Vercel auto-deploy not firing** (HIGH priority — blocks v2.4 production validation). Confirmed via extended polling 45+ min after push: commit `10ac41f4` / `fe2dc965` not served by any Vercel URL checked (`readyset-review-vercel.vercel.app`, `readyset-review.vercel.app`, `readyset.co`, `app.readyset.co`, git-branch previews). BuildId unchanged at `eiG4wr6_JCNtJyKDko-p2` (pre-v2.4 deploy from 2026-04-22). Push lands on the remote git ref — verified via `git ls-remote`. Check Vercel dashboard GitHub integration for `readyset-review-vercel` repo. Same behavior observed throughout this session's commits, so this is not specific to v2.4.
 
 ## Session Continuity
 

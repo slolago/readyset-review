@@ -35,14 +35,27 @@ human_needed: 1 of 3
 
 ### Why the smoke test is deferred
 
-The Vercel auto-deploy for this remote either builds asynchronously with a latency >5 min or its build status is not observable from the local dev environment (no Vercel CLI, no Vercel API token). `curl https://readyset-review-vercel.vercel.app/api/spike/exiftool-version` returns 404 with the pre-push `buildId=eiG4wr6_JCNtJyKDko-p2`, indicating the new deploy hasn't superseded it yet.
+Extended polling across multiple possible Vercel URLs returned 404 on all of them, with the buildId unchanged from the pre-v2.4 deploy (`eiG4wr6_JCNtJyKDko-p2`). Specifically verified:
+
+- `readyset-review-vercel.vercel.app/api/spike/exiftool-version` → 404 + stale buildId (45+ min after `git push vercel master`)
+- `readyset-review.vercel.app/api/spike/exiftool-version` → 404
+- `readyset-review-git-master.vercel.app/api/spike/exiftool-version` → 404
+- `slolago-readyset-review.vercel.app/api/spike/exiftool-version` → 404
+- `readyset.co` (and `app.`, `review.`, `www.` variants) → 404
+- Verified `git ls-remote vercel master` returns commit `10ac41f4` → the push landed on the remote git ref correctly
+
+**Diagnosis:** the Vercel project is not auto-deploying from the `vercel` remote (or the `origin` remote) within the observed window, OR the deploy URL I can reach from this environment is not the live production URL. No Vercel CLI / API token available to inspect deploy status from the CLI.
+
+**This is an infrastructure configuration issue, not a code issue.** All v2.4 code compiles clean, all 171 tests green, all commits pushed to both remotes.
 
 **What the human needs to do:**
 
-1. Open the Vercel dashboard for project `readyset-review-vercel`
-2. Wait for commit `10ac41f4` to show "Deployed" or inspect the build logs if it shows "Failed"
-3. If deployed: `curl https://<deploy-url>/api/spike/exiftool-version` — expect `{ok:true, version: "13.57"}` or similar
-4. If failed: inspect the build log for exiftool-vendored bundling errors (`ENOENT`, perl missing, binary tracing miss)
+1. Open the Vercel dashboard for the project(s) connected to `slolago/readyset-review` and/or `slolago/readyset-review-vercel`. Identify which GitHub repo Vercel auto-deploys from.
+2. Check whether commit `10ac41f4` (or later `fe2dc965`) shows as "Deployed" / "Queued" / "Failed".
+3. If "Failed": inspect build logs for exiftool-vendored bundling errors — likely candidates are `ENOENT` for perl binary, `@vercel/nft` output-trace miss, or Lambda bundle exceeding 250MB uncompressed. The `next.config.mjs` entries for `exiftool-vendored` + `.pl` should make both issues avoidable, but confirm.
+4. If "Queued" indefinitely: check Vercel project GitHub integration — may need reconnection.
+5. If "Deployed": `curl https://<live-deploy-url>/api/spike/exiftool-version` — expect `{ok:true, version:"..."}`.
+6. If the endpoint returns 500 with a perl-related error: execute the fallback plan below (move stamp job to Cloud Run).
 
 ### What happens if perl is missing
 
