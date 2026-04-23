@@ -103,12 +103,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 });
     }
 
-    // Rating: coerce + validate. 0 clears the rating (stored as null -> deleted
-    // by the FieldValue.delete() pass below).
+    // Rating: validate early and translate "clear" (0 or null) to
+    // FieldValue.delete() right here — not later in the else branch's null
+    // coercion — so the folderId batch-update path also honors clears
+    // correctly. Without this, sending `{rating: null, folderId: "x"}` would
+    // store rating=null (a literal null value, not a deleted field) via
+    // batch.update, leaving Firestore filters like `where('rating', '>=', 1)`
+    // with a dangling doc.
     if ('rating' in updates) {
       const r = updates.rating;
       if (r === null || r === 0) {
-        updates.rating = null;
+        updates.rating = FieldValue.delete();
       } else if (typeof r === 'number' && Number.isInteger(r) && r >= 1 && r <= 5) {
         updates.rating = r;
       } else {
