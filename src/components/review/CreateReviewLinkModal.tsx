@@ -263,7 +263,16 @@ export function CreateReviewLinkModal({
               icon={<Link className="w-4 h-4" />}
               className="flex-1"
             >
-              Create Link
+              {/*
+                v2.4 STAMP-12 — label surfaces that metadata stamping is
+                being coordinated. The actual exiftool jobs run async on the
+                server (fire-and-forget from POST); this label covers the
+                ~500ms window before the link token is returned. Copy-link
+                view appears as soon as the token arrives; guests receive
+                stamped URLs whenever the job lands (or the original URL
+                as graceful fallback if the stamp is still pending).
+              */}
+              {loading ? 'Applying metadata…' : 'Create Link'}
             </Button>
           </div>
         </form>

@@ -146,6 +146,20 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         );
       }
       updates.name = result.trimmed;
+
+      // v2.4 STAMP-06 — active invalidation on rename. The freshness
+      // comparison (stampedAt < updatedAt) already makes decorate() fall
+      // back to the original URL, so guests never see a stale stamp. But
+      // clearing the fields here makes intent explicit and releases the
+      // stale cached stampedSignedUrl so the next re-stamp produces a
+      // clean signed-URL cache. `ExtId` derives from the new name — the
+      // next review link creation kicks off the re-stamp.
+      if (result.trimmed !== asset.name) {
+        updates.stampedGcsPath = FieldValue.delete();
+        updates.stampedAt = FieldValue.delete();
+        updates.stampedSignedUrl = FieldValue.delete();
+        updates.stampedSignedUrlExpiresAt = FieldValue.delete();
+      }
     }
 
     // When moving (folderId changes), update ALL versions in the group atomically
