@@ -2,12 +2,35 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Film, X, Check } from 'lucide-react';
+import { Search, Film, X, Check, ArrowUpDown } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AssetCard } from '@/components/files/AssetCard';
 import { FilterPopover } from '@/components/ui/FilterPopover';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { RatingStars } from '@/components/ui/RatingStars';
 import type { Asset } from '@/types';
+
+type SortKey =
+  | 'newest'
+  | 'oldest'
+  | 'rating-desc'
+  | 'rating-asc'
+  | 'name-asc'
+  | 'name-desc';
+
+const SORT_LABELS: Record<SortKey, string> = {
+  newest: 'Newest first',
+  oldest: 'Oldest first',
+  'rating-desc': 'Rating (high → low)',
+  'rating-asc': 'Rating (low → high)',
+  'name-asc': 'Name (A → Z)',
+  'name-desc': 'Name (Z → A)',
+};
+
+function getCreatedAtSeconds(a: Asset): number {
+  const c = a.createdAt as unknown as { _seconds?: number; seconds?: number } | undefined;
+  return c?._seconds ?? c?.seconds ?? 0;
+}
 
 interface AssetWithProject extends Asset {
   projectName?: string;
@@ -28,6 +51,7 @@ export default function AssetsPage() {
   const [durationMax, setDurationMax] = useState<string>('');
   // 0 = no filter; 1–5 = show assets rated >= minRating.
   const [minRating, setMinRating] = useState<number>(0);
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
 
   const [totalAvailable, setTotalAvailable] = useState<number | null>(null);
   const [limit, setLimit] = useState<number | null>(null);
@@ -123,6 +147,48 @@ export default function AssetsPage() {
       return false;
     });
   }, [assets, query, selectedProjectIds, selectedTags, durMin, durMax, durationActive, minRating]);
+
+  // Sort pipeline — applied after filter so result counts match the sort the
+  // user sees. Unrated assets sort below the lowest rated row for
+  // rating-desc, and above the highest for rating-asc (so "show me the
+  // lowest-rated" doesn't bury 0-star rows at the bottom out of reach).
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    switch (sortKey) {
+      case 'newest':
+        arr.sort((a, b) => getCreatedAtSeconds(b) - getCreatedAtSeconds(a));
+        break;
+      case 'oldest':
+        arr.sort((a, b) => getCreatedAtSeconds(a) - getCreatedAtSeconds(b));
+        break;
+      case 'rating-desc':
+        arr.sort((a, b) => {
+          const ra = a.rating ?? -1;
+          const rb = b.rating ?? -1;
+          if (rb !== ra) return rb - ra;
+          return getCreatedAtSeconds(b) - getCreatedAtSeconds(a); // tie-break by newest
+        });
+        break;
+      case 'rating-asc':
+        arr.sort((a, b) => {
+          // Unrated (treated as 6) sort ABOVE the lowest rating — otherwise
+          // "ascending" would cluster all unrated at top, hiding the 1-star
+          // assets the user probably wants to see first.
+          const ra = a.rating ?? 6;
+          const rb = b.rating ?? 6;
+          if (ra !== rb) return ra - rb;
+          return getCreatedAtSeconds(b) - getCreatedAtSeconds(a);
+        });
+        break;
+      case 'name-asc':
+        arr.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'name-desc':
+        arr.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+    }
+    return arr;
+  }, [filtered, sortKey]);
 
   const anyFilterActive =
     selectedProjectIds.size > 0 || selectedTags.size > 0 || durationActive || minRating > 0;
@@ -225,13 +291,38 @@ export default function AssetsPage() {
             Clear filters
           </button>
         )}
+
+        {/* Sort — pushed right so it reads as an orthogonal control to the
+            filter popovers (filters narrow; sort reorders). */}
+        <div className="ml-auto">
+          <Dropdown
+            align="right"
+            trigger={
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-frame-card border border-frame-border text-frame-textSecondary hover:text-white hover:border-frame-borderLight transition-colors">
+                <ArrowUpDown className="w-3 h-3" />
+                <span className="text-frame-textMuted">Sort:</span>
+                <span>{SORT_LABELS[sortKey]}</span>
+              </span>
+            }
+            items={(Object.keys(SORT_LABELS) as SortKey[]).map((key) => ({
+              label: SORT_LABELS[key],
+              onClick: () => setSortKey(key),
+              icon:
+                sortKey === key ? (
+                  <Check className="w-3.5 h-3.5 text-frame-accent" />
+                ) : (
+                  <span className="w-3.5 h-3.5" />
+                ),
+            }))}
+          />
+        </div>
       </div>
 
       {/* Result count / cap hint */}
       {!loading && (
         <div className="flex items-center justify-between mb-3 text-xs text-frame-textMuted">
           <span>
-            {filtered.length} {filtered.length === 1 ? 'asset' : 'assets'}
+            {sorted.length} {sorted.length === 1 ? 'asset' : 'assets'}
           </span>
           {capped && (
             <span className="text-frame-textMuted/80">
@@ -251,7 +342,7 @@ export default function AssetsPage() {
             />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <div className="text-center py-16 bg-frame-card border border-frame-border rounded-2xl">
           <div className="w-12 h-12 bg-frame-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
             <Film className="w-6 h-6 text-frame-accent" />
@@ -267,7 +358,7 @@ export default function AssetsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filtered.map((asset) => (
+          {sorted.map((asset) => (
             <div key={asset.id} className="flex flex-col gap-1">
               <AssetCard
                 asset={asset}
