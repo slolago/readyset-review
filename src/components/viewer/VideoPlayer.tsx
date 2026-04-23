@@ -500,17 +500,37 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           onLoadedMetadata={(e) => { setDuration(e.currentTarget.duration); computeVideoRect(); setLoadError(null); }}
           onPlay={() => { setPlaying(true); setBuffering(false); }}
           onPlaying={() => setBuffering(false)}
-          onPause={() => setPlaying(false)}
+          onPause={() => {
+            setPlaying(false);
+            // Flush the last currentTime reading on pause. The rAF tick
+            // loop uses a 0.25s threshold, so the last reported time can
+            // lag the actual video.currentTime by up to ~0.24s — leaving
+            // the scrubber's progress fill visibly short of the thumb
+            // position the user actually paused at.
+            const v = videoRef.current;
+            if (v) {
+              setCurrentTime(v.currentTime);
+              onTimeUpdate?.(v.currentTime);
+            }
+          }}
           onEnded={() => {
             const v = videoRef.current;
             if (loop && v) {
               // If a loop range is set, restart at loopIn; otherwise restart at 0.
               const target = typeof loopIn === 'number' ? loopIn : 0;
               v.currentTime = target;
+              setCurrentTime(target);
+              onTimeUpdate?.(target);
               v.play().catch(() => {});
               setPlaying(true);
             } else {
               setPlaying(false);
+              // Natural end of playback — snap the scrubber to 100%. The
+              // rAF tick's 0.25s throttle can leave the last reported time
+              // up to ~0.24s below duration, making the progress bar stop
+              // visibly short of the track's right edge.
+              setCurrentTime(duration);
+              onTimeUpdate?.(duration);
             }
           }}
           onWaiting={() => setBuffering(true)}
