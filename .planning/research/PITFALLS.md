@@ -1,420 +1,658 @@
-# Domain Pitfalls: v1.4 Review & Version Workflow
+# Pitfalls Research: v2.4 XMP Stamping Pipeline
 
-**Domain:** Frame.io-style media review platform (Next.js 14, Firestore, GCS, Video.js)
-**Researched:** 2026-04-08
-**Scope:** Version stack unstack/reorder, asset status labels, smart copy to review, selection-based review links, compare view audio & comments, move to folder
-
----
-
-## Data Model Reference (existing system)
-
-Before reading pitfalls, understand the current model:
-
-- `Asset.version` — integer set at upload time; never updated after upload (until v1.3 merge)
-- `Asset.versionGroupId` — all assets in a stack share this value (the root asset's doc ID)
-- `Asset.status` — current values: `'uploading' | 'ready'` (upload lifecycle, not QC status)
-- `Asset.folderId` — which folder the asset lives in; all stack members share the same `folderId` (enforced in the PUT handler)
-- `ReviewLink.folderId` — scopes the link to a folder; `null` means project root
-- Comments live in a flat `comments` collection keyed by `assetId` — no per-version scoping exists
-- Review links are folder-scoped, not asset-ID-scoped — there is no `assetIds` array field today
+**Domain:** Server-side exiftool XMP metadata injection on Vercel serverless / Firebase / GCS
+**Researched:** 2026-04-23
+**Confidence:** HIGH (grounded in codebase read + exiftool-vendored source + ffmpeg/exiftool runtime knowledge from existing generate-sprite + exports routes)
 
 ---
 
-## Critical Pitfalls
-
-Mistakes that cause data corruption, silent bugs, or required rewrites.
+## Critical Pitfalls [HIGH] — Data corruption / production outage
 
 ---
 
-### Pitfall 1: Version Reorder Creates Number Gaps That Break "Latest Version" Logic
+### Pitfall 1: exiftool-vendored Linux Binary Missing at Runtime — Silent 500
+
+**Severity:** [HIGH]
 
 **What goes wrong:**
-The system identifies the latest version in a stack by finding the asset with the highest `version` integer (see `[token]/route.ts` line 72: `sorted[0]` after `sort((a, b) => (b.version || 1) - (a.version || 1))`). If a reorder operation reassigns version numbers naively — for example, swapping V2 and V3 — and then an unstack removes V2, the remaining versions have numbers `[1, 3]`. The gap causes no immediate breakage, but a subsequent merge of another stack appends starting from `maxVersion + 1 = 4`, so the final order is `[1, 3, 4, 5]`. This is cosmetically wrong but functionally broken if UI labels version numbers by their `version` field value.
+`exiftool-vendored` resolves to one of two platform packages: `exiftool-vendored.exe` (Windows) or `exiftool-vendored.pl` (Linux). On a Windows dev machine, npm may install the `.exe` variant. Vercel Lambdas run Linux x64; the Windows binary is either absent or non-executable. The route handler fails with `ENOENT` or `spawn error` at the first `exiftool.write()` call. Because exiftool-vendored lazy-starts the `-stay_open` process on first use, this error surfaces deep inside the job, after the job is already marked `running`, leaving it permanently stuck without the `sweepStaleJobs` watermark triggering (it only fires at 2 min, but the error throws immediately).
 
 **Why it happens:**
-Version numbers are ordinal labels, not array indices. The codebase uses `Math.max(...versions.map(v => v.version))` to append. Deletion always leaves gaps. Reorder without re-compacting also leaves gaps.
+`exiftool-vendored` is a meta-package that uses `optionalDependencies` to pull platform-specific sub-packages. If the developer's lockfile was committed on Windows, the Linux optional dependency (`exiftool-vendored.pl`) may be missing from `node_modules` in the Vercel build. Even if both exist, `outputFileTracingIncludes` in `next.config.mjs` must explicitly include the `.pl` Perl binary path so Next.js traces it into the Lambda bundle. The existing config (lines 26–46 of `next.config.mjs`) only covers `ffmpeg-static` and `@ffmpeg-installer` — exiftool is not in the list yet.
 
-**Consequences:**
-- Version switcher UI shows "V1, V3, V4" instead of "V1, V2, V3" after an unstack.
-- A future merge appends at the wrong number.
-- If any UI displays `version` as a user-visible label ("Version 3"), gaps confuse users.
+**How to avoid:**
+1. Add to `next.config.mjs` `outputFileTracingIncludes` for the stamp route: `'./node_modules/exiftool-vendored.pl/**'`.
+2. Add `exiftool-vendored` to `serverComponentsExternalPackages` (already done for firebase-admin, ffmpeg-static — same pattern applies).
+3. In the stamp route, verify the exiftool binary path via `existsSync` immediately on cold start (mirror the `resolveFfmpeg()` pattern from `generate-sprite/route.ts`) and fail-fast with a clear error before creating the job.
+4. In CI/CD, add a test that `require('exiftool-vendored')` resolves correctly on Linux (GitHub Actions uses Ubuntu).
 
-**Prevention:**
-After any unstack or reorder operation, re-compact all remaining stack members in a single Firestore batch: fetch all docs in the group, sort by their new desired order, write `version = index + 1` for each. This is the same approach used in `merge-version/route.ts` — apply the same pattern for unstack and reorder.
+**Warning signs:**
+- `spawn error: ENOENT` in Vercel function logs for the stamp route.
+- Job stuck in `running` state beyond 2 min sweep watermark with `error: 'function likely SIGKILL\'d or crashed'` (misleading — it actually crashed on binary lookup).
+- Works perfectly in local dev on Windows, fails on first Vercel deploy.
 
-**Phase:** VSTK-01
+**Phase to address:** stamp-pipeline (Phase 1 of v2.4)
 
 ---
 
-### Pitfall 2: Unstacking a Non-Root Asset Leaves an Orphaned versionGroupId
+### Pitfall 2: `-stay_open True` ExifTool Process Leaked Across Lambda Invocations
+
+**Severity:** [HIGH]
 
 **What goes wrong:**
-When the user unstacks a single version (e.g., removes V2 from a 3-version stack), the goal is to produce: (a) the original stack minus V2, and (b) V2 as an independent standalone asset. The natural implementation is: clear `versionGroupId` on V2 and update its `version` to 1. But `versionGroupId` on a standalone asset must equal the asset's own doc ID (the convention established in `merge-version/route.ts` line 39: `source.versionGroupId || sourceId`). If the unstacked asset gets `versionGroupId = null` instead, the group query `where('versionGroupId', '==', assetId)` returns nothing, and the asset appears to have no version history — but the grid's version count badge query is `where('versionGroupId', '==', groupId)` which would also return nothing, leaving the badge blank instead of hidden.
+The reference desktop app (`scf-metadata/exiftool.js`) creates a single `ExifTool` instance with `exiftoolArgs: ['-config', CONFIG, '-stay_open', 'True', '-@', '-']` and holds it alive for the entire Electron process lifetime. Serverless functions do not have a persistent process lifetime — each Lambda invocation may reuse a warm container or spin a fresh one. If the ExifTool instance is stored in module scope (e.g., `const et = new ExifTool(...)` at the top of the module), it persists across warm invocations but is abandoned when the container is frozen or recycled. The `-stay_open True` child process accumulates without `et.end()` being called, consuming Perl interpreter memory. On a warm container serving multiple stamp requests, this compounds until OOM.
 
 **Why it happens:**
-The convention is implicit: the root asset's doc ID serves as the group ID. Legacy assets (pre-v1.3) have `versionGroupId` undefined. The system handles this with `|| assetId` fallbacks throughout. Setting `versionGroupId = null` on an unstacked asset breaks this fallback chain in a subtle way.
+`-stay_open True` is optimal for Electron (one long-lived app, many files). In a serverless function, each warm container reuse re-enters the module without reinitializing — the existing `ExifTool` instance is reused (which is fine) but `end()` is never called when the container is recycled (there is no guaranteed shutdown hook on Vercel). Unlike `ffmpeg` which is a one-shot spawn, exiftool-vendored keeps a Perl process open via stdin pipe.
 
-**Consequences:**
-- Unstacked asset shows no version badge (fine) but also fails the same-stack guard in the merge endpoint (line 43–45 of `merge-version/route.ts`), because both `sourceGroupId` and `targetGroupId` resolve to their own IDs — which are different, so it allows re-merging the same asset repeatedly.
-- `useAsset` hook (`[assetId]/route.ts` line 34–48) constructs `groupId = asset.versionGroupId || asset.id`. If `versionGroupId` is null (not undefined), `|| asset.id` still works because `null || asset.id` evaluates correctly. This is safe. But if `versionGroupId` is explicitly set to an empty string, the fallback fails.
+**How to avoid:**
+Do NOT use `-stay_open True` in the serverless stamp route. Instead:
+- Create a fresh `new ExifTool({ maxProcs: 1 })` per request (exiftool-vendored starts the process on first call and ends it in the same request lifecycle).
+- Call `await et.end()` in a `finally` block — always, even on error.
+- Do NOT replicate the `this.args = ['-stay_open', 'True', ...]` constructor pattern from the desktop reference.
+- The custom `-config` flag should still be passed via `exiftoolArgs: ['-config', configPath]` without `-stay_open`.
 
-**Prevention:**
-When unstacking an asset, write `versionGroupId = asset.id` (its own doc ID), not `null`. Also write `version = 1`. Use a transaction (not a batch) if also re-numbering the remaining stack members, because you need to read and write the remaining stack atomically.
+**Warning signs:**
+- Vercel function memory climbing over multiple warm invocations.
+- `et.end()` never appearing in the stamp route implementation.
+- OOM kills showing in Vercel logs (`SIGKILL` reason: memory limit).
 
-**Phase:** VSTK-01
+**Phase to address:** stamp-pipeline
 
 ---
 
-### Pitfall 3: Asset Status Name Collision With Existing `status` Field
+### Pitfall 3: `et.end()` Not Awaited — Zombie Perl Process Holds /tmp File Descriptor
+
+**Severity:** [HIGH]
 
 **What goes wrong:**
-`Asset.status` already exists in the type and is used as an upload lifecycle field (`'uploading' | 'ready'`). The v1.4 STATUS-01 feature adds QC approval statuses like `APPROVED`. Storing QC status in the same `status` field means: (a) `status: 'ready'` queries throughout the codebase (e.g., `[token]/route.ts` line 43: `where('status', '==', 'ready')`) would need to change, and (b) setting an asset to `APPROVED` would make it invisible to any query that filters `status == 'ready'`.
+`exiftool.end()` returns a Promise. If called without `await` (e.g., `et.end()` in a `finally` block), the Perl process may not have flushed its last write before the Lambda function returns. The `/tmp` file the stamped output was written to may still have an open file descriptor from the Perl process, causing `EBUSY` errors on the `fs.rm(tmpDir, { recursive: true })` cleanup call. Worse: if the stamped bytes are still being flushed by Perl when the Lambda freezes, the GCS upload that happened before `et.end()` may contain a partially-written file.
 
 **Why it happens:**
-The field name `status` is semantically overloaded. Upload lifecycle and QC approval are orthogonal concerns.
+The existing codebase learned this lesson with ffmpeg — `generate-sprite/route.ts` lines 208–211 explicitly `await` the writer's `close` event before proceeding to GCS upload. The same discipline applies to exiftool. `et.end()` has the same flush-then-close semantics.
 
-**Consequences:**
-- If the same field is used: all ready-state queries must be updated or the feature silently hides assets.
-- Review link asset loading (`[token]/route.ts` line 43) filters `status == 'ready'`. An `APPROVED` asset would 404 in review link view.
-- The `AssetStatus` type is exported and used widely; changing it is a broad impact change.
+**How to avoid:**
+- Always `await et.end()` in `finally`.
+- Upload the stamped file to GCS only AFTER `et.end()` has resolved.
+- Mirror the sprite route pattern: GCS upload → mark job ready → `finally { await et.end(); await fs.rm(tmpDir) }`.
 
-**Prevention:**
-Add a new field: `reviewStatus?: 'approved' | 'needs_revision' | 'in_review'` (or similar). Never repurpose the existing `status` field. Update `types/index.ts` with a separate `AssetReviewStatus` type. The existing `status` field meaning does not change.
+**Warning signs:**
+- Corrupted stamped files in GCS (XMP partially written, file truncated).
+- `EBUSY` errors in cleanup logs.
+- `et.end()` present but without `await`.
 
-**Phase:** STATUS-01
+**Phase to address:** stamp-pipeline
 
 ---
 
-### Pitfall 4: Status Drift — New Version Upload Does Not Reset Approval
+### Pitfall 4: MP4 faststart Flag Destroyed by exiftool XMP Write
+
+**Severity:** [HIGH]
 
 **What goes wrong:**
-If an asset has `reviewStatus: 'approved'` and the user uploads a new version (V2) to the same version group, V2 is a new asset document with `reviewStatus` undefined. The grid shows the latest version (V2, highest `version` integer) as the representative card. V2 has no `reviewStatus` set, so it displays no status badge. But if `reviewStatus` is inherited from the previous doc or defaults to the group-level status, an unapproved new version could appear approved.
+Web-playable MP4s have `moov` atom at the start of the file (faststart / web-optimized). exiftool writes XMP into a `uuid` atom. When the metadata it needs to update is located between `mdat` and `moov`, exiftool must rewrite atom offsets. In some cases this reordering moves `moov` back to the end of the file, breaking browser progressive download (the video cannot start playing until fully downloaded). The failure is silent — the file is not corrupt, it plays correctly, but it's no longer faststart-optimized.
 
 **Why it happens:**
-`reviewStatus` lives on individual asset documents, not on the version group. The upload path (`upload/signed-url/route.ts`) creates a new asset doc without QC status. There is no explicit logic to inherit or reset status on version upload.
+exiftool's MP4 XMP writing appends or relocates atoms. The `-overwrite_original` flag (used in the desktop app) writes back in-place. Whether this preserves `moov` positioning depends on the specific MP4 structure. Videos encoded by Premiere, After Effects, or Compressor may have varying atom layouts.
 
-**Consequences:**
-- A new version (which nobody has reviewed yet) inherits no status — this is actually safe by default.
-- The bug risk is the opposite: a developer might try to be "smart" and copy `reviewStatus` from the previous latest version when creating the new asset doc. This would cause an unreviewed file to appear `approved`.
+**How to avoid:**
+After exiftool writes the XMP, run a verification step: check if the stamped file still has `moov` at offset < `mdat`. The simplest approach: run `ffmpeg -i stamped.mp4 -c copy -movflags +faststart stamped-fs.mp4` as a post-processing step after exiftool stamps the file but before uploading to GCS. This adds ~1–2s to the pipeline for a typical review clip but guarantees faststart preservation. Alternatively, verify `moov` position using a minimal MP4 atom parser before deciding if the post-pass is needed.
 
-**Prevention:**
-Never copy `reviewStatus` from a previous version when creating a new asset doc. New uploads always start with `reviewStatus` undefined (no badge). The approved badge only appears if explicitly set. Document this decision in the upload route.
+**Warning signs:**
+- Stamped video plays in desktop players but shows long loading time in the browser before first frame.
+- `ffprobe` on the stamped file shows `moov` offset > file midpoint.
+- Users report slow review-link video loading specifically for stamped assets.
 
-**Phase:** STATUS-01
+**Phase to address:** stamp-pipeline
 
 ---
 
-### Pitfall 5: "Latest Version" Definition Is Inconsistent Across Code Paths
+### Pitfall 5: Concurrent Stamp Jobs Race on `asset.stampedGcsPath` Write
+
+**Severity:** [HIGH]
 
 **What goes wrong:**
-REVIEW-01 requires copying only the "latest version" from a stack. The definition of "latest" differs across the codebase:
-
-- `[token]/route.ts` lines 71–74: latest = highest `version` integer.
-- `useAsset` hook and `[assetId]/route.ts` line 65: sorts ascending and takes `sorted[0]` (lowest) as the first display, but the "versions" array contains all.
-- The grid's version badge counts all assets in the group but does not explicitly define which is the head.
-
-If the copy-to-review endpoint uses a different "latest" definition than the viewer, the user copies what they believe is V3 but the copy operation uses V1.
+Two review links for the same asset are created simultaneously (or a retry + new request overlap). Both trigger stamp jobs. Both read the asset, see `stampedGcsPath` is empty, and proceed to stamp independently. Both write different GCS objects. The second Firestore write of `stampedGcsPath` wins, but the first GCS object is an orphan (never cleaned up, never referenced). If the two jobs write different `stampedAt` timestamps, the cache-busting logic becomes unreliable — the `stampedAt` on the asset may not correspond to the GCS object currently at `stampedGcsPath`.
 
 **Why it happens:**
-No canonical "get the head of a version group" utility exists. Each route implements its own sort/pick inline.
+The jobs collection exists, but there is no deduplication transaction that says "if a `metadata-stamp` job already exists in `queued` or `running` state for assetId X, do not create a new one." The existing `createJob` helper in `src/lib/jobs.ts` always creates a new document — there is no idempotency guard.
 
-**Prevention:**
-Extract a shared utility function (server-side, in a lib file) that takes a version group array and returns the asset with the highest `version` value. Every route that needs the "head" asset uses this function. The smart copy endpoint (REVIEW-01) uses the same utility. A single test can verify the definition is consistent.
+**How to avoid:**
+In the stamp route (`POST /api/assets/[id]/stamp-metadata`), wrap job creation in a Firestore transaction:
+1. Read the asset doc inside the transaction.
+2. Query for any existing `metadata-stamp` job for this assetId with status `queued` or `running`.
+3. If one exists, return its jobId (do not create a new job).
+4. If none exists, create the job and write `stampingJobId` onto the asset doc atomically.
+This mirrors the "dedupe duplicate sprite triggers" pattern noted in the v2.0 milestone (Phase 60 OBS-03).
 
-**Phase:** REVIEW-01
+**Warning signs:**
+- Two `metadata-stamp` jobs with the same `assetId` both showing `running` simultaneously in the jobs collection.
+- GCS accumulating `stamped-*.mp4` files for the same assetId.
+- `stampedAt` and `stampedGcsPath` out of sync (one is from job A, the other from job B).
+
+**Phase to address:** stamp-pipeline
 
 ---
 
-### Pitfall 6: Smart Copy Copies GCS Bytes Instead of Referencing Them
+### Pitfall 6: Large Video Buffered in Memory During GCS Upload-Back
+
+**Severity:** [HIGH]
 
 **What goes wrong:**
-The current `assets/copy/route.ts` creates new Firestore documents that point to the same `gcsPath` as the original assets — it does NOT copy the GCS object. Two Firestore documents share one GCS object. This means:
-- Deleting the original asset deletes the GCS file, breaking the copy's signed URL.
-- The copy is a reference, not an independent file.
-
-For the smart-copy-to-review feature, the expected behavior matters: if the team wants the Client Facing folder to be independent (so the original can be deleted without affecting the review copy), a GCS object copy is required. If co-pointing to the same file is acceptable, the current approach works but must be documented.
+`uploadBuffer()` in `src/lib/gcs.ts` (line 104–112) calls `file.save(buffer, ...)` — it requires the entire file as a `Buffer` in memory. For a 500MB video, this means holding 500MB in Lambda memory at upload time. Vercel Lambdas on Hobby have 1GB memory. A 500MB source download + 500MB stamped buffer in memory simultaneously = 1GB peak, hitting the ceiling and causing OOM kills.
 
 **Why it happens:**
-`assets/copy/route.ts` deliberately copies only the Firestore doc (fast, cheap) and reuses `gcsPath`. This was a correct decision for the internal copy feature (v1.2 "Duplicate"), but the review-copy feature may have different durability expectations.
+`uploadBuffer` works perfectly for small files (sprite JPEGs, thumbnails, exports bounded to 45s clips). The stamp pipeline operates on the full original file — potentially 500MB+. The existing `generate-sprite` route streams the download to `/tmp` first (for precisely this reason, documented at lines 140–145 of `route.ts`), but uses `uploadBuffer` for the much smaller sprite JPEG. Stamping requires the same streaming discipline for the upload path.
 
-**Consequences:**
-- Delete original → review copy's GCS object is gone, video no longer plays in the review link.
-- No extra GCS storage cost with the reference approach.
-- GCS copy operation uses the `copyFile` Admin SDK call and has no size limit concerns but costs egress for large videos.
+**How to avoid:**
+Do not use `uploadBuffer()` for the stamped output. Instead, use the GCS streaming upload API: `file.createWriteStream({ contentType, resumable: true })` and pipe the local file into it via `fs.createReadStream(stampedPath).pipe(gcsStream)`. Add a streaming counterpart to `gcs.ts`: `uploadStream(gcsPath, localFilePath, contentType)`. This keeps memory usage bounded to buffered chunks (~64KB at a time) rather than the full file.
 
-**Prevention:**
-Decide explicitly: reference copy or GCS copy. Document the choice in the route. If durability is required, use `storage.bucket().file(src).copy(dest)` (Google Cloud Storage Admin SDK). If reference copy is acceptable, add a Firestore rule that prevents deletion of the original if any other document shares its `gcsPath`. At minimum, ensure asset deletion does NOT delete the GCS object if `gcsPath` is shared — add a reference count field or check before calling `deleteFile`.
+**Warning signs:**
+- OOM kills in Vercel logs for large video stamp requests.
+- `uploadBuffer` called with a file path larger than ~50MB in the stamp route.
+- Memory usage spike visible in Vercel function metrics during stamp phase.
 
-**Phase:** REVIEW-01, REVIEW-02
+**Phase to address:** stamp-pipeline
 
 ---
 
-### Pitfall 7: Strip-Comments Copy Leaves Orphaned Thread Replies
+### Pitfall 7: Attrib Array Append Semantics Broken — History Clobbered or Duplicated
+
+**Severity:** [HIGH]
 
 **What goes wrong:**
-REVIEW-02 (copy without comments) could be interpreted as: delete all `comments` where `assetId == newAssetId` after copying the Firestore doc. But comments on the *source* asset have `parentId` fields pointing to each other (threads). If the copy produces a new `assetId` and comments are not copied, there are no orphans from the copy's perspective. The orphan problem is on the other side: if the original asset has thread replies and someone later deletes the root comment on the original, replies become dangling (no parent comment exists). This pre-exists v1.4 — the DELETE handler at `comments/[commentId]/route.ts` does not cascade to child comments (`parentId == deletedId`).
+The desktop reference app (`exiftool.js` lines 46–58) reads the existing `Attrib` array from the file, maps over it to refresh the `Data` field on each entry, then appends a new entry. The exact logic is:
+```js
+const oldAttrib = [...(tags?.Attrib || [])].map((tag) => ({ ...tag, Data: this.Data }))
+const Attrib = !opts.clear ? [...oldAttrib, { ExtId, Created, Data, FbId }] : null
+```
+A server-side implementation that does NOT read the existing `Attrib` before writing will clobber all prior attribution history. An implementation that reads but does not spread `oldAttrib` first will only write the new entry, losing all prior entries. An implementation that does not destructure correctly (e.g., treating `tags.Attrib` as a single object instead of an array when only one entry exists) will either throw or produce a 1-entry array that looks correct but drops history.
 
 **Why it happens:**
-Firestore has no cascade delete. The existing comment DELETE handler only removes the one document.
+exiftool-vendored returns XMP arrays as JavaScript arrays, but single-value XMP arrays may come back as a plain object rather than a `[object]` array depending on the exiftool version and the XMP namespace definition. If the `.config` file defines `Attrib` as a bag (unordered) vs. seq (ordered), the deserialization differs.
 
-**Consequences:**
-- After deleting a root comment, reply comments still exist in Firestore. They are returned by the GET endpoint and displayed as floating orphans with no parent to reply to.
-- The strip-comments copy itself is safe (new asset has no comments by definition), but the underlying comment delete bug can surface when the admin "cleans up" comments on the original after copying.
+**How to avoid:**
+- Always normalize: `const oldAttrib = Array.isArray(tags.Attrib) ? tags.Attrib : tags.Attrib ? [tags.Attrib] : []`
+- Copy the exact spread pattern from the reference: `[...oldAttrib.map(tag => ({ ...tag, Data: this.Data })), newEntry]`
+- Write a unit test that: (1) stamps a file once, (2) stamps the same file again, (3) asserts `tags.Attrib.length === 2` and both entries are present.
+- Never call `exiftool.write(path, { Attrib: [newEntryOnly] })` — always read first, build the full array, then write.
 
-**Prevention for v1.4:**
-- REVIEW-02 (copy without comments): no action needed — the copy produces a new `assetId`, comments are not copied by default, so this feature is already "no comments."
-- Add a cascade delete check to the existing comment DELETE handler: when deleting a comment, also delete all comments where `parentId == commentId`. This should be done in a single batch.
+**Warning signs:**
+- `Attrib` array length is always 1 regardless of how many times a file has been stamped.
+- Prior `ExtId` / `Created` values disappear after re-stamp.
+- Meta audit reports missing attribution history.
 
-**Phase:** REVIEW-02
+**Phase to address:** stamp-pipeline (the read-before-write pattern must be in the core implementation, not discovered in QA)
 
 ---
 
-### Pitfall 8: Selection-Based Review Links Require New Data Model — No Array Field Exists
+### Pitfall 8: XMP Namespace String Must Exactly Match `.config` File Definition
+
+**Severity:** [HIGH]
 
 **What goes wrong:**
-The current `ReviewLink` type has only `folderId: string | null` for scoping. There is no `assetIds: string[]` field. REVIEW-03 (selection-based review links) requires the review link to resolve a specific set of assets regardless of folder. The `[token]/route.ts` GET handler fetches assets via `where('folderId', '==', link.folderId)`. Adding an `assetIds` array and doing `where('__name__', 'in', assetIds)` has a hard Firestore limit of 30 document IDs per `in` query (as of 2025 — previously 10, raised to 30).
+The exiftool `.config` file defines a custom namespace with a specific URI (e.g., `http://ns.attribution.com/ads/1.0/`). When exiftool-vendored writes to this namespace, the tag names must be prefixed exactly as defined in the config. If the config file is not provided at runtime (wrong path, not bundled in the Lambda), exiftool silently writes tags under an unknown namespace with the correct tag name but a different URI. The XMP data appears to be written (no error), but Meta's validation tool rejects it because the namespace URI does not match.
 
 **Why it happens:**
-The existing model was designed for folder-level sharing. Asset-level selection is a different scope entirely.
+The `-config` flag in the desktop app points to `resolve(__dirname, '../public/exiftool/.config')`. In the server-side Lambda, `__dirname` does not exist (ES modules) and the `public/` directory is not automatically bundled into the Lambda's function directory. The config file path must be explicitly included in `outputFileTracingIncludes` and resolved via `path.join(process.cwd(), 'public/exiftool/.config')` or equivalent at runtime.
 
-**Consequences:**
-- Selections of more than 30 assets silently break if the `in` query is used naively.
-- A workaround is to batch the lookups: `Promise.all` of multiple `getDoc` calls, one per asset. This works but does N parallel Firestore reads (one per selected asset) instead of one query — acceptable for 10–50 assets, slow for hundreds.
-- `assetIds` stored as a Firestore array field on the ReviewLink document is bounded by the 1 MiB document size limit. Each asset ID is ~20 chars. 1000 IDs ≈ 20 KB — well within limits. This is not a practical concern.
+**How to avoid:**
+- Add the config file to `outputFileTracingIncludes` for the stamp route.
+- On Lambda cold start, verify the config path exists via `existsSync()` and fail-fast if not.
+- Pass the verified path as `exiftoolArgs: ['-config', resolvedConfigPath]` when constructing ExifTool.
+- After every stamp, do a verification read: `const verify = await et.read(stampedPath); assert(verify.Attrib)` — this will catch silent namespace mismatches.
 
-**Prevention:**
-- Add `assetIds?: string[]` to the `ReviewLink` type and Firestore schema.
-- In `[token]/route.ts` GET, branch: if `link.assetIds?.length`, fetch assets by their IDs using individual `getDoc` calls batched in `Promise.all`. If `link.folderId`, use the existing folder query. If neither, use the project-level query.
-- Cap the UI selection at a reasonable limit (e.g., 100 assets) to prevent runaway parallel reads.
-- On the review link page, filter displayed assets to only those in `assetIds` if the field is present.
+**Warning signs:**
+- exiftool write succeeds with no error but the `Attrib` field reads back as undefined after verification.
+- Meta audit tool reports "unknown namespace" or "tag not recognized."
+- Works in local dev (config file present), fails on Vercel (config file not bundled).
 
-**Phase:** REVIEW-03
+**Phase to address:** stamp-pipeline
 
 ---
 
-### Pitfall 9: Stale Review Links After Asset Deletion or Move
+### Pitfall 9: /tmp Disk Exhaustion Under Parallel Stamp Requests
+
+**Severity:** [HIGH]
 
 **What goes wrong:**
-When an asset referenced in a selection-based review link is deleted or moved out of the scoped folder, the review link silently shows fewer assets (or the wrong assets) without any indication to the link creator that the selection has changed.
+Vercel Lambda `/tmp` is 512MB total for the container, shared across all requests hitting the same warm container. A stamp job downloads the source video (up to 500MB), writes the stamped copy (same size), then cleans up. If two stamp requests hit the same warm Lambda simultaneously (or a previous request's cleanup failed), `/tmp` can hit 512MB and writes fail with `ENOSPC`. The source download write to `/tmp` throws, the exiftool write has no space to produce output, and the job is left `failed` with a disk-space error that is hard to interpret.
 
 **Why it happens:**
-Review links are snapshots of intent, not live queries. The `assetIds` array stores IDs at creation time. There is no Firestore trigger or cleanup mechanism.
+Vercel's `/tmp` limit is 512MB total per container (not per invocation). The sprite route (generate-sprite) addressed this by checking `asset.size` before download and refusing files >1.5GB. But stamp jobs operate on the same large files. If cleanup in the `finally` block fails (e.g., due to an open file descriptor from exiftool), the tmp directory accumulates across warm reuses.
 
-**Consequences:**
-- A reviewer opens the link expecting 5 assets; only 4 load because one was deleted. No error — it just doesn't appear.
-- For folder-scoped links: moving an asset OUT of a folder removes it from the link immediately (the query still works, it just matches fewer results). Moving an asset INTO the folder adds it immediately. This is arguably correct behavior for folder links but surprising for selection-based links.
+**How to avoid:**
+- Follow the sprite route pattern exactly: check `asset.size` at the top; define a hard ceiling (e.g., 500MB for stamps given the 512MB `/tmp` budget).
+- Use `mkdtemp` with a unique prefix per request (already the pattern in the sprite route, line 152).
+- In the `finally` block: `await et.end()` first (flushes the Perl process and closes file descriptors), then `await fs.rm(tmpDir, { recursive: true, force: true })`.
+- Log cleanup failures as errors but do not throw from `finally` (matches the sprite route pattern at lines 302–305).
+- For assets larger than the `/tmp` ceiling, fail the job immediately with a clear `stampedGcsPath: null` and error: "asset too large for server-side stamping."
 
-**Prevention:**
-- For selection-based links: when a `GET /api/assets/:id` returns 404 (deleted), the review link token page should show a placeholder "Asset unavailable" card, not silently omit it.
-- For folder-scoped links: current behavior (live folder query) is correct. Document this.
-- Do not attempt to keep `assetIds` in sync with deletions via Firestore triggers — this is over-engineering for v1.4. The missing asset UX is sufficient.
+**Warning signs:**
+- `ENOSPC` errors in stamp job logs.
+- `/tmp` cleanup errors (`EBUSY`) cascading across requests on the same warm container.
+- Stamp failures correlating with large source files.
 
-**Phase:** REVIEW-03
+**Phase to address:** stamp-pipeline
 
 ---
 
-### Pitfall 10: Compare View Comment Fetch Fires N+1 Reads on Version Switch
+## Moderate Pitfalls [MEDIUM] — UX degradation, silent wrong behavior
+
+---
+
+### Pitfall 10: JPEG XMP APP1 Segment Conflicts With EXIF APP1 Segment
+
+**Severity:** [MEDIUM]
 
 **What goes wrong:**
-COMPARE-02 requires the compare view to show the focused version's comments. If clicking a version label triggers `useComments(assetId)` to re-initialize with a new `assetId`, the hook re-fetches from `/api/comments?assetId=X`. With two panels, each version switch triggers one fetch per panel. If a user rapidly cycles through 5 versions on each side (testing UX), that is 10 sequential API calls, each spawning a Firestore query. The API already does a full collection scan via `where('assetId', '==', assetId)` with no index — Firestore will auto-index this, but repeated rapid calls can exhaust the 1 req/sec write rate on Firestore index building for new users.
+JPEG files store both EXIF metadata and XMP metadata in `APP1` segments, but they are distinguished by a magic byte string at the start of each segment (`Exif\0\0` vs `http://ns.adobe.com/xap/1.0/\0`). exiftool handles this correctly in isolation. However, if the source JPEG was processed by a tool that wrote a malformed or duplicate APP1 segment, exiftool may fail to locate the XMP segment and write a second XMP block. The file then has two XMP APP1 segments. Most parsers use the first one; some use the second. Meta's validator uses the first. The stamped data is in the second — the stamp appears to succeed but the validation fails.
 
 **Why it happens:**
-`useComments` re-fetches any time `assetId` changes (the `useEffect` depends on it via `fetchComments` which depends on `assetId`). There is no debounce or cache.
+iPhone photos, camera-to-computer imports, and web-scraped images frequently have malformed EXIF/XMP interleaving. exiftool's behavior on corrupt JPEG metadata is to log a warning and proceed — warnings go to stderr but exiftool exits 0.
 
-**Consequences:**
-- Rapid version switching causes visible comment-panel flicker (loading state → comments → loading state → comments).
-- Under test/demo conditions with many rapid switches, multiple in-flight requests may race and the last-to-respond wins, showing stale comments.
+**How to avoid:**
+- Capture exiftool's stderr during write operations and log it.
+- After stamping, do a verification read and check that `Attrib` is present — this catches XMP-not-found silently succeeding.
+- For JPEGs sourced from user upload (not studio-controlled), add a pre-stamp validation step: `exiftool -validate -warning filename.jpg` to detect malformed segments before writing.
 
-**Prevention:**
-- Add a 150–200 ms debounce to the assetId-change trigger in the compare view before calling `fetchComments`. This eliminates the race for rapid UI interaction.
-- Alternatively, cache fetched comments by `assetId` in a `useRef` map inside `useComments`. On switch, serve from cache immediately while re-fetching in the background.
-- The existing `GET /api/comments?assetId=X` path already sorts results client-side after the query — acceptable at current scale.
+**Warning signs:**
+- exiftool exits 0 but stderr contains "Warning: [minor] JFIF APP0 before EXIF."
+- Post-stamp read shows `Attrib: undefined`.
+- Only affects JPEGs; MP4s and PNGs stamp correctly.
 
-**Phase:** COMPARE-02
+**Phase to address:** stamp-pipeline (image format handling)
 
 ---
 
-### Pitfall 11: Video.js Source Switch Leaves Stale Audio State on Version Change
+### Pitfall 11: PNG XMP Writes Not Universally Supported — HEIC/AVIF May Be Silent No-Op
+
+**Severity:** [MEDIUM]
 
 **What goes wrong:**
-COMPARE-01 adds audio switching by clicking a version label in compare view. The current compare view implementation uses two `<video>` elements loaded with signed URLs. When the user switches version (clicks a different version label), the implementation must call `player.src({ src: newSignedUrl })` on the Video.js instance. Video.js does not reset its internal audio track selection when `src()` is called — if the previous source had audio track 0 selected, the new source may have a different track ordering, causing the "wrong" audio channel to play.
+exiftool can write XMP to PNG (via the `iTXt` chunk) and to many image formats. However, for HEIC and AVIF, the XMP support depends on exiftool version and the specific subformat. If the asset is an HEIC file (common from iPhones) and the bundled exiftool version does not support XMP writing for that container, `exiftool.write()` exits 0 but no metadata is written. The stamped file is identical to the source, but `stampedGcsPath` is set and the UI shows "Meta-stamped." The actual XMP is absent.
 
 **Why it happens:**
-Video.js maintains audio track state across source changes. The `AudioTrackList` is not automatically cleared on `src()`. Known Video.js behavior, documented in issue #8198 (github.com/videojs/video.js).
+exiftool-vendored ships a specific exiftool version. HEIC/AVIF XMP write support was added in exiftool 12.x but has had regressions. The `image-metadata.ts` fallback already uses ffprobe for HEIC/AVIF (Phase 64 note), acknowledging that these formats need special treatment.
 
-**Consequences:**
-- After switching versions, audio may be silent (if the new source's track 0 is a different language track and the player was on track 1 of the previous source).
-- More commonly: audio simply plays correctly because most assets have one audio track. The bug only surfaces with multi-track media.
+**How to avoid:**
+- After every stamp operation, regardless of format, do a verification read: `const verify = await et.read(stampedPath); if (!verify.Attrib) throw new Error('XMP write verification failed')`.
+- For HEIC/AVIF, add format detection before stamping; if the format is known-unsupported, mark the job as `failed` with `error: 'XMP stamping not supported for HEIC/AVIF — use exported MP4'` and do NOT set `stampedGcsPath`.
+- Document in the UI: "Meta-stamped" badge only appears when stamp succeeded AND verification passed.
 
-**Prevention:**
-After calling `player.src({ src: newSignedUrl })`, call `player.load()` and then, in the `loadedmetadata` handler, explicitly select the desired audio track: `player.audioTracks()[0].enabled = true`. Reset all other audio tracks to `enabled = false` to ensure a clean state.
+**Warning signs:**
+- `stampedGcsPath` set on HEIC assets but the file is binary-identical to the original.
+- exiftool returns exit 0 with no warnings for HEIC write.
+- Post-stamp read of `Attrib` returns undefined.
 
-Additionally: the bigger audio-sync issue in compare view is that both players share a play/pause/seek state but have independent audio. The correct UX for "click to hear this version's audio" is: mute the other player (`player.muted(true)`) and unmute the clicked player (`player.muted(false)`). This is simpler than track selection and avoids the multi-track edge case entirely.
-
-**Phase:** COMPARE-01
+**Phase to address:** stamp-pipeline
 
 ---
 
-### Pitfall 12: Move to Folder Splits a Version Group if Only One Member Is Moved
+### Pitfall 12: Timezone Mismatch — `Created` Field Uses UTC Server Clock, Meta Expects Local Date
+
+**Severity:** [MEDIUM]
 
 **What goes wrong:**
-MOVE-01 adds a "Move to folder" context menu. The natural implementation is: call `PUT /api/assets/:id` with `{ folderId: newFolderId }`. The existing PUT handler (`[assetId]/route.ts` lines 89–111) already correctly handles this: it detects `folderId` in the updates and moves ALL version group members atomically via a batch. But if a developer adds a new code path (e.g., a drag-to-folder handler that calls a different endpoint, or a bulk-move operation that sends individual PUT requests per asset), the batch logic is bypassed and only one asset in the stack is moved.
+The reference app uses `dayjs().format('YYYY:MM:DD')` — `dayjs()` uses the local system clock (US Pacific on the designer's Mac). A Vercel Lambda runs in UTC. At 11:00 PM Pacific on April 22, the Lambda produces `2026-04-23` (UTC), while the desktop app would produce `2026-04-22`. If Meta's audit requires the `Created` date to match the campaign date (the date the file was delivered to the reviewer), a UTC-based server date is 8 hours ahead of Pacific and will show the wrong date for evening-delivery stamping.
 
 **Why it happens:**
-The batch-move logic is embedded inside the PUT handler, not extracted as a reusable utility. It is invisible to new code paths. Future developers may not know it exists.
+`new Date()` and `dayjs()` on a server without timezone configuration use UTC. The desktop reference app is user-local. The v2.4 `Created` field is not just decorative — it feeds Meta's attribution audit trail.
 
-**Consequences:**
-- V1 is in folder A, V2–V4 are still in folder B. The grid queries by `folderId` so only V1 appears in folder A; V2–V4 appear in folder B as separate cards (or are hidden if their `versionGroupId` points to V1 which is no longer colocated).
-- This is silent data corruption — the version stack still exists in Firestore but is split across folders.
+**How to avoid:**
+- Accept a `timezone` parameter in the stamp request (e.g., `America/Los_Angeles`), or infer it from the project's configured timezone (store on the `project` doc).
+- Use `dayjs().tz(timezone).format('YYYY:MM:DD')` (requires `dayjs/plugin/timezone` and `dayjs-timezone`).
+- Default to `America/Los_Angeles` if not configured (matches the reference app's environment).
+- Add a unit test that stamps a file at 11:30 PM UTC / 3:30 PM Pacific and asserts the `Created` date is the Pacific date.
 
-**Prevention:**
-- The MOVE-01 context menu action must call `PUT /api/assets/:id` (the existing endpoint with batch-move logic), not a new endpoint.
-- Add a comment to the PUT handler explicitly stating the batch-move behavior, so future developers do not bypass it.
-- Consider extracting a `moveVersionGroup(assetId, folderId, db)` server utility function so any future endpoint can call it without re-implementing the batch logic.
+**Warning signs:**
+- `Created` date in stamped files is one day ahead of the expected delivery date for evening stamps.
+- Meta audit reports date mismatches for assets delivered in the second half of the day.
 
-**Phase:** MOVE-01
+**Phase to address:** stamp-pipeline
 
 ---
 
-### Pitfall 13: Move to Folder Invalidates Folder-Scoped Review Links
+### Pitfall 13: Old Stamped File Orphaned in GCS When Asset Is Renamed
+
+**Severity:** [MEDIUM]
 
 **What goes wrong:**
-Review links scoped to `folderId = "folderA"` show all assets where `folderId == "folderA"`. Moving an asset OUT of folderA removes it from that review link immediately (the query no longer matches). The review link creator is not notified. If the Client Facing folder had a shared review link and a manager moves assets out of it, reviewers lose access to those assets without warning.
+When an asset is renamed, the `stampedGcsPath` is invalidated (the stamp embeds `ExtId = basename(filename, ext)` from the filename). The v2.4 plan calls for lazy re-stamp on rename. The new stamp creates a new GCS object at a different path. The old GCS object (old stamped file, potentially 500MB) remains in GCS indefinitely. There is no cleanup step. At scale, with many renames and re-stamps, this creates significant storage waste.
 
 **Why it happens:**
-Review links are live folder queries, not snapshots. This is by design for folder-scoped links (changes to the folder are reflected in the link). But the move-to-folder UX does not surface this consequence.
+The existing `deleteFile()` in `gcs.ts` is only called explicitly during hard-delete operations. There is no "delete old stamped file before writing new one" step in the stamp pipeline.
 
-**Consequences:**
-- An external reviewer opens a previously-shared review link and finds assets missing.
-- No error is shown — the link loads successfully with fewer assets.
+**How to avoid:**
+- In the stamp route, read `asset.stampedGcsPath` before writing the new stamped file.
+- If a prior `stampedGcsPath` exists, call `deleteFile(asset.stampedGcsPath)` after the new stamp is confirmed uploaded to GCS.
+- Order matters: new upload first → Firestore update of `stampedGcsPath` → delete old file. Never delete first (leaves a window where the asset has no stamped file).
+- Also delete `stampedGcsPath` file during asset hard-delete (add to `hardDeleteAsset` in `src/lib/trash.ts`).
 
-**Prevention:**
-This is a UX communication problem, not a code bug. In the Move To dialog, if the source folder has any review links, show a warning: "This folder has active review links. Moving assets will remove them from those links." This requires a lightweight query: `where('folderId', '==', sourceFolderId)` on `reviewLinks` collection. Do not block the move — just warn.
+**Warning signs:**
+- GCS bucket accumulating multiple `stamped-*.mp4` files per assetId.
+- Storage costs creeping up after a period of heavy renaming.
 
-**Phase:** MOVE-01
+**Phase to address:** invalidation phase
 
 ---
 
-## Moderate Pitfalls
+### Pitfall 14: Stale `stampedAt` vs `stampedGcsPath` — Timestamp Field Type Mismatch
 
----
-
-### Pitfall 14: Reorder Operation Is Not Atomic — Concurrent Version Upload Creates Conflicts
+**Severity:** [MEDIUM]
 
 **What goes wrong:**
-A reorder operation reads all current version docs, computes new `version` values, and writes them in a batch. If another user uploads a new version to the same stack between the read and the batch write, the upload creates a new doc with `version = maxVersion + 1`. The reorder batch then overwrites `version` values for the existing docs but is unaware of the new upload. The newly uploaded file may end up with the same `version` value as one of the reordered docs.
+The cache-busting logic compares `asset.stampedAt` against `asset.updatedAt` to determine whether a re-stamp is needed. If `stampedAt` is a Firestore `Timestamp` object (from `FieldValue.serverTimestamp()`) and `updatedAt` is stored as an ISO string (from a client-side PATCH), the comparison `stampedAt > updatedAt` always produces a wrong result because JavaScript cannot directly compare a Firestore Timestamp object against a string. The `coerceToDate` utility in `src/lib/format-date.ts` handles this, but only if the invalidation check passes through it.
 
 **Why it happens:**
-Firestore batches are atomic for their writes but do NOT check that the read data is still current at write time (unlike transactions). A batch write can succeed even if the underlying documents changed between read and write.
+The existing codebase has this exact problem solved in `src/lib/format-date.ts` (Phase 49 fix), but the stamp invalidation logic is new code that must explicitly use `coerceToDate`. A developer writing the invalidation check inline (`asset.stampedAt < asset.updatedAt`) will hit the type mismatch silently — the comparison returns `false` or `true` unpredictably depending on the Timestamp shape.
 
-**Prevention:**
-Use a Firestore **transaction** (not a batch) for reorder: read all group members inside the transaction, compute new version numbers, write them — all in one atomic operation. The transaction will retry if any member doc changed between the read and write. The existing `merge-version/route.ts` uses a batch (acceptable there because the merge reads are done outside the batch). Reorder should use `db.runTransaction()`.
+**How to avoid:**
+- The invalidation check in `decorate()` and `POST /api/review-links` must use: `coerceToDate(asset.stampedAt) < coerceToDate(asset.updatedAt)`.
+- Add a unit test with a Firestore Timestamp `stampedAt` and ISO string `updatedAt` asserting the comparison returns the correct boolean.
+- Standardize: all new timestamp fields written by server routes use `FieldValue.serverTimestamp()` (Firestore Timestamp). All fields that may come from the client use ISO strings. Never mix at the comparison site.
 
-**Phase:** VSTK-01
+**Warning signs:**
+- Re-stamp never triggered on rename (always shows as current).
+- Re-stamp always triggered even when `stampedAt` is more recent than `updatedAt`.
+- Type errors only visible in TypeScript strict mode, not at runtime.
+
+**Phase to address:** invalidation phase
 
 ---
 
-### Pitfall 15: Status Labels Are Per-Asset-Doc, Not Per-Version-Group
+### Pitfall 15: Review-Link POST Blocking for 30s+ When Stamping Sync
+
+**Severity:** [MEDIUM]
 
 **What goes wrong:**
-If `reviewStatus` is stored per asset document, then each version in a stack has its own `reviewStatus`. The UI must decide: does the grid card show the latest version's status? The group's status? Any version's status if any is approved? If the implementation is inconsistent — some code reads the latest version's status, other code reads a "group-level" status that doesn't exist — the displayed badge is wrong.
+The plan says "sync stamping for ≤3 assets." A 3-asset review link with 500MB videos will block the POST for 3 × (download + exiftool + upload) time. Each stamp operation for a large file could take 15–30s. Three in sequence = 45–90s, exceeding `maxDuration=60`. Even if the videos are small, 3 sequential stamp operations + GCS uploads can easily hit 30s, making the review link creation feel broken.
 
 **Why it happens:**
-There is no "version group" document in the current schema. All metadata is on individual asset docs. Status could be on any or all of them.
+Sync stamping is simpler to implement and the plan caps it at 3. But the 60s maxDuration budget is shared with the review link creation logic itself, GCS signed URL generation, and Firestore writes.
 
-**Prevention:**
-Decide: `reviewStatus` lives only on the latest version doc (highest `version` integer). When a new version is uploaded, it gets no `reviewStatus`. The grid card always shows the latest version's `reviewStatus`. This is consistent with how the grid already works (it shows the latest version's thumbnail, name, and metadata). Document this convention explicitly and enforce it in the status-update API route.
+**How to avoid:**
+- Make stamping async even for 1–3 assets. Return the review link token immediately with a `stampingStatus: 'pending'` flag.
+- The client polls the stamp job status via the existing `GET /api/assets/[id]/jobs` endpoint.
+- The `decorate()` function in the review link response falls back to the original `signedUrl` if `stampedGcsPath` is not yet available.
+- Define a clear time budget: if the stamp queue has not resolved within the review link's `maxDuration`, fail the stamp job (not the review link creation).
+- Never block the POST for stamp processing regardless of asset count.
 
-**Phase:** STATUS-01
+**Warning signs:**
+- `CreateReviewLinkModal` spinner running for >15s.
+- Vercel function timeout errors on review link creation for large assets.
+- Users clicking "Create Review Link" multiple times (thinking it didn't work).
+
+**Phase to address:** review-link integration phase
 
 ---
 
-### Pitfall 16: Comment Strip During Copy Needs Explicit Definition
+### Pitfall 16: Guest Clicks Download Before Stamp Finishes — Gets Original (Not Stamped) File
+
+**Severity:** [MEDIUM]
 
 **What goes wrong:**
-REVIEW-02 says "strip comments when copying to Client Facing Folder." The copy route creates new asset docs. New asset docs have no comments by definition — there is nothing to strip. The "strip" language implies that comments from the source asset should NOT be copied. Since the current copy route copies only Firestore doc fields (not comments), it already "strips" them. No special implementation is needed — but a developer may add comment-copying logic thinking it is required for a complete copy, inadvertently introducing the bug they are trying to avoid.
-
-**Prevention:**
-Explicitly document in the copy route that comments are intentionally not copied. Add a code comment: `// Comments are per-assetId and not duplicated on copy — this is intentional for review folder workflow`. This prevents well-intentioned future additions.
-
-**Phase:** REVIEW-02
-
----
-
-## Minor Pitfalls
-
----
-
-### Pitfall 17: Selection-Based Review Link Has No Folder for Virtual Browser Navigation
-
-**What goes wrong:**
-The current review link page has a virtual folder browser (the existing folders query in `[token]/route.ts` lines 77–84). For selection-based links (no `folderId`), the folder structure doesn't apply — the link is a flat list of specific assets. If the folder browser is shown on selection-based review links, it will show all project root folders, which is confusing and potentially leaks folder structure to external reviewers.
-
-**Prevention:**
-When `link.assetIds?.length > 0`, skip the folders query and set `folders = []`. Hide the folder browser in the review link page UI when in selection mode.
-
-**Phase:** REVIEW-03
-
----
-
-### Pitfall 18: Signed URL Generation in Review Link GET Scales Linearly With Asset Count
-
-**What goes wrong:**
-The review link GET handler generates signed URLs for every asset via `Promise.all(assetsSnap.docs.map(async (d) => generateReadSignedUrl(...)))`. At 50 assets, this is 50 parallel GCS requests. At 200 assets, it is 200. GCS signed URL generation is a local cryptographic operation (no network call) when using service account credentials — it is fast. But if the GCS client library makes a network call to fetch a token (e.g., if running with Workload Identity rather than a service account key), 200 network calls is a noticeable latency hit.
+A guest opens a review link immediately after the creator shares it. The stamp job is still `running`. The `decorate()` function checks for `stampedGcsPath` — it's not set yet. It falls back to the original `signedUrl` and `downloadUrl`. The guest downloads the un-stamped original. This is functionally fine but defeats the entire purpose of the feature. If the guest downloads during the ~10–30s stamping window, they get the wrong file.
 
 **Why it happens:**
-The current approach works well at the scale of a small review project (10–30 assets). Selection-based review links for larger selections (50–100 assets) may expose this.
+Async stamping is correct, but without a UI gate that prevents guest download until stamp completes, there is a window where the wrong file is served.
 
-**Prevention:**
-For v1.4 scope (internal team use), this is acceptable. Cap selection-based review link asset count at 50 in the UI. If scaling beyond that, batch signed URL generation or switch to a client-side URL signing pattern.
+**How to avoid:**
+- In the review link guest page, if `asset.stampingStatus === 'pending'`, disable the Download button and show "Preparing file..." with a progress indicator.
+- Poll `GET /api/assets/[id]/jobs` (guest-accessible, filtered to the stamp job) until the job is `ready`, then enable the button.
+- If the stamp job fails, enable the Download button anyway (fall back to original) — do not permanently block download on stamp failure.
+- The `decorate()` function must include `stampingStatus` in the response so the client knows to poll.
 
-**Phase:** REVIEW-03
+**Warning signs:**
+- Guests downloading un-stamped files.
+- No "preparing file" UI while stamp is in progress on the review link page.
+- Download button immediately available even when stamp job is `queued`.
+
+**Phase to address:** UI-feedback phase
 
 ---
 
-### Pitfall 19: Compare View Version Label Click Has No Debounce
+### Pitfall 17: "Stamping in Progress" UI Lies After Stamp Job Fails
+
+**Severity:** [MEDIUM]
 
 **What goes wrong:**
-COMPARE-01: clicking a version label in the compare view to switch audio triggers a Video.js `src()` call and a reload of the video element. If the user double-clicks or rapidly clicks between versions, multiple `src()` calls queue up. Video.js does not cancel an in-flight source load when `src()` is called again — each call triggers a new load, and the loads complete in nondeterministic order. The final active source may not be the last one the user clicked.
+The stamp job transitions `queued → running → failed`. If the client is polling for the job status and the poll interval is 5s, the UI shows "Applying metadata..." for up to 5s after the job has already failed. If the polling stops when the component unmounts (guest navigates away and back), the `stampingStatus` is never re-read from the latest job state, and the UI shows "Applying metadata..." indefinitely.
 
-**Prevention:**
-Debounce the version-switch handler at ~300 ms. Alternatively, track a `switchingVersion` flag and ignore clicks while a source switch is in progress. Reset the flag in Video.js's `loadeddata` event.
+**Why it happens:**
+The polling logic in `useAssetJobs` may stop on unmount. The `sweepStaleJobs` at 2 min will eventually flip the job to `failed`, but the client UI won't know unless it's actively polling.
 
-**Phase:** COMPARE-01
+**How to avoid:**
+- Poll on a fixed interval while the job is `queued` or `running`.
+- When the poll response shows `status: 'failed'`, transition the UI to: enable Download button (fall back to original), show a dismissible "Metadata could not be applied" toast. Do not leave the spinner running.
+- On remount (guest navigates back), re-check job status immediately (no stale UI from a previous session).
+- Cap polling at 60s — if the job is still `running` after 60s, assume it will be swept and treat as failed in the UI.
+
+**Warning signs:**
+- "Applying metadata..." spinner visible on a review link page after 5+ minutes.
+- No error indication after stamp job failure.
+- UI does not update after page revisit.
+
+**Phase to address:** UI-feedback phase
 
 ---
 
-## Phase-Specific Warnings
+### Pitfall 18: Stamped GCS File Publicly Guessable Via Path Pattern
 
-| Phase / Feature | Likely Pitfall | Mitigation |
-|----------------|----------------|------------|
-| VSTK-01: Unstack | Orphaned `versionGroupId` on unstacked asset (Pitfall 2) | Write `versionGroupId = asset.id` on unstack, never null |
-| VSTK-01: Reorder | Version number gaps after reorder/delete (Pitfall 1) | Re-compact all remaining member version numbers in same batch |
-| VSTK-01: Reorder | Concurrent upload mid-reorder creates duplicate version numbers (Pitfall 14) | Use Firestore transaction, not batch |
-| STATUS-01 | Field name collision with existing `status` field (Pitfall 3) | New field `reviewStatus`, never reuse `status` |
-| STATUS-01 | New version upload appears approved (Pitfall 4) | Never copy `reviewStatus` to new version docs |
-| STATUS-01 | Status shown at group vs version level (Pitfall 15) | Status lives on latest version doc only |
-| REVIEW-01 | Inconsistent "latest version" definition (Pitfall 5) | Extract shared `getGroupHead(versions)` utility |
-| REVIEW-01 | Copy shares GCS object — delete original breaks copy (Pitfall 6) | Decide reference vs GCS copy; guard GCS delete if shared |
-| REVIEW-02 | Orphaned comment thread replies on delete (Pitfall 7) | Cascade delete child comments in DELETE handler |
-| REVIEW-02 | Developer adds comment copy logic thinking it is needed (Pitfall 16) | Add explicit comment in copy route that omission is intentional |
-| REVIEW-03 | `in` query limit for large asset selections (Pitfall 8) | Use individual `getDoc` calls via `Promise.all`; cap at 100 assets |
-| REVIEW-03 | Stale link when asset deleted (Pitfall 9) | Show "Asset unavailable" placeholder, do not silently omit |
-| REVIEW-03 | Folder browser shown on selection links (Pitfall 17) | Skip folders query and hide browser in selection mode |
-| REVIEW-03 | Signed URL generation scales with asset count (Pitfall 18) | Cap selection at 50 assets for v1.4 |
-| COMPARE-01 | Video.js stale audio track after source switch (Pitfall 11) | Reset audio tracks in `loadedmetadata`; simpler: use `player.muted()` toggle |
-| COMPARE-01 | Rapid version label clicks race on source load (Pitfall 19) | Debounce 300 ms or track in-progress switch flag |
-| COMPARE-02 | N+1 comment fetches on rapid version switch (Pitfall 10) | Debounce assetId change; optionally cache by assetId |
-| MOVE-01 | Only one stack member moved if new code path bypasses batch logic (Pitfall 12) | All move operations must go through the existing PUT handler |
-| MOVE-01 | Move silently removes asset from folder-scoped review links (Pitfall 13) | Warn user if source folder has active review links |
+**Severity:** [MEDIUM]
+
+**What goes wrong:**
+If the stamped GCS path follows a predictable pattern like `projects/{projectId}/assets/{assetId}/stamped.mp4`, any user who knows a project ID and asset ID can construct the path and attempt to access the file. Since the GCS bucket is private (requiring signed URLs), a direct path is not accessible. But if the bucket ever has a misconfigured IAM rule granting `allUsers` read, all stamped files become publicly accessible. More practically: the path pattern leaking into browser dev tools (via signed URL parameters) exposes the underlying asset structure to guests.
+
+**Why it happens:**
+The pattern follows the existing GCS path scheme (e.g., `projects/{id}/assets/{id}/sprite-v2.jpg`). The concern is that stamped files contain internal metadata (project ID, potentially internal asset IDs embedded in XMP).
+
+**How to avoid:**
+- Use a non-guessable path component: `projects/{projectId}/assets/{assetId}/stamped-{hash}.mp4` where `hash = sha256(assetId + stampedAt)`.
+- Or store under a separate GCS prefix: `stamped/{jobId}/{originalFilename}` — decoupled from the asset path, harder to enumerate.
+- Verify GCS bucket IAM never has `allUsers` or `allAuthenticatedUsers` read access (this should already be enforced; double-check before shipping).
+- Do NOT include the internal `projectId` or `assetId` in the XMP data written by the stamp (the `ExtId` field should be the filename, not internal IDs per the reference app).
+
+**Warning signs:**
+- Signed URLs exposing `stamped.mp4` at the predictable path.
+- A guest's browser network inspector showing the asset's internal structure.
+
+**Phase to address:** stamp-pipeline, auth & authorization
+
+---
+
+## Minor Pitfalls [LOW] — Developer confusion, subtle bugs
+
+---
+
+### Pitfall 19: `ExtId` Should Be Filename Without Extension, Not Asset ID
+
+**Severity:** [LOW]
+
+**What goes wrong:**
+The reference app computes `ExtId = basename(tags.FileName, extension)` — the filename without its extension. A server-side implementation that uses `asset.id` (the Firestore document ID) or `asset.gcsPath` instead will write a different `ExtId`. Meta's audit tool uses `ExtId` to identify the creative. A mismatch between what the desktop app produces and what the server produces will cause attribution discrepancies in the audit trail.
+
+**Why it happens:**
+The server has easy access to `asset.id` but needs to explicitly look up `asset.name` (the filename) and strip the extension.
+
+**How to avoid:**
+- Compute `ExtId = path.basename(asset.name, path.extname(asset.name))` exactly as the desktop app does.
+- The `asset.name` field in Firestore is the user-facing filename.
+- Write a unit test asserting `ExtId` for `"campaign-video-v1.mp4"` is `"campaign-video-v1"`.
+
+**Phase to address:** stamp-pipeline
+
+---
+
+### Pitfall 20: `FbId` Stored as JavaScript Number — Precision Loss for Large Integers
+
+**Severity:** [LOW]
+
+**What goes wrong:**
+`FbId = 2955517117817270` is a 64-bit integer. JavaScript's `Number` type can represent integers exactly up to `Number.MAX_SAFE_INTEGER = 9007199254740991`. `2955517117817270 < 9007199254740991`, so this specific value is safe. However, if `FbId` is ever read from Firestore (where it would be stored as a `number` in the document) and compared or passed to exiftool, JavaScript number representation is sufficient. This is low risk for the specific hardcoded value but worth noting if `FbId` is later made configurable and a user enters a larger ID.
+
+**How to avoid:**
+- Keep `FbId` hardcoded as a constant — do not read it from user input.
+- If making it configurable (deferred per v2.4 scope), store as a Firestore `string` and pass as a string to exiftool.
+
+**Phase to address:** stamp-pipeline
+
+---
+
+### Pitfall 21: `sweepStaleJobs` 2-Minute Watermark Too Long for Failed Stamp Jobs
+
+**Severity:** [LOW]
+
+**What goes wrong:**
+The existing sweep (`src/lib/jobs.ts` line 73) marks jobs stuck in `running` for >2 min as failed. A stamp job that crashes immediately (e.g., binary not found, /tmp full) transitions to `failed` on its own via the catch block. But if `updateJob` in the catch block also fails (Firestore write error), the job stays `running` with no error. The 2-minute sweep will eventually fix it, but the `CreateReviewLinkModal` UI shows "Applying metadata..." for the full 2 minutes before showing the error state.
+
+**How to avoid:**
+- Add a `stampingTimeout` of 90s to the stamp route itself: use `Promise.race([stampProcess, timeout(90000)])` and if the stamp times out, mark the job failed explicitly before the Lambda deadline.
+- The 2-minute sweep is a last-resort safety net; the route should self-report failure before the Lambda is SIGKILL'd at 60s.
+
+**Phase to address:** stamp-pipeline
+
+---
+
+### Pitfall 22: Local Dev Works Without Exiftool Because Fallback to System Perl
+
+**Severity:** [LOW]
+
+**What goes wrong:**
+On a developer's machine, exiftool may be installed system-wide (`/usr/bin/exiftool` or Homebrew). If the `node_modules/exiftool-vendored.pl` binary is missing (e.g., wrong lockfile), exiftool-vendored may fall back to the system Perl + system exiftool. Everything works locally. The Vercel Lambda has neither — it fails at runtime. The mismatch means local dev gives false confidence.
+
+**How to avoid:**
+- Add a startup check to the stamp route: log which exiftool binary path is being used. If it is not the vendored path, fail loudly in development with a console warning.
+- Add an integration test that explicitly asserts the vendored binary path is used, not a system fallback.
+- In package.json, add `exiftool-vendored.pl` explicitly to `dependencies` (not just `exiftool-vendored`), so npm always installs the Linux binary.
+
+**Phase to address:** stamp-pipeline (deployment verification)
+
+---
+
+## Technical Debt Patterns
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Sync stamping for ≤3 assets | Simpler code, no polling UI for small links | Blocks review link creation for large files, can hit 60s timeout | Never — async is correct from day one |
+| `uploadBuffer()` for stamped video | Reuses existing helper | OOM on files >250MB | Never for stamp pipeline — use streaming upload |
+| Skip verification read after exiftool write | Faster per-stamp | Silent XMP failures undetected until Meta audit | Never — always verify |
+| `-stay_open True` in serverless | Faster repeated stamps (process reuse) | Zombie Perl processes, OOM across warm invocations | Never in serverless |
+| Hardcode config path as `public/exiftool/.config` | Works in dev | Missing in Lambda if not traced | Acceptable in dev only; always verify in prod |
+
+---
+
+## Integration Gotchas
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| exiftool-vendored on Vercel | Install meta-package only; Linux binary missing from bundle | Add `exiftool-vendored.pl` to deps + `outputFileTracingIncludes` |
+| GCS upload for large files | Use `uploadBuffer()` for all files | Use streaming upload for files >50MB |
+| Firestore Timestamp vs ISO string | Direct comparison `stampedAt < updatedAt` | Always route through `coerceToDate()` from `src/lib/format-date.ts` |
+| Job dedup for stamp | Call `createJob()` unconditionally | Wrap in transaction that checks for existing queued/running stamp job |
+| exiftool config file | Omit from bundle; works locally via system exiftool | Add to `outputFileTracingIncludes`; verify path on cold start |
+| GCS cleanup after re-stamp | Write new file, update Firestore, forget old file | Delete old `stampedGcsPath` after new upload confirmed |
+
+---
+
+## Performance Traps
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Sequential stamp for N assets in review link POST | 30s+ review link creation | Always async stamp; return link immediately with `stampingStatus: pending` | At 2 assets × large files |
+| Not streaming GCS download to /tmp | OOM on Lambda for files >256MB | Stream to /tmp (same as sprite route pattern) | At ~256MB source files |
+| Not streaming GCS upload from /tmp | OOM on Lambda for files >250MB | Stream from local file to GCS write stream | At ~250MB stamped files |
+| Polling with no timeout cap | "Applying metadata..." hangs forever on failed job | Cap poll at 60s; fall back to original on timeout | Immediately on stamp failure |
+
+---
+
+## Security Mistakes
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Stamped GCS path follows predictable pattern | Path enumeration exposes asset structure | Add a hash or jobId component to the stamped path |
+| Internal project/asset IDs written into XMP Attrib | Leaks internal structure to external reviewers | Only write `ExtId` (filename), `Created`, `Data`, `FbId` — no internal IDs |
+| Stamp route accessible without auth | Any caller can trigger expensive stamp operation | Require authenticated user (not guest token) to POST stamp; guests only trigger via review-link creation |
+| Stamped file signed URL cached past expiry | Guest downloads fail silently | Apply same `getOrCreateSignedUrl` cache logic from `src/lib/signed-url-cache.ts` to stamped URLs |
+
+---
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Blocking review link creation for stamp | Creator waits 30s+, thinks it failed | Async stamp; return link immediately; show "Preparing files..." on guest page |
+| Download available before stamp done | Guest gets un-stamped original | Disable download button while `stampingStatus: pending`; poll and enable on ready |
+| Spinner forever after stamp failure | Guest confused, cannot download | Detect failed job state; fall back to original; show "Metadata could not be applied" toast |
+| "Meta-stamped" badge on failed stamp | Incorrect compliance signal | Badge only shown when stamp verified (post-write read confirms `Attrib` present) |
+| No distinction between "stamping in progress" and "stamp failed" | User cannot tell if they should wait or act | Two distinct UI states: amber spinner for in-progress, red warning + fallback download for failed |
+
+---
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **Exiftool binary:** Bundled in Lambda for Linux x64 — verify `existsSync(exiftoolBinPath)` on cold start returns true in Vercel logs.
+- [ ] **Config file bundled:** `.config` file for custom namespace included in `outputFileTracingIncludes` — verify path resolves in Lambda.
+- [ ] **Attrib append:** Second stamp of same file produces `Attrib.length === 2`, not 1 — unit test covers this.
+- [ ] **et.end() awaited:** `finally` block has `await et.end()` not `et.end()` — review every stamp code path.
+- [ ] **Faststart preserved:** Stamped MP4 passes `ffprobe -v quiet -show_entries format_tags=major_brand` and `moov` is before `mdat` — automated check in stamp pipeline.
+- [ ] **Streaming upload:** Stamp route uses streaming GCS upload, not `uploadBuffer()` — code review gate.
+- [ ] **Orphan cleanup:** Old `stampedGcsPath` deleted before/after new stamp on rename — trace the rename → invalidate → re-stamp → delete-old flow in tests.
+- [ ] **Timezone:** `Created` field shows the Pacific date for an evening-UTC stamp — unit test with fixed UTC timestamp.
+- [ ] **Verification read:** Post-stamp `et.read()` on stamped file asserts `Attrib` is present — every stamp code path.
+- [ ] **Guest UI:** Download button disabled while `stampingStatus: pending` — manual QA on review link page.
+
+---
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Binary missing on deploy | LOW | Add to `outputFileTracingIncludes`, redeploy. No data loss. |
+| et.end() not awaited → corrupt GCS files | HIGH | Delete corrupt stamped GCS objects; re-run stamp jobs; audit `stampedGcsPath` files for truncation. |
+| Attrib history clobbered | HIGH | Cannot recover prior attribution entries. Re-stamp from source files only adds current entry, not history. Require re-delivery to Meta. |
+| MP4 faststart destroyed | MEDIUM | Re-run stamp with post-processing faststart step. Delete old stamped file, upload corrected one. |
+| Orphaned GCS files from renames | LOW | One-time GCS lifecycle policy to delete objects older than N days under the `stamped/` prefix if not referenced by any asset doc. |
+| Timezone wrong date in Created | MEDIUM | Re-stamp affected files with corrected timezone. Identify affected stamps via `Created` date mismatch in audit. |
+
+---
+
+## Pitfall-to-Phase Mapping
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| Linux binary missing (P1) | stamp-pipeline | Cold-start log shows vendored binary path; Vercel deploy test |
+| `-stay_open True` in serverless (P2) | stamp-pipeline | Code review: ExifTool constructor has no `-stay_open` |
+| `et.end()` not awaited (P3) | stamp-pipeline | Code review + integration test: stamp + verify + cleanup completes without EBUSY |
+| MP4 faststart destroyed (P4) | stamp-pipeline | Automated `ffprobe moov offset` check post-stamp |
+| Concurrent stamp race (P5) | stamp-pipeline | Load test: 2 simultaneous stamp requests for same asset → 1 GCS object |
+| Large file OOM on upload (P6) | stamp-pipeline | Integration test with 250MB file: memory stays below 512MB |
+| Attrib append broken (P7) | stamp-pipeline | Unit test: double-stamp → `Attrib.length === 2` |
+| Config file not bundled (P8) | stamp-pipeline | Post-deploy smoke test: stamp a file, read back `Attrib` |
+| /tmp disk exhaustion (P9) | stamp-pipeline | Stress test: 3 concurrent stamps on same container |
+| JPEG XMP conflict (P10) | stamp-pipeline | Test with known malformed JPEG; check stderr capture |
+| HEIC/AVIF no-op (P11) | stamp-pipeline | Unit test: stamp HEIC → verify read returns Attrib or job fails cleanly |
+| Timezone mismatch (P12) | stamp-pipeline | Unit test with fixed UTC time; assert Pacific date |
+| Orphaned GCS on rename (P13) | invalidation phase | Integration test: rename → re-stamp → assert old GCS path deleted |
+| Timestamp type mismatch (P14) | invalidation phase | Unit test: `coerceToDate(Timestamp) < coerceToDate(ISOString)` correct |
+| Blocking review link POST (P15) | review-link integration | Load test: 3-asset review link creation completes in <3s |
+| Guest downloads before stamp (P16) | UI-feedback phase | Manual QA: open review link during stamp window; download disabled |
+| Spinner lies after failure (P17) | UI-feedback phase | Manual QA: trigger stamp failure; confirm spinner → error state transition |
+| Guessable GCS path (P18) | stamp-pipeline | Code review: stamped path includes non-predictable component |
 
 ---
 
 ## Sources
 
-- Codebase analysis (2026-04-08): `src/types/index.ts`, `src/app/api/assets/[assetId]/route.ts`, `src/app/api/assets/merge-version/route.ts`, `src/app/api/assets/copy/route.ts`, `src/app/api/review-links/[token]/route.ts`, `src/app/api/review-links/route.ts`, `src/app/api/comments/route.ts`, `src/hooks/useComments.ts`, `src/hooks/useAssets.ts`
-- Firestore batch vs transaction: official Firebase docs — transactions retry on concurrent edit; batches do not check read staleness. HIGH confidence.
-- Firestore `in` query limit: official Firebase quotas page — 30 items per `in` clause (raised from 10 in 2023). HIGH confidence.
-- Firestore no cascade delete: official docs + multiple community sources confirming this is by design. HIGH confidence.
-- Video.js audio track state on src() change: GitHub issue #8198, confirmed by Video.js issue #5607. MEDIUM confidence (GitHub issues, not official docs).
-- GCS signed URL generation is local crypto when using service account key: official Cloud Storage docs. HIGH confidence.
+- Codebase analysis (2026-04-23): `src/app/api/assets/[assetId]/generate-sprite/route.ts` (streaming download pattern, binary resolution, tmp cleanup), `src/app/api/exports/route.ts` (inline ffmpeg pattern, upload-back via `uploadBuffer`), `src/lib/jobs.ts` (job state machine, `sweepStaleJobs`), `src/lib/gcs.ts` (`uploadBuffer` signature, `downloadToFile`, streaming absence), `next.config.mjs` (existing `outputFileTracingIncludes` pattern), `src/lib/format-date.ts` (Timestamp coercion), `scf-metadata/src/backend/exiftool.js` (reference Attrib append logic, `-stay_open`, `-config`, `ExtId`, `FbId`, `dayjs` usage). HIGH confidence (first-hand source).
+- exiftool-vendored platform packaging: `exiftool-vendored` npm README — uses `optionalDependencies` for `.exe` vs `.pl` sub-packages. HIGH confidence.
+- Vercel Lambda `/tmp` limit: 512MB per container (Vercel docs). HIGH confidence.
+- Vercel Lambda memory: 1024MB on Hobby plan. HIGH confidence.
+- `exiftool -stay_open` behavior in serverless: known anti-pattern in the exiftool community; process persists until `et.end()` called. HIGH confidence.
+- MP4 faststart and exiftool atom rewriting: exiftool documentation on MP4 writing; known issue that `-overwrite_original` can change `moov` position. MEDIUM confidence (documented but version-dependent).
+- JPEG APP1 segment conflict: exiftool FAQ on JPEG XMP writing. HIGH confidence.
+- dayjs timezone behavior: dayjs documentation. HIGH confidence.
+
+---
+*Pitfalls research for: v2.4 XMP Stamping Pipeline — Vercel + Firebase + GCS + exiftool-vendored*
+*Researched: 2026-04-23*

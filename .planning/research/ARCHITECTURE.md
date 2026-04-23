@@ -1,373 +1,669 @@
-# Architecture: v1.4 Review & Version Workflow
+# Architecture: v2.4 XMP Metadata Stamping Integration
 
 **Project:** readyset-review
-**Researched:** 2026-04-08
+**Researched:** 2026-04-23
 **Confidence:** HIGH — all integration points verified against live codebase
+**Scope:** How XMP stamping slots into the existing review-link pipeline without structural teardown
 
 ---
 
-## Existing Architecture Snapshot
+## Executive Summary
 
-### Firestore Schema (current)
+XMP stamping is a "download-to-/tmp, process binary, upload back" job — identical structurally to the probe and generate-sprite routes. The stamp result is asset-scoped (one stamped GCS copy per asset, cached on the asset doc), not review-link-scoped. The review-link POST triggers stamps, the review-link GET `decorate()` serves stamped URLs to guests, and the internal `/api/assets` path is left unchanged. The only genuinely new structural decision is the sync/async split: stamp ≤3 assets synchronously inside the POST (fits the 60s budget), queue the rest as observable jobs for async polling.
+
+---
+
+## 1. Existing Architecture Snapshot (v2.3 state)
+
+### Relevant Firestore Collections
 
 ```
 assets/{assetId}
-  projectId, folderId, name, type, mimeType, url, gcsPath,
-  thumbnailUrl, thumbnailGcsPath, duration, width, height, size,
-  uploadedBy, status: 'uploading'|'ready', version, versionGroupId,
-  versionOrder (unused in current queries), createdAt, frameRate?
+  gcsPath, name, projectId, type, mimeType, status
+  signedUrl, signedUrlExpiresAt           — Phase 62 URL cache
+  thumbnailSignedUrl, thumbnailSignedUrlExpiresAt
+  spriteSignedUrl, spriteSignedUrlExpiresAt
+  thumbnailGcsPath, spriteStripGcsPath
 
-comments/{commentId}
-  assetId, projectId, reviewLinkId?, authorId, authorName, authorEmail?,
-  text, timestamp?, annotation?, resolved, parentId, createdAt
+jobs/{jobId}
+  type: 'probe' | 'sprite' | 'thumbnail' | 'export'
+  assetId, projectId, userId
+  status: 'queued' | 'running' | 'ready' | 'failed'
+  attempt: number   (1-based, max 3)
+  createdAt, startedAt, completedAt, error?
 
 reviewLinks/{token}   (token IS the doc ID)
-  token, projectId, folderId, name, createdBy, expiresAt, allowComments,
-  allowDownloads, allowApprovals, showAllVersions, password?, createdAt
+  assetIds?: string[]
+  folderIds?: string[]
+  folderId: string | null
+  allowDownloads: boolean
+  ...
 ```
 
-### API Routes (current)
+### Key Existing Files
 
-```
-GET/POST  /api/assets                  — list (grouped by version), batch upload sign
-GET/PUT/DELETE /api/assets/[assetId]   — single asset; PUT handles folderId batch-move
-POST      /api/assets/merge-version    — atomic batch merge of two version stacks
-POST      /api/assets/copy             — copies entire version stack to target folder
-GET       /api/assets/size             — folder size badge
-GET/POST  /api/review-links            — list/create, folderId-scoped
-GET/PATCH/DELETE /api/review-links/[token]
-GET/POST  /api/comments
-PUT/DELETE /api/comments/[commentId]
-GET/POST  /api/folders
-GET/PUT/DELETE /api/folders/[folderId]
-```
-
-### Key Component Facts
-
-- **VersionStackModal** lives inside `AssetCard.tsx` as a collocated function. It fetches versions via `GET /api/assets/[assetId]` and currently renders delete-only.
-- **FolderBrowser** owns all multi-select state, move modal state, and the `handleMoveSelected` function that calls `PUT /api/assets/[assetId]` with `{ folderId }`. The PUT route already batch-moves all versions in the group atomically.
-- **AssetCard** owns the context menu and calls `onRequestMove()` which propagates up to FolderBrowser.handleRequestMoveItem — the move-to-folder wiring already exists at the browser level; what's missing is confirming the prop wire is connected.
-- **VersionComparison** receives `versions: Asset[]` (pre-fetched, already have `signedUrl`). It has no comment-awareness; `muted` is a single shared boolean, not per-side.
-- **CreateReviewLinkModal** takes `{ projectId, folderId }` and sends them to `POST /api/review-links`. No concept of `assetIds`.
-- **`GET /api/review-links/[token]`** resolves assets via Firestore query on `(projectId, folderId, status=ready)`. It does NOT support filtering by an assetIds array.
-- The `AssetStatus` type alias currently equals `'uploading' | 'ready'` — this is the upload lifecycle status, NOT a review QC status. The names will collide; the new QC field must use a different name.
+| File | Role |
+|------|------|
+| `src/types/index.ts` | `Asset`, `Job`, `JobType`, `ReviewLink` types |
+| `src/lib/jobs.ts` | `createJob`, `updateJob`, `getJob`, `sweepStaleJobs`, `listJobsForAsset` |
+| `src/lib/signed-url-cache.ts` | `getOrCreateSignedUrl` — TTL-based signed URL cache |
+| `src/lib/gcs.ts` | `downloadToFile`, `uploadBuffer`, `generateReadSignedUrl`, `generateDownloadSignedUrl`, `deleteFile` |
+| `src/app/api/review-links/route.ts` | POST creates review link |
+| `src/app/api/review-links/[token]/route.ts` | GET: `decorate()` signs URLs per asset; `flushUrlWrites()` batch-commits cache updates |
+| `src/app/api/assets/[assetId]/probe/route.ts` | Reference: download via signed URL → spawn binary → write Firestore |
+| `src/app/api/assets/[assetId]/generate-sprite/route.ts` | Reference: download to `/tmp` → spawn ffmpeg → upload buffer → update asset doc |
+| `src/app/api/exports/route.ts` | Reference: inline ffmpeg spawn, job created, encoded, uploaded |
 
 ---
 
-## Feature-by-Feature Integration Analysis
+## 2. Architectural Decisions
 
----
+### 2a. Job type vs inline — DECISION: jobs collection, probe/sprite pattern
 
-### 1. Version Stack Unstack + Reorder (VSTK-01)
+**Use the `jobs` collection row pattern, not inline like `/api/exports`.**
 
-**What changes**
+Rationale:
+- Export is one-shot user-initiated from the internal viewer; it has one caller, one timeout budget, and no reuse question.
+- Stamping is triggered by review-link POST (potentially batching 1–200 assets), must be observable (UI spinner), and the stamp result is reusable across multiple review links for the same asset. A `jobs` row gives you: status polling, retry button, stale-job sweep, and deduplication key.
+- The probe and sprite routes are the exact structural match: create job → set running → spawn binary on /tmp → upload → update asset doc → set ready/failed.
 
-The `VersionStackModal` inside `AssetCard.tsx` currently renders a static list with delete-only. It needs drag-to-reorder and an "Unstack" (eject) action per version.
+New job type: `'metadata-stamp'`. Add to `JobType` union in `src/types/index.ts`.
 
-**Firestore changes**
+New route: `POST /api/assets/[assetId]/stamp-metadata` — follows probe/sprite pattern exactly, with `runtime = 'nodejs'` and `maxDuration = 60`.
 
-No new fields required. `version` (integer) already defines order within the group. Reordering means updating `version` numbers across all members of the group in a batch. Unstacking means:
-1. Set the ejected asset's `versionGroupId` to its own `id` (or remove the field — query fallback handles `asset.id` as groupId when field is absent).
-2. Set `version = 1` on the ejected asset.
+### 2b. Stamp invalidation — DECISION: `stampedAt` timestamp + compare to `updatedAt`
 
-The existing `merge-version` route shows exactly this pattern in reverse — the batch there is the template.
+**Store `stampedAt: Timestamp` on the asset doc. Invalidation condition: `!stampedGcsPath || stampedAt < updatedAt`.**
 
-**New API routes**
+Options considered:
 
-Two new routes:
-- `POST /api/assets/reorder-versions` — body: `{ groupId, orderedIds: string[] }` — batch-writes new version numbers 1..N in the given order.
-- `POST /api/assets/unstack-version` — body: `{ assetId }` — removes asset from its group, resets to standalone.
+| Option | Pros | Cons |
+|--------|------|------|
+| `stampedAt` vs `updatedAt` comparison | Works with existing `updatedAt` field writes; no extra mutation needed on rename/upload | Requires `updatedAt` to be reliably set on every mutating write (verify this) |
+| `stampInvalidated: boolean` flag | Explicit intent | Must be set to `true` on every rename and new-version-upload path (4+ write sites); easy to miss one |
 
-Both need auth + `canAccessProject` checks. Both use `db.batch()`.
+The `stampedAt < updatedAt` approach is self-healing: any write that bumps `updatedAt` automatically invalidates the stamp without needing to remember to set a flag. The only requirement is that rename (`PUT /api/assets/[assetId]`) and version upload (`/api/upload/complete`) must write `updatedAt: FieldValue.serverTimestamp()`. Verify both do this before implementing.
 
-**Component changes**
+If `updatedAt` is not consistently written today, add it to those paths as part of this milestone — it is a cheap field write that serves other future uses too.
 
-`VersionStackModal` (collocated in `AssetCard.tsx`) — modify in place:
-- Add drag-to-reorder rows. Use HTML5 drag API (`draggable`, `onDragStart`, `onDragOver`, `onDrop`) on each version row. Keep state as `orderedVersions: Asset[]`, derive new order on drop.
-- Add "Unstack" button (eject icon) per row — disabled when only one version in group.
-- On reorder commit (drag end or explicit Save button), call `POST /api/assets/reorder-versions`.
-- On unstack, call `POST /api/assets/unstack-version`, then call `onDeleted?.()` to trigger parent grid refetch.
-- Optimistic UI: update local `orderedVersions` state immediately; revert on API error.
+### 2c. Review-link POST integration — DECISION: sync ≤3 inline, async ≥4 with job IDs in response
 
-**No new top-level components** — all changes contained to the collocated modal function.
+**Three-option analysis:**
 
-**Dependencies:** None. Build this first — it has no dependencies on other v1.4 features.
+| Option | 1–3 assets | 4+ assets | Consistency | Complexity |
+|--------|-----------|-----------|-------------|------------|
+| (1) Sync all | Fine | Timeout risk at 200 assets | Strong | Low |
+| (2) Sync ≤N, async >N | Fine | Jobs + polling | Eventual for large | Medium |
+| (3) Always async | Instant POST | Polling always required | Always eventual | Low but UX worse |
 
----
+Recommendation: **Option 2, threshold N=3**. A single stamp job (exiftool on a small video: download ~50MB, exiftool write, upload) takes approximately 10–20s. Three jobs in parallel fit in 60s. Four or more introduces timeout risk. The `CreateReviewLinkModal` already shows a progress spinner during POST — it can show "Applying metadata (1/3)…" for sync and switch to "Queued — metadata will be applied shortly" for async.
 
-### 2. Asset Status Field (STATUS-01)
+The POST response extends to include `pendingStampJobIds?: string[]` when any jobs were queued async. The UI polls `GET /api/assets/[assetId]/jobs` (already exists) per asset, or a new batch endpoint can be added later.
 
-**What changes**
+Threshold 3 is a REQ-level decision, not design-level. The value should be a named constant `SYNC_STAMP_THRESHOLD = 3` in the route, not buried in logic.
 
-The existing `AssetStatus = 'uploading' | 'ready'` type is the upload lifecycle. The new QC status is a separate concept.
-
-**Firestore changes**
-
-Add optional field to the `assets` collection:
+### 2d. GCS layout — DECISION: asset-level path, one per asset
 
 ```
-reviewStatus?: 'approved' | 'needs_revision' | 'pending'
+projects/{projectId}/assets/{assetId}/stamped{ext}
 ```
 
-Default is absent/undefined, which the UI treats as `'pending'`. Do NOT name it `status` (collision with existing upload lifecycle field). The new type lives in `src/types/index.ts`:
+Example: `projects/abc/assets/xyz/stamped.mp4`
 
+**Rationale for asset-level over per-review-link path:**
+
+The stamp content is identical for all review links of the same asset (same `Attrib` tags, same `ExtId` derived from `asset.name`). Storing one copy per asset eliminates redundant GCS storage and redundant exiftool processing when the same asset is in multiple review links. The signed-URL cache on the asset doc (`stampedSignedUrl`) is already the right shape for this.
+
+**What is lost:** per-link audit trail. A review link cannot carry a different stamp than another review link for the same asset. This is acceptable — the stamp content is deterministic from the asset name + hardcoded constants.
+
+**Extension note (future):** When `project.metaConfig` is introduced, the stamp will vary by project config, not by link. The path `projects/{pid}/assets/{aid}/stamped{ext}` still works because the stamp is invalidated when the asset changes, and a project config change would trigger a new stamp.
+
+**Extension function to add to `src/lib/gcs.ts`:**
 ```typescript
-export type ReviewStatus = 'approved' | 'needs_revision' | 'pending';
-// Add to Asset interface:
-reviewStatus?: ReviewStatus;
-```
-
-**API changes**
-
-`PUT /api/assets/[assetId]` already accepts arbitrary `updates` and writes them to Firestore. A `reviewStatus` update works today with zero API changes, because the PUT handler does `await db.collection('assets').doc(params.assetId).update(updates)`.
-
-A dedicated status endpoint is cleaner for explicit validation: `PUT /api/assets/[assetId]/status` — body: `{ reviewStatus }`. Validates value is in the enum. Optional but recommended.
-
-**Component changes**
-
-- `AssetCard` — ADD a colored status badge in the info section. Badge colors: green = approved, amber = needs_revision, grey/none = pending. Click badge opens a small popover with 3 status options.
-- `AssetCard` context menu — ADD "Set status" item.
-- `AssetListView` — ADD a status column.
-- `AssetGrid` / `FolderBrowser` — ADD a status filter bar above the grid. Filter state lives in `FolderBrowser` as `statusFilter: ReviewStatus | 'all'`. Filtering is client-side against the already-fetched `assets` array.
-- `types/index.ts` — ADD `ReviewStatus` type, add `reviewStatus?: ReviewStatus` to `Asset`.
-
-**Dependencies:** None. Can build independently. Recommended second.
-
----
-
-### 3. Smart Copy to Review (REVIEW-01 + REVIEW-02)
-
-**What changes**
-
-Current `POST /api/assets/copy` copies the entire version stack. The new "smart copy" copies only the latest version and optionally presents a "strip comments" option.
-
-**Firestore changes**
-
-None. The copy operation creates new asset documents. For "strip comments," the copy simply does not copy comment documents (comments are a separate collection keyed by `assetId`; copies get new IDs so comments never follow copies — this is already the existing behavior).
-
-**API changes**
-
-Extend `POST /api/assets/copy` with one new optional body param:
-- `latestVersionOnly?: boolean` — when true, only copy the asset with the highest `version` number in the stack (instead of all).
-
-"Strip comments" requires no backend change since comments never copy today.
-
-Modified copy logic when `latestVersionOnly: true`:
-```typescript
-// allVersions is sorted ascending by version
-const toActuallyCopy = latestVersionOnly
-  ? [allVersions[allVersions.length - 1]]
-  : allVersions;
-// Set version = 1 and new versionGroupId on the single copy
-```
-
-**Component changes**
-
-Replace the simple folder-pick flow in `AssetCard` with a `SmartCopyModal` that shows:
-- Folder picker (reuse existing inline folder list from `openCopyTo`)
-- Toggle: "Latest version only" (default on)
-- Toggle: "Without comments" (cosmetic label only — comments never copy; shown for user clarity)
-- Copy button
-
-`SmartCopyModal` is a new component (~80 lines). Can be collocated in `AssetCard.tsx` or extracted to `components/files/SmartCopyModal.tsx`.
-
-**Dependencies:** None. REVIEW-01/02 are a single unit.
-
----
-
-### 4. Selection-Based Review Links (REVIEW-03)
-
-**What changes**
-
-Review links are currently scoped to `folderId | null`. The new scope is an explicit `assetIds: string[]`.
-
-**Firestore changes**
-
-Add optional field to `reviewLinks` collection:
-
-```
-assetIds?: string[]   // when present, link shows only these specific assets
-```
-
-When `assetIds` is set, `folderId` should be null (or set to the source folder for breadcrumb context). The resolution logic in the token GET route checks `assetIds` first.
-
-```typescript
-// Add to ReviewLink interface (types/index.ts):
-assetIds?: string[];
-```
-
-**API changes**
-
-`POST /api/review-links` — accept optional `assetIds: string[]` in body and store in Firestore.
-
-`GET /api/review-links/[token]` — modify asset resolution:
-```typescript
-if (link.assetIds?.length) {
-  // db.collection('assets').where('__name__', 'in', link.assetIds).get()
-  // Note: Firestore 'in' is capped at 30; batch into chunks for >30
-} else {
-  // existing folderId-scoped query (unchanged)
+export function buildStampedGcsPath(projectId: string, assetId: string, ext: string): string {
+  // ext should include the leading dot, e.g. '.mp4', '.jpg'
+  return `projects/${projectId}/assets/${assetId}/stamped${ext}`;
 }
 ```
 
-**Component changes**
+### 2e. `decorate()` change — DECISION: prefer stampedGcsPath; fallback to original
 
-- `FolderBrowser` — when `selectedIds.size > 0`, show "Create review link from selection" in the selection action toolbar (currently has Delete, Download, Compare). Click opens `CreateReviewLinkModal` with `assetIds` prop.
-- `CreateReviewLinkModal` — add optional `assetIds?: string[]` prop. When provided, show "Scoped to X assets" label instead of folder picker section. Pass `assetIds` to `POST /api/review-links` body.
+**In `src/app/api/review-links/[token]/route.ts`, the `decorate()` function must be modified as follows:**
 
-**Dependencies:** None from other v1.4 features.
+```typescript
+// New logic at the TOP of decorate(), before the existing gcsPath block:
+const gcsPathToServe = asset.stampedGcsPath ?? asset.gcsPath;
 
----
-
-### 5. Compare View Audio & Comments (COMPARE-01 + COMPARE-02)
-
-**What changes**
-
-`VersionComparison` currently has a single shared `muted` boolean and no comment display. Need per-side audio control and per-version comment panel.
-
-**Firestore changes**
-
-None. Comments are already fetchable via `GET /api/comments?assetId=X`.
-
-**API changes**
-
-None. `GET /api/comments` already accepts `assetId` query param.
-
-**Component changes — VersionComparison.tsx**
-
-Significant internal refactor; no prop interface change (still receives `versions: Asset[]`):
-
-**COMPARE-01 — per-side audio:**
-- Replace `muted: boolean` with `mutedA: boolean, mutedB: boolean`.
-- `VersionLabel` subcomponent (already exists) gains a mute toggle icon button.
-- "Click version label to switch audio" behavior: clicking the label for side B unmutes B and mutes A; clicking side A does the reverse. Implement as `handleLabelAudioToggle(side: 'A' | 'B')`.
-- `videoARef.current.muted = mutedA`, `videoBRef.current.muted = mutedB` in the relevant `useEffect`.
-
-**COMPARE-02 — per-version comments:**
-- Add state: `commentsA: Comment[], commentsB: Comment[], commentsLoading: boolean`.
-- `useEffect` on `[selectedIdA, selectedIdB]` — parallel fetch `GET /api/comments?assetId={selectedIdA}` and `GET /api/comments?assetId={selectedIdB}`. Requires `useAuth` hook for token.
-- Add a comment panel below the video. Simplest approach: a tab row ("V{A.version} comments" | "V{B.version} comments") showing the relevant list. Active tab tracks the "audio-active" side.
-- `Comment` type is already in `src/types/index.ts`.
-
-**Data flow note:** `VersionComparison` receives `versions: Asset[]` from `GET /api/assets/[assetId]` which already returns the full version set. Comment fetch is additive local state.
-
-**Dependencies:** Build COMPARE-01 (audio) before COMPARE-02 (comments) — the "active side" concept set up for audio is reused to drive comment panel tab selection.
-
----
-
-### 6. Move to Folder (MOVE-01)
-
-**What changes**
-
-The "Move to" option already appears in `AssetCard`'s context menu and calls `onRequestMove?.()`. `FolderBrowser.handleRequestMoveItem` already responds by setting `selectedIds` to just that asset and opening the move modal. `handleMoveSelected` calls `PUT /api/assets/[assetId]` with `{ folderId }`. The PUT route already batch-moves all versions.
-
-**In other words: the full move-to-folder pipeline already exists.** The question is whether the prop wire is connected.
-
-The chain to verify:
-```
-FolderBrowser → <AssetGrid onRequestMove={handleRequestMoveItem} ... />  ← verify
-AssetGrid     → <AssetCard onRequestMove={() => onRequestMove(asset.id)} ... />  ← exists
-AssetCard     → ContextMenu "Move to" onClick={() => onRequestMove?.()}  ← exists
+// Replace all asset.gcsPath references for signedUrl/downloadUrl with gcsPathToServe.
+// The stampedSignedUrl cache fields on the asset doc are used when stampedGcsPath is set.
 ```
 
-If `FolderBrowser` already passes `onRequestMove` to `AssetGrid`, MOVE-01 is complete. If not, the fix is one line: add `onRequestMove={handleRequestMoveItem}` to the `<AssetGrid>` JSX in `FolderBrowser`.
+Specifically:
+- If `asset.stampedGcsPath` exists AND `!stampIsStale(asset)` → sign `stampedGcsPath` as both `signedUrl` AND `downloadUrl`
+- If `asset.stampedGcsPath` is absent or stale → sign `asset.gcsPath` (original) as `signedUrl`
 
-**API changes:** None.
+**Do NOT return 503 or disable preview when stamp is missing.** Guests always get a working video — the stamp is a metadata overlay, not a content gate. A missing stamp is handled gracefully by falling back to the original. The UI adds a "Meta-stamped" badge only when `stampedGcsPath` is confirmed fresh.
 
-**Firestore changes:** None.
-
-**Dependencies:** None. Verify first in the build — may be a no-op feature.
-
----
-
-## Firestore Schema Diff (v1.3 → v1.4)
-
-| Collection | Field | Change | Type | Notes |
-|------------|-------|--------|------|-------|
-| `assets` | `reviewStatus` | ADD | `'approved' \| 'needs_revision' \| 'pending'` | Optional; absence = pending |
-| `reviewLinks` | `assetIds` | ADD | `string[]` | Optional; when present, folderId scope is bypassed |
-
-No other schema changes required. Existing `version` and `versionGroupId` fields cover all VSTK-01 needs.
-
----
-
-## API Route Diff (v1.3 → v1.4)
-
-| Route | Method | Change | Purpose |
-|-------|--------|--------|---------|
-| `/api/assets/reorder-versions` | POST | NEW | Batch-update version numbers for a group in given order |
-| `/api/assets/unstack-version` | POST | NEW | Eject one asset from its version group |
-| `/api/assets/copy` | POST | MODIFY | Add `latestVersionOnly?: boolean` param |
-| `/api/assets/[assetId]/status` | PUT | NEW (optional) | Validated reviewStatus update with enum check |
-| `/api/review-links` | POST | MODIFY | Accept and store `assetIds?: string[]` |
-| `/api/review-links/[token]` | GET | MODIFY | Resolve assets from `assetIds` array when present |
-
----
-
-## Component Diff (v1.3 → v1.4)
-
-### Modified Components
-
-| Component | File | Nature of Change |
-|-----------|------|-----------------|
-| `VersionStackModal` | `AssetCard.tsx` (collocated) | Add drag-to-reorder rows, Unstack button, Save order action |
-| `AssetCard` | `components/files/AssetCard.tsx` | Add reviewStatus badge + picker, replace copy modal with SmartCopyModal |
-| `AssetListView` | `components/files/AssetListView.tsx` | Add reviewStatus column |
-| `FolderBrowser` | `components/files/FolderBrowser.tsx` | Add status filter bar; add "Create review link from selection" toolbar action |
-| `VersionComparison` | `components/viewer/VersionComparison.tsx` | Per-side audio mute state; comment fetch + display per selected version |
-| `CreateReviewLinkModal` | `components/review/CreateReviewLinkModal.tsx` | Accept `assetIds?` prop; send to API; show scoped label |
-| `types/index.ts` | `src/types/index.ts` | Add `ReviewStatus` type; update `Asset` and `ReviewLink` interfaces |
-
-### New Components
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `SmartCopyModal` | `components/files/SmartCopyModal.tsx` or collocated in `AssetCard.tsx` | Copy options: latest-version-only toggle, strip-comments label, folder picker |
-| `ReviewStatusBadge` | Inline in `AssetCard` or `components/files/ReviewStatusBadge.tsx` | Colored pill badge with click-to-change popover |
-| `CompareCommentPanel` | Collocated in `VersionComparison.tsx` | Renders comment list for one version side in compare view |
-
----
-
-## Suggested Build Order
-
-```
-1. MOVE-01     — verify prop wire; likely 0-1 lines, clears the requirement
-2. VSTK-01     — version stack reorder + unstack (2 new API routes + modal UI)
-3. STATUS-01   — reviewStatus type + badge + filter (touches many files, each small)
-4. REVIEW-01/02 — smart copy (1 API param + SmartCopyModal)
-5. REVIEW-03   — selection review links (schema + 2 API changes + modal prop)
-6. COMPARE-01  — per-side audio mute in VersionComparison
-7. COMPARE-02  — per-version comments in VersionComparison
+**Stamp staleness check helper (add to `src/lib/stamp-helpers.ts`):**
+```typescript
+export function isStampStale(asset: Asset): boolean {
+  if (!asset.stampedGcsPath || !asset.stampedAt) return true;
+  if (!asset.updatedAt) return false; // no updatedAt → can't compare → treat as fresh
+  return asset.stampedAt.toMillis() < asset.updatedAt.toMillis();
+}
 ```
 
-**Ordering rationale:**
-- MOVE-01 first: lowest risk, may already work entirely, surfaces quickly.
-- VSTK-01 second: self-contained, new API routes + modal behavior, good warm-up.
-- STATUS-01 third: new type + Firestore field + UI badge — many files but each change is small and independent.
-- REVIEW-01/02 fourth: one API param change + one new modal component — low risk.
-- REVIEW-03 fifth: depends on understanding the copy patterns established in REVIEW-01/02; Firestore and API changes are straightforward.
-- COMPARE-01/02 last: most self-contained (changes stay inside VersionComparison.tsx) but most complex internal state work — best done with all other features cleared.
+This helper is used in both `decorate()` and the stamp-metadata route to decide whether to re-stamp.
+
+The cached signed URL for the stamped file lives in `asset.stampedSignedUrl` / `asset.stampedSignedUrlExpiresAt`, following the exact same `getOrCreateSignedUrl` pattern as thumbnail and sprite.
+
+### 2f. Concurrency — DECISION: Firestore transaction check-and-create in `src/lib/jobs.ts`
+
+When two review links for the same asset are created simultaneously (or a retry races a new stamp request), the stamp job must not run twice.
+
+**Mechanism:** Add `findOrCreateStampJob` to `src/lib/jobs.ts`:
+
+```typescript
+export async function findOrCreateStampJob(
+  assetId: string,
+  projectId: string,
+  userId: string,
+): Promise<{ jobId: string; created: boolean }> {
+  const db = getAdminDb();
+
+  // Atomically: check for an existing queued/running stamp job, create if none.
+  return db.runTransaction(async (tx) => {
+    const existing = await tx.get(
+      db.collection('jobs')
+        .where('type', '==', 'metadata-stamp')
+        .where('assetId', '==', assetId)
+        .where('status', 'in', ['queued', 'running'])
+        .limit(1)
+    );
+    // NOTE: Firestore does not allow queries inside transactions on Admin SDK v2+
+    // without first doing the read outside. Use the pattern below instead:
+    ...
+  });
+}
+```
+
+**Correction — Firestore transactions cannot contain arbitrary queries.** The correct pattern:
+
+```typescript
+export async function findOrCreateStampJob(
+  assetId: string,
+  projectId: string,
+  userId: string,
+): Promise<{ jobId: string; created: boolean }> {
+  const db = getAdminDb();
+
+  // Check outside transaction first (best-effort; race window is small)
+  const existing = await db.collection('jobs')
+    .where('type', '==', 'metadata-stamp')
+    .where('assetId', '==', assetId)
+    .where('status', 'in', ['queued', 'running'])
+    .limit(1)
+    .get();
+
+  if (!existing.empty) {
+    return { jobId: existing.docs[0].id, created: false };
+  }
+
+  // Create — if two concurrent requests both see empty above, both try to create.
+  // That's acceptable: the stamp job is idempotent (same output) and the second
+  // job will find stampedGcsPath already set when it runs, and short-circuit.
+  const ref = await db.collection('jobs').add({
+    type: 'metadata-stamp',
+    assetId,
+    projectId,
+    userId,
+    status: 'queued',
+    attempt: 1,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  return { jobId: ref.id, created: true };
+}
+```
+
+The second job will short-circuit because the stamp route checks `isStampStale(asset)` at the start of execution: if the first job already completed and set `stampedGcsPath`, the second job marks itself `ready` immediately without re-running exiftool. This is safer than a distributed lock and has no failure mode that blocks a review link from being created.
+
+### 2g. Exiftool process lifecycle — DECISION: fresh instance per request, `et.end()` in finally
+
+**Do NOT use `-stay_open True` in the serverless stamp route.**
+
+The `-stay_open True` mode (used in the desktop scf-metadata app) keeps a persistent exiftool subprocess alive as a daemon for efficient repeated writes. In a long-running Electron app this is ideal: one startup cost, zero cold starts per write.
+
+In a Vercel serverless function:
+- Each invocation may run in a cold container — no warm subprocess to attach to.
+- A function that completes with `-stay_open` child alive will cause the Node.js process to hang waiting for the child's stdin/stdout to close, which burns the Vercel function timeout budget until SIGKILL.
+- As of `exiftool-vendored` v35, the library cleans up automatically on Node.js exit, but relying on that in a 60s-capped function is fragile.
+
+**Correct pattern for the stamp route:**
+
+```typescript
+import { ExifTool } from 'exiftool-vendored';
+
+// Inside the route handler, inside try/finally:
+const et = new ExifTool({ taskTimeoutMillis: 30000 });
+try {
+  await et.write(localFilePath, { Attrib: [...] }, ['-overwrite_original', '-config', configPath]);
+  // ...
+} finally {
+  await et.end();
+}
+```
+
+**No `-stay_open` flag in the `ExifTool` constructor.** `exiftool-vendored`'s default behavior (without `exiftoolArgs`) does NOT pass `-stay_open True` — the library manages its own lifecycle. The scf-metadata desktop app passes it explicitly because it wraps the raw process; the npm package handles it internally and defaults to a single-use pattern when `maxTasksPerProcess: 1` is set.
+
+For maximum speed in a cold-start serverless context, set:
+```typescript
+new ExifTool({
+  taskTimeoutMillis: 30000,
+  maxProcs: 1,
+  maxTasksPerProcess: 1,  // spawn fresh process per task — avoids hang risk
+})
+```
+
+### 2h. Failure modes — per-asset skip with warning accumulation
+
+When stamping a batch of assets and one fails, the review link is NOT aborted. The link is created regardless. The failed stamp produces a `failed` job in the `jobs` collection with `error` set. The `decorate()` fallback to the original URL ensures guests always see content.
+
+For the sync (≤3) path: collect errors per asset, create the review link, return `{ link, stampErrors: [{ assetId, error }] }` in the 201 response. The UI displays a warning per failed asset.
+
+For the async path: the jobs run independently; failures are observable via `GET /api/assets/[assetId]/jobs`. The UI polls and shows per-asset stamp status.
+
+**No retry at the review-link level.** Retry is handled by the existing `POST /api/jobs/[jobId]/retry` endpoint (Phase 60 infrastructure already in place).
 
 ---
 
-## Cross-Cutting Concerns
+## 3. Data Model Changes
 
-### Optimistic UI Pattern
+### 3a. Asset type extension (`src/types/index.ts`)
 
-The codebase uses a consistent pattern: call API, on success call `onDeleted?.()` / `onVersionUploaded?.()` / `onCopied?.()` to trigger `refetchAssets()` in FolderBrowser. For VSTK-01 reordering: update local `orderedVersions` state immediately, then call API; on error, refetch to revert.
+```typescript
+export interface Asset {
+  // ... existing fields ...
 
-### Batch Atomicity Pattern
+  // v2.4: XMP stamp cache
+  /** GCS path of the XMP-stamped copy. Set by stamp-metadata job. Absent until first stamp. */
+  stampedGcsPath?: string;
+  /** When the stamp was last written. Compare to updatedAt to detect staleness. */
+  stampedAt?: Timestamp;
+  /** Cached signed URL for the stamped copy. Same TTL pattern as signedUrl (120 min). */
+  stampedSignedUrl?: string;
+  stampedSignedUrlExpiresAt?: Timestamp;
+  /** updatedAt — must be set on every mutating write (rename, new version). */
+  updatedAt?: Timestamp;
+}
+```
 
-All multi-asset writes use `db.batch()` (established in merge-version and PUT with folderId). VSTK-01 reorder and unstack must follow this pattern.
+**Note on `updatedAt`:** If this field is not already reliably written on rename (`PUT /api/assets/[assetId]`) and on upload-complete (`/api/upload/complete`), add `updatedAt: FieldValue.serverTimestamp()` to both before implementing stamp invalidation. Verify both write paths before Phase 1.
 
-### Auth Pattern
+### 3b. JobType union extension (`src/types/index.ts`)
 
-All API routes: `getAuthenticatedUser(request)` then `canAccessProject(user.id, projectId)`. New routes must follow the same pattern exactly.
+```typescript
+// Before:
+export type JobType = 'probe' | 'sprite' | 'thumbnail' | 'export';
 
-### reviewStatus vs status Naming
+// After:
+export type JobType = 'probe' | 'sprite' | 'thumbnail' | 'export' | 'metadata-stamp';
+```
 
-The existing `AssetStatus = 'uploading' | 'ready'` maps to the `status` field in Firestore. The new QC field must be `reviewStatus` everywhere — in Firestore documents, in the TypeScript `Asset` interface, and in API request/response bodies — to avoid collision.
+### 3c. ReviewLink type — no change required
 
-### Firestore in-query Limit for assetIds
+The `ReviewLink` type does not need new fields. Stamp state lives on asset docs, not review link docs.
 
-Firestore `where('__name__', 'in', ids)` is capped at 30 items per clause. Review selection-based links with more than 30 assets need multiple batched queries merged client-side. In practice, review selections are small, but the batch logic should be in place from the start.
+---
+
+## 4. New Files
+
+| File | Purpose |
+|------|---------|
+| `src/app/api/assets/[assetId]/stamp-metadata/route.ts` | POST: download → exiftool → upload → update asset doc |
+| `src/lib/stamp-helpers.ts` | `isStampStale(asset)`, `buildStampedGcsPath(pid, aid, ext)` — pure helpers, importable from route and decorate() |
+| `public/exiftool/.config` | Copy of the scf-metadata `.config` Perl file (XMP namespace definition) — must be in a path accessible at Vercel function runtime |
+
+**Config file placement:** The exiftool `.config` file must be accessible at runtime, not just build time. Place at `public/exiftool/.config`. At runtime, resolve via:
+```typescript
+import path from 'path';
+const CONFIG_PATH = path.join(process.cwd(), 'public', 'exiftool', '.config');
+```
+On Vercel, `process.cwd()` is the project root. The `public/` directory is included in the serverless function bundle. Verify this with a test deploy before Phase 1 completion.
+
+---
+
+## 5. Modified Files
+
+### 5a. `src/types/index.ts`
+- Add `'metadata-stamp'` to `JobType` union
+- Add `stampedGcsPath?`, `stampedAt?`, `stampedSignedUrl?`, `stampedSignedUrlExpiresAt?`, `updatedAt?` to `Asset` interface
+
+### 5b. `src/lib/jobs.ts`
+- Add `findOrCreateStampJob(assetId, projectId, userId): Promise<{ jobId: string; created: boolean }>` — check for existing queued/running stamp job before creating
+- Add `SYNC_STAMP_THRESHOLD = 3` as exported constant (used by the review-links POST route)
+
+### 5c. `src/lib/gcs.ts`
+- Add `buildStampedGcsPath(projectId: string, assetId: string, ext: string): string`
+
+### 5d. `src/app/api/review-links/route.ts` (POST)
+- After the review link doc is written, resolve asset IDs from `assetIds` and/or query from `folderIds`
+- For each asset, call `findOrCreateStampJob()` — up to `SYNC_STAMP_THRESHOLD` execute synchronously via internal fetch to `/api/assets/[assetId]/stamp-metadata`; remainder are left as `queued` jobs
+- Return `{ link, pendingStampJobIds?: string[] }` in the 201 response
+
+### 5e. `src/app/api/review-links/[token]/route.ts` (GET — `decorate()`)
+- Import `isStampStale` from `src/lib/stamp-helpers.ts`
+- At the start of `decorate()`, resolve `gcsPathToServe`:
+  ```typescript
+  const stampFresh = asset.stampedGcsPath && !isStampStale(asset);
+  const gcsPathToServe = stampFresh ? asset.stampedGcsPath : asset.gcsPath;
+  const cachedUrl = stampFresh ? asset.stampedSignedUrl : asset.signedUrl;
+  const cachedExp = stampFresh ? asset.stampedSignedUrlExpiresAt : asset.signedUrlExpiresAt;
+  ```
+- Sign `gcsPathToServe` as `asset.signedUrl` (overwrite in the returned object — guests always see this as `signedUrl`)
+- If `link.allowDownloads`, sign `gcsPathToServe` for download
+- Write-back to correct cache fields (`stampedSignedUrl` vs `signedUrl`) based on `stampFresh`
+
+### 5f. `vercel.json`
+- Add stamp-metadata route config:
+  ```json
+  "src/app/api/assets/[assetId]/stamp-metadata/route.ts": {
+    "maxDuration": 60,
+    "memory": 1024
+  }
+  ```
+
+---
+
+## 6. Data Flow: Happy Path (sync, ≤3 assets)
+
+```
+User clicks "Create Review Link" in CreateReviewLinkModal
+  │
+  ▼
+POST /api/review-links
+  ├─ Validate body, auth, project access
+  ├─ Generate token, write reviewLinks/{token} doc
+  ├─ Resolve asset IDs (from assetIds[] or folderIds[])
+  ├─ For each asset (≤3, sync):
+  │    ├─ findOrCreateStampJob(assetId) → jobId (new or existing)
+  │    ├─ If new job: POST /api/assets/[assetId]/stamp-metadata (internal call)
+  │    │    ├─ Mark job running
+  │    │    ├─ Check isStampStale(asset) → skip if fresh
+  │    │    ├─ generateReadSignedUrl(asset.gcsPath) → sourceUrl
+  │    │    ├─ mkdtemp → localPath
+  │    │    ├─ downloadToFile(gcsPath, localPath)
+  │    │    ├─ new ExifTool({ maxTasksPerProcess: 1 })
+  │    │    ├─ et.read(localPath) → { FileName, Attrib? }
+  │    │    ├─ Build Attrib array (merge existing + new entry)
+  │    │    ├─ et.write(localPath, { Attrib }, ['-overwrite_original', '-config', CONFIG_PATH])
+  │    │    ├─ et.end()
+  │    │    ├─ uploadBuffer(stampedGcsPath, fs.readFile(localPath), contentType)
+  │    │    ├─ db.assets.update({ stampedGcsPath, stampedAt: now })
+  │    │    ├─ updateJob(jobId, { status: 'ready', completedAt: now })
+  │    │    └─ fs.rm(tmpDir)
+  │    └─ Collect result: stamped | failed | skipped-fresh
+  ├─ Return 201 { link: serializeReviewLink(...), stampErrors?: [...] }
+  │
+  ▼
+User copies link, shares with guest
+  │
+  ▼
+GET /api/review-links/{token}
+  ├─ Validate token, password, expiry
+  ├─ Resolve asset docs
+  ├─ For each asset, decorate():
+  │    ├─ stampFresh = !!asset.stampedGcsPath && !isStampStale(asset)
+  │    ├─ gcsPathToServe = stampFresh ? stampedGcsPath : gcsPath
+  │    ├─ getOrCreateSignedUrl(gcsPathToServe, cached, cachedExp, 120)
+  │    │    → asset.signedUrl = <stamped URL or original URL>
+  │    ├─ getOrCreateSignedUrl(thumbnailGcsPath, ...) → asset.thumbnailSignedUrl
+  │    ├─ getOrCreateSignedUrl(spriteStripGcsPath, ...) → asset.spriteSignedUrl
+  │    └─ if allowDownloads: generateDownloadSignedUrl(gcsPathToServe, name)
+  ├─ flushUrlWrites() — batch-commits fresh cache values
+  └─ Return { reviewLink, assets, folders, projectName }
+```
+
+---
+
+## 7. Data Flow: Async Path (>3 assets)
+
+```
+POST /api/review-links (4+ assets)
+  ├─ Write reviewLinks/{token} doc
+  ├─ For each asset:
+  │    └─ findOrCreateStampJob(assetId) → jobId
+  │         (all jobs left at status: 'queued')
+  ├─ Return 201 { link, pendingStampJobIds: ['job1', 'job2', ...] }
+  │
+  ▼
+Client (CreateReviewLinkModal)
+  ├─ Sees pendingStampJobIds in response
+  ├─ Shows "Metadata being applied… (0/4 complete)"
+  ├─ Polls GET /api/assets/[assetId]/jobs every 3s per asset
+  │    (already exists from Phase 60)
+  └─ Updates badge: "Stamped ✓" | "Failed ⚠"
+  │
+  ▼
+[Background] How are queued jobs executed?
+  ├─ Option A (v2.4 scope): jobs remain queued until someone calls the stamp route
+  │    → the next time the review link is shared and decorate() runs, if stamp is
+  │       still missing (stale), serve original. The user can trigger a manual stamp
+  │       retry via "Retry" in the job status UI (Phase 60 already has retry button).
+  │
+  ├─ Option B (future): a cron or queue worker picks up queued jobs
+  │    → deferred; v2.4 does not introduce a queue worker
+  │
+  └─ DECISION for v2.4: queued jobs are executed when the stamp-metadata route is
+     called directly. For async batches >3, the CreateReviewLinkModal can call
+     POST /api/assets/[assetId]/stamp-metadata for each queued job in sequence
+     after the 201 returns (client-driven background processing). This avoids
+     a queue worker while keeping the POST under 60s.
+```
+
+---
+
+## 8. Failure Modes
+
+| Failure | Detection | Handling |
+|---------|-----------|---------|
+| exiftool binary not found | `et.version()` throws | Mark job `failed`, log error, `decorate()` falls back to original |
+| exiftool write fails (corrupt file, unsupported format) | `et.write()` throws | Mark job `failed`, log, fall back to original. Serve original URL to guest. |
+| One of 5 assets fails in sync batch | Collect per-asset error | Create review link anyway. Return `stampErrors: [{assetId, error}]` in 201. UI shows warning per asset. |
+| GCS download timeout (large file in 60s budget) | fetch timeout / function SIGKILL | `sweepStaleJobs()` (already in Phase 60) marks running jobs >2min as failed. Next GET decorate() falls back to original. |
+| Concurrent stamp requests for same asset | Both create jobs | Second job finds `stampedGcsPath` fresh on execution → short-circuits to `ready`. No double-write. |
+| Stamp exists but is stale (renamed asset) | `isStampStale(asset)` returns true | `decorate()` serves original. Stamp job is created fresh on next review-link POST for this asset. |
+| /tmp disk full | `fs.mkdtemp` or download throws | Mark job `failed`. `finally` block tries `fs.rm` but will fail too (log and move on). Vercel /tmp is ephemeral per-invocation so this won't persist. |
+| exiftool config file missing | `et.write()` throws (unknown tag) | Mark job `failed`. Log `CONFIG_PATH` for debugging. Alert: verify `public/exiftool/.config` is in bundle. |
+
+---
+
+## 9. Stamp Logic: Exact Replication of scf-metadata
+
+The exiftool.js from the desktop app (verified from source):
+
+```javascript
+// From scf-metadata exiftool.js:
+const ExtId = basename(tags.FileName, extname(tags.FileName))  // = asset.name without extension
+const Created = dayjs().format('YYYY:MM:DD')
+const oldAttrib = [...(tags?.Attrib || [])].map(tag => ({ ...tag, Data: this.Data }))
+const Attrib = [...oldAttrib, { ExtId, Created, Data: this.Data, FbId: this.FbId }]
+await this.exiftool.write(filePath, { Attrib }, ['-overwrite_original'])
+```
+
+Server-side equivalent in the stamp route:
+
+```typescript
+const CONFIG_PATH = path.join(process.cwd(), 'public', 'exiftool', '.config');
+const FB_ID = 2955517117817270;
+const DATA = '{"Company":"Ready Set"}';
+
+const et = new ExifTool({ maxProcs: 1, maxTasksPerProcess: 1, taskTimeoutMillis: 30000 });
+try {
+  const tags = await et.read(localPath);
+  const ext = path.extname(tags.FileName ?? asset.name);
+  const ExtId = path.basename(tags.FileName ?? asset.name, ext);
+  const Created = new Date().toISOString().slice(0, 10).replace(/-/g, ':'); // YYYY:MM:DD
+
+  // Preserve existing Attrib entries, update their Data field, append new entry
+  const oldAttrib = (tags.Attrib ?? []).map((a: Record<string, unknown>) => ({ ...a, Data: DATA }));
+  const Attrib = [...oldAttrib, { ExtId, Created, Data: DATA, FbId: FB_ID }];
+
+  await et.write(localPath, { Attrib }, ['-overwrite_original', '-config', CONFIG_PATH]);
+} finally {
+  await et.end();
+}
+```
+
+**The `-config` flag is passed per-write, not via constructor args**, because `exiftool-vendored` manages the subprocess args internally. The config must be passed as an extra arg to each `write()` call.
+
+**Data field format:** The scf-metadata source shows `this.Data = '|{"Company":"Ready Set"|}'` — note the pipe characters. However the ARCHITECTURE of the Attrib struct shows `Data: {}` as a plain string field. The hardcoded value to use is exactly `'|{"Company":"Ready Set"|}'` as stored in the desktop app. Verify against a sample file tagged by the desktop app using `exiftool -Attrib:all <file>` before v2.4 ships.
+
+---
+
+## 10. Bundle Size and Vercel Constraints
+
+**`exiftool-vendored` npm package breakdown:**
+- `exiftool-vendored` (core JS): ~200KB
+- `exiftool-vendored.pl` (Linux Perl binary): ~20–30MB unpacked (Perl interpreter + ExifTool scripts; testing/help files excluded since v10.38.0)
+- `exiftool-vendored.exe` (Windows): not installed in Linux Vercel environment (optional peer dep)
+
+**Total addition to Vercel bundle: ~25–35MB.** The existing bundle already includes ffmpeg-static (~60MB) and @ffmpeg-installer (~30MB). Total function bundle stays well under Vercel Pro's 250MB limit.
+
+**Vercel runtime notes:**
+- `exiftool-vendored.pl` runs via the system `perl` interpreter. Vercel's Node.js lambda environment includes Perl. If it does not, `exiftool-vendored` falls back to spawning the bundled Perl binary. Verify on first deploy.
+- The stamp route needs `runtime = 'nodejs'` and `maxDuration = 60` (same as probe/sprite).
+- Memory: 1024MB (same as sprite). exiftool on typical media files uses <50MB resident.
+
+**Confirm `exiftool-vendored` is platform-aware:** On Linux (Vercel), npm installs `exiftool-vendored.pl` automatically (optional dep resolved by platform). The `.exe` variant is skipped. No manual configuration needed.
+
+---
+
+## 11. Integration Points: Exact Function Signatures to Modify
+
+### `src/types/index.ts`
+- `JobType`: add `'metadata-stamp'`
+- `Asset`: add 4 new optional fields (see §3a)
+
+### `src/lib/jobs.ts`
+- ADD: `findOrCreateStampJob(assetId: string, projectId: string, userId: string): Promise<{ jobId: string; created: boolean }>`
+- ADD: `export const SYNC_STAMP_THRESHOLD = 3`
+
+### `src/lib/gcs.ts`
+- ADD: `buildStampedGcsPath(projectId: string, assetId: string, ext: string): string`
+
+### `src/lib/stamp-helpers.ts` (NEW FILE)
+- ADD: `isStampStale(asset: Asset): boolean`
+
+### `src/app/api/assets/[assetId]/stamp-metadata/route.ts` (NEW FILE)
+- `export async function POST(request: NextRequest, { params }: RouteParams)`
+- `export const runtime = 'nodejs'`
+- `export const maxDuration = 60`
+
+### `src/app/api/review-links/route.ts`
+- Modify `POST` handler: after `await db.collection('reviewLinks').doc(token).set(data)`, add stamp trigger logic
+- Signature of the exported `POST` function does not change
+
+### `src/app/api/review-links/[token]/route.ts`
+- Modify `decorate()` (inner function, not exported): prepend stamp-aware path selection before existing `asset.gcsPath` block
+- `decorate` signature does not change: `(asset: any) => Promise<any>`
+
+### `vercel.json`
+- Add stamp-metadata entry under `functions`
+
+---
+
+## 12. Phase Breakdown
+
+### Phase A: Stamp Pipeline Standalone
+
+**Goal:** `POST /api/assets/[assetId]/stamp-metadata` works end-to-end and is independently testable.
+
+Deliverables:
+1. `exiftool-vendored` added to `package.json`
+2. `public/exiftool/.config` in repo
+3. `src/types/index.ts`: `'metadata-stamp'` in `JobType`, new Asset fields
+4. `src/lib/gcs.ts`: `buildStampedGcsPath`
+5. `src/lib/stamp-helpers.ts`: `isStampStale`
+6. `src/lib/jobs.ts`: `findOrCreateStampJob`, `SYNC_STAMP_THRESHOLD`
+7. `src/app/api/assets/[assetId]/stamp-metadata/route.ts`
+8. `vercel.json`: stamp-metadata entry
+9. Manual test: POST to `/api/assets/[assetId]/stamp-metadata` → verify stamped GCS file, asset doc fields, job status
+
+**Verification:** Can be tested before touching review-links at all. Call the route directly via `curl` or a test script, confirm `stampedGcsPath` is set on the asset doc, confirm the GCS file exists and has XMP metadata (`exiftool -Attrib:all <localDownload>`).
+
+### Phase B: Review-Link Integration
+
+**Goal:** Review-link POST triggers stamps; guest GET serves stamped URLs.
+
+Deliverables:
+1. Modify `src/app/api/review-links/route.ts` POST: stamp trigger logic, sync/async split
+2. Modify `src/app/api/review-links/[token]/route.ts` `decorate()`: stamp-aware URL selection
+3. Verify `updatedAt` is written on rename and upload-complete; add if missing
+
+**Dependencies:** Phase A must complete first. `decorate()` changes can be written against Phase A's `stampedGcsPath` field.
+
+### Phase C: UI Feedback
+
+**Goal:** `CreateReviewLinkModal` shows "Applying metadata…" spinner for sync and polling status for async.
+
+Deliverables:
+1. `CreateReviewLinkModal`: handle `pendingStampJobIds` in POST response
+2. Spinner/progress during sync stamp
+3. Per-asset stamp status badge on the review link page
+4. "Meta-stamped" badge on review-link guest view asset cards
+
+**Dependencies:** Phase B. UI changes are additive; no new API routes needed.
+
+### Phase D: Invalidation + Backfill
+
+**Goal:** Stamp invalidates correctly on rename and new version; existing assets can be backfilled.
+
+Deliverables:
+1. Confirm `updatedAt: FieldValue.serverTimestamp()` is written by rename and upload-complete (may be done in Phase B)
+2. Backfill script: `scripts/backfill-stamp-metadata.mjs` — iterates assets in review links, calls stamp route for any without `stampedGcsPath`
+3. Cleanup: when a new stamp is produced, `deleteFile(old stampedGcsPath)` if it differs from the new one (ext change on rename)
+
+**Dependencies:** Phases A, B, C. Can run in parallel with C.
+
+---
+
+## 13. REQ-Level Decisions (Must Be Locked Before Implementation)
+
+These are architectural decisions that, if changed mid-implementation, require significant rework. Lock them before Phase A starts.
+
+| Decision | This Doc's Recommendation | Why It's REQ-Level |
+|----------|--------------------------|-------------------|
+| Sync threshold (N=3 assets inline) | `SYNC_STAMP_THRESHOLD = 3` | Determines review-link POST response shape; UI async polling flow depends on this |
+| One stamp per asset (not per review-link) | `projects/{pid}/assets/{aid}/stamped{ext}` | Determines GCS path scheme, cache strategy, and audit trail posture |
+| Fallback on missing stamp: serve original (not 503) | Always return working URL | Determines guest UX contract; changing to 503 later would break existing review links |
+| Stamp invalidation: `stampedAt < updatedAt` | Compare timestamps | Requires `updatedAt` be reliably written; changing to boolean flag later requires migration |
+| Exiftool process: one per request, `et.end()` in finally | No `-stay_open` in serverless | Changing to a persistent subprocess requires a different execution model (not serverless) |
+| Async queued jobs executed by client after POST | Client-driven background processing | Changing to a queue worker requires infra change (Vercel cron, Cloud Run, etc.) |
+
+---
+
+## 14. Confidence Assessment
+
+| Area | Confidence | Basis |
+|------|------------|-------|
+| Probe/sprite pattern reuse | HIGH | Read both routes in full; stamp route is structurally identical |
+| exiftool-vendored API (`read`, `write`, `end`) | HIGH | Verified against scf-metadata source + photostructure docs |
+| Exact XMP tag values | HIGH | `.config` file and `exiftool.js` read directly from scf-meta install |
+| Bundle size within 250MB | MEDIUM | ~25–35MB estimate based on scf-meta's install; not measured on fresh Linux install |
+| Perl availability on Vercel | MEDIUM | Common in Node.js Lambda environments; not verified on Vercel Pro specifically |
+| `et.write()` with `-config` as extra arg | MEDIUM | Inferred from exiftool-vendored API; verify the extra-args pattern works for `-config` |
+| `updatedAt` field presence on all assets | LOW | Not verified; must check rename and upload-complete handlers before Phase A |
+
+---
+
+## 15. Open Questions
+
+1. **Is `updatedAt` reliably written?** Check `PUT /api/assets/[assetId]` (rename path) and `/api/upload/complete`. If not, add it in Phase A/B as a prerequisite.
+
+2. **Does Vercel Pro Lambda have Perl?** `exiftool-vendored.pl` requires the system `perl` binary. Test with a minimal deploy before Phase A is declared done.
+
+3. **`-config` as extra arg to `et.write()`** — verify the call signature. The `exiftool-vendored` API docs show extra args can be passed as a third argument to `write()`. Confirm this is how `-config <path>` is passed (not via constructor `exiftoolArgs`).
+
+4. **`Data` field pipe characters** — the desktop app uses `'|{"Company":"Ready Set"|}'` with pipes. Verify against a file already stamped by the desktop app. The pipe may be an exiftool escape for the struct delimiter; the server-side code must match exactly.
+
+5. **Large batch async execution** — v2.4 proposes client-driven background processing (client calls stamp-metadata per queued job after POST returns). Is that acceptable UX for batches of 50–200? If not, a Vercel cron at `maxDuration=300` running `sweepStampQueue()` may be needed in a future milestone.

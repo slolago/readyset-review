@@ -1,237 +1,295 @@
-# Research Summary -- v1.4 Review and Version Workflow
+# Project Research Summary
 
 **Project:** readyset-review
-**Milestone:** v1.4 -- Review and Version Workflow
-**Synthesized:** 2026-04-08
-**Sources:** STACK.md, FEATURES.md, ARCHITECTURE.md, PITFALLS.md
+**Milestone:** v2.4 -- Meta XMP Stamping on Delivery
+**Domain:** Server-side XMP metadata injection for Meta ad-delivery attribution
+**Researched:** 2026-04-23
+**Confidence:** HIGH (core pipeline, GCS/Firestore integration, feature set) / LOW (Perl on Vercel Lambda runtime)
 
 ---
 
 ## Executive Summary
 
-v1.4 is a workflow-polish milestone, not a greenfield build. Every feature extends existing
-infrastructure in place since v1.2-1.3: the version group model (versionGroupId + version integer),
-the folder-browser selection pipeline, VersionStackModal, VersionComparison, and ReviewLink types.
-No new npm packages are required. The Firestore schema needs exactly two new optional fields
-(reviewStatus on assets, assetIds on reviewLinks), two new API routes, and modifications to four
-existing routes.
+v2.4 adds one new capability: every asset in a review link is stamped with Meta's XMP attribution
+schema (http://ns.attribution.com/ads/1.0/) before it is delivered to guests. The stamp is
+asset-scoped -- one stamped GCS copy per asset, cached on the asset Firestore doc, shared across
+all review links. Guests receive the stamped file via a one-line change in the existing decorate()
+pipeline. Internal viewers always see the original. One new npm package is required:
+exiftool-vendored@35.18.0, which mirrors the reference scf-metadata Electron app exactly.
+Everything else -- GCS download/upload, job lifecycle, signed-URL cache, route structure -- reuses
+existing patterns from the probe and generate-sprite routes verbatim.
 
-The recommended approach is an inside-out build: start with features already 80 percent wired
-(MOVE-01) and purely additive ones (STATUS-01, REVIEW-01/02), then tackle features requiring schema
-changes and cross-cutting logic (REVIEW-03), and finish with the most self-contained but internally
-complex work (the VersionComparison refactor in COMPARE-01/02). This order front-loads visible wins
-and defers the riskiest state surgery to when the rest of the milestone is already shippable.
+The recommended implementation order is inside-out: build and validate the stamp pipeline as a
+standalone route first (POST /api/assets/[assetId]/stamp-metadata), then wire it into review-link
+creation, then add UI feedback. The stamp pipeline is entirely asset-level -- it is not triggered
+per review-link or per download. Invalidation is automatic: stampedAt < updatedAt on the asset
+doc triggers a re-stamp on the next review-link creation, without any explicit boolean flag that
+could be missed on a write path.
 
-The key risk in this milestone is not complexity but subtle data-model misuse. The existing status
-field on Asset is an upload lifecycle field and must not be repurposed. Version numbers in a stack
-must always be re-compacted after any reorder or unstack to prevent gaps. The latest-version concept
-has three different implementations across the codebase and needs to be unified into a shared server
-utility before REVIEW-01 is built.
+The single highest-risk unknown is Perl availability in the Vercel Lambda runtime. The
+exiftool-vendored.pl package ships a Perl ExifTool script, not a compiled binary -- system Perl
+must be present at runtime. exiftool-vendored v8.17+ auto-detects missing /usr/bin/perl and
+calls which-perl as a fallback (ignoreShebang), but if Perl is entirely absent from the Lambda
+container, the spawn will fail with an ENOENT. A test deploy that calls the stamp route against a
+real asset on Vercel **must happen before Phase A is declared done**. Every other confidence area
+is HIGH.
 
 ---
 
 ## Key Findings
 
-### Stack: No New Dependencies
+### Recommended Stack
 
-The full existing stack (Next.js 14, Firebase Admin, GCS, Tailwind, Video.js, Fabric.js, Radix UI,
-Zustand) covers every v1.4 feature. Specifically:
+One new dependency: exiftool-vendored@35.18.0. It is the only tool that supports custom XMP
+namespaces via a -config file, writes XMP into both video (MP4 uuid atom) and image (JPEG/PNG)
+containers without format branching, and is a direct match to the reference implementation.
+exiftool-vendored.pl (the Linux Perl binary) installs automatically as an optional dependency on
+the Vercel build environment. Both packages must be added to serverComponentsExternalPackages and
+outputFileTracingIncludes in next.config.mjs, following the identical pattern already established
+for ffmpeg-static and @ffmpeg-installer/ffmpeg.
 
-- Version reorder UI: Native HTML5 drag-and-drop already used in AssetListView. No @dnd-kit needed.
-- Status badges: Existing Badge component has color variants; extend it, do not create a new one.
-- Move-to modal: AssetFolderPickerModal already exists for Copy To; reuse with a title change.
-- Compare comment panel: CommentSidebar accepts assetId prop and handles its own fetching.
-- API patterns: Firestore batch writes, auth + project-access guards, and doc-ID fetching are
-  established patterns that new routes must follow exactly.
+**Core technologies (additions only):**
+- exiftool-vendored@35.18.0: XMP write via Perl ExifTool -- only tool supporting custom namespace via -config; direct match to reference app
+- exiftool-vendored.pl: Linux Perl binary, auto-installed as optional dep on Vercel build environment
+- public/exiftool/.config: vendored XMP namespace definition -- 13-line Perl file from the reference app, must be included in outputFileTracingIncludes
 
-package.json does not change.
+**What NOT to add:** dayjs (use 3 lines of native JS for YYYY:MM:DD), sharp, exiv2,
+fluent-ffmpeg for metadata -- all either inadequate for custom XMP namespaces or redundant.
 
-### Features: Table Stakes vs Differentiators
+### Expected Features
 
-**Table stakes** -- absence makes the product feel unfinished relative to Frame.io:
+**Must have (table stakes) -- all 12 are in scope for v2.4:**
+- TS-07: POST /api/assets/[id]/stamp-metadata route -- root of the entire feature tree
+- TS-06: Atomic download -> stamp locally -> upload stamped (original GCS object never mutated)
+- TS-03: stampedGcsPath + stampedAt on Asset Firestore doc
+- TS-04: decorate() prefers stamped URL for guests, falls back to original
+- TS-05: Internal /api/assets path unchanged -- stamp is guest-delivery-only
+- TS-08: POST /api/review-links triggers stamps (sync <=3 assets, async 4+)
+- TS-01/02: Exact .config namespace + all four required fields (FbId, ExtId, Created, Data)
+- TS-09: Image support (JPEG/PNG) -- free, no format branching in exiftool
+- TS-10: Stamp invalidation on rename (ExtId = filename sans extension, stale after rename)
+- TS-11: Stamp invalidation on new version upload
+- TS-12: "Applying metadata..." spinner in CreateReviewLinkModal
 
-| Ticket    | Feature                                              | Complexity       |
-|-----------|------------------------------------------------------|------------------|
-| VSTK-01a  | Unstack individual version from group                | Medium           |
-| VSTK-01b  | Reorder versions within a stack                      | Medium-High      |
-| STATUS-01 | APPROVED / NEEDS_REVISION / IN_REVIEW status badge   | Low-Medium       |
-| MOVE-01   | Move to context menu with folder picker              | Low (scaffolded) |
-| COMPARE-01| Click version label to switch active audio           | Low              |
-| COMPARE-02| Compare view shows focused version comments          | High             |
+**Should have (add inside Phase A with negligible cost):**
+- D-05: Freshness check dedup -- check isStampStale(asset) at route entry; 30 min inside TS-07
+- D-02: Stamp status in FileInfoPanel -- stampedAt field already on doc; 1h of UI work
 
-**Differentiators** -- valued workflow features, not universally expected:
+**Defer to v2.4.x / v2.5+:**
+- D-04: Full async polling UI for large links (>3 assets) -- defer unless >3-asset links observed
+- D-06: Concurrent stamp dedup via in-flight job check -- optimistic skip sufficient for now
+- Per-project metaConfig (FbId, Company override) -- deferred by spec; add a TODO v2.5 comment
 
-| Ticket    | Feature                                              | Complexity  |
-|-----------|------------------------------------------------------|-------------|
-| REVIEW-03 | Selection-based review links                         | Medium-High |
-| REVIEW-01 | Smart copy: latest version only                      | Low-Medium  |
-| REVIEW-02 | Copy without comments (UI clarification)             | Low         |
+**Anti-features (explicitly avoid):**
+- AF-02: Stamping the original GCS object in-place -- breaks internal/guest URL separation
+- AF-04: Per-review-link stamp -- stamp content is deterministic from asset name + hardcoded constants
+- AF-07: Video re-encoding to inject metadata -- exiftool writes XMP as a header operation only
 
-Deferred to v1.5: STATUS-01b grid filter, custom status labels, multi-approver workflow, bulk status change.
+### Architecture Approach
 
-### Architecture: What Changes and Build Order
+XMP stamping is structurally identical to the probe and generate-sprite jobs: download to /tmp,
+spawn a binary, upload result, update asset doc, manage job lifecycle. The stamp result is
+asset-scoped (projects/{projectId}/assets/{assetId}/stamped{ext}) -- one file shared across all
+review links. decorate() in the review-link GET handler is the single integration point for guest
+delivery: a two-line change routes guests to stampedGcsPath when fresh. The sync/async split
+(<=3 inline, 4+ queued) is a named constant SYNC_STAMP_THRESHOLD = 3. Stamp invalidation uses
+the stampedAt < updatedAt timestamp comparison -- self-healing, no explicit flag needed.
 
-**Firestore schema changes (minimal):**
+**Major components:**
+1. src/app/api/assets/[assetId]/stamp-metadata/route.ts (NEW) -- download -> exiftool write -> upload -> update asset doc; ExifTool instance per request, et.end() in finally
+2. src/lib/stamp-helpers.ts (NEW) -- isStampStale(asset) and buildStampedGcsPath(pid, aid, ext) -- pure helpers shared between route and decorate()
+3. public/exiftool/.config (NEW) -- vendored XMP namespace definition; must appear in outputFileTracingIncludes
+4. src/app/api/review-links/route.ts (MODIFIED) -- POST triggers stamp jobs after link doc is written; sync <= SYNC_STAMP_THRESHOLD, remainder queued
+5. src/app/api/review-links/[token]/route.ts decorate() (MODIFIED) -- two-line stamp-aware path selection before existing GCS block
+6. src/lib/jobs.ts (MODIFIED) -- add findOrCreateStampJob() and SYNC_STAMP_THRESHOLD = 3
+7. src/types/index.ts (MODIFIED) -- add metadata-stamp to JobType; add stampedGcsPath?, stampedAt?, stampedSignedUrl?, stampedSignedUrlExpiresAt?, updatedAt? to Asset
 
-- assets: ADD reviewStatus optional (approved | needs_revision | in_review). Separate from existing status field.
-- reviewLinks: ADD assetIds optional string[]. When present, bypasses folderId scope.
+### Critical Pitfalls
 
-No new collections. No new Firestore indexes needed.
+1. **exiftool binary missing at Vercel runtime** -- exiftool-vendored.pl is not auto-traced by @vercel/nft; add to outputFileTracingIncludes. Add both packages to serverComponentsExternalPackages. Verify vendored binary path resolves on cold start via existsSync() -- fail fast rather than hanging.
 
-**New API routes:**
-- POST /api/assets/reorder-versions -- Batch-update version numbers for a group
-- POST /api/assets/unstack-version -- Eject one asset from its version group
+2. **-stay_open True / no et.end() in serverless** -- the reference desktop app keeps a persistent ExifTool process. In serverless, create a fresh ExifTool({ maxProcs: 1, maxTasksPerProcess: 1 }) per request and always await et.end() in finally. Skipping await causes zombie Perl processes and potential GCS upload corruption (Perl has not flushed the file before upload begins).
 
-**Modified API routes:**
-- POST /api/assets/copy -- Add latestVersionOnly optional boolean
-- POST /api/review-links -- Accept and store assetIds optional string[]
-- GET /api/review-links/[token] -- Branch on assetIds vs folderId for asset resolution
+3. **uploadBuffer() causes OOM on large files** -- gcs.ts uploadBuffer() reads the full file into memory. For 500MB source videos, use streaming GCS upload. Add an uploadStream(gcsPath, localFilePath, contentType) helper to gcs.ts.
 
-**New components:**
-- SmartCopyModal: Copy options: latest-version toggle, strip-comments label, folder picker
-- ReviewStatusBadge: Colored pill with click-to-change popover
-- CompareCommentPanel (collocated): Comment list for one version side in compare view
+4. **Attrib array append semantics** -- always read existing Attrib before writing, normalize to array, spread existing entries with refreshed Data, then append the new entry. Writing only the new entry clobbers attribution history. Unit test: double-stamp same file -> Attrib.length === 2.
 
-**Modified components:**
-- VersionStackModal (in AssetCard.tsx): drag-to-reorder rows and Unstack button
-- AssetCard: add reviewStatus badge, wire SmartCopyModal
-- VersionComparison: per-side audio state (mutedA/mutedB), active-side state, comment panel
-- CreateReviewLinkModal: optional assetIds prop
-- FolderBrowser: status filter bar, Create review link from selection toolbar action
-- types/index.ts: ReviewStatus type, Asset.reviewStatus, ReviewLink.assetIds
+5. **Timestamp type mismatch in invalidation check** -- stampedAt is a Firestore Timestamp; updatedAt may be an ISO string. Use coerceToDate() from src/lib/format-date.ts at every comparison site. Direct < / > comparison silently produces wrong booleans.
 
-**Recommended build order:**
-1. MOVE-01      -- Verify prop wire; likely 0-1 line fix; closes a known open stub
-2. VSTK-01      -- Version stack reorder + unstack (2 new routes + modal UI in one pass)
-3. STATUS-01    -- reviewStatus type + badge + context menu (many files, each small)
-4. REVIEW-01/02 -- Smart copy: 1 API param + SmartCopyModal (~80 lines)
-5. REVIEW-03    -- Selection review links: schema + 2 API changes + modal prop
-6. COMPARE-01   -- Per-side audio mute refactor in VersionComparison
-7. COMPARE-02   -- Per-version comments panel in VersionComparison
+6. **MP4 faststart destroyed by exiftool atom rewrite** -- exiftool in-place MP4 XMP write can move moov after mdat, breaking browser progressive playback. Run ffmpeg -c copy -movflags +faststart as a post-stamp pass on MP4/MOV files before GCS upload.
 
-### Pitfalls: Top Issues to Watch
-
-**CRITICAL -- data corruption or silent breakage if missed:**
-
-1. Version number gaps after unstack/reorder (VSTK-01): After any unstack or reorder,
-   re-compact all remaining stack members in the same batch so version numbers are always
-   1..N with no gaps. The merge-version route is the established template.
-
-2. versionGroupId must be asset.id, never null, on unstack (VSTK-01): Write
-   versionGroupId = asset.id explicitly. Setting it to null or empty string breaks
-   the versionGroupId || asset.id fallback chain used throughout the codebase.
-
-3. reviewStatus vs status field collision (STATUS-01): Asset.status is the upload lifecycle
-   field (uploading | ready). The QC status must be a new separate field reviewStatus.
-   Reusing status breaks the where(status == ready) query in review link asset loading.
-
-4. New version upload must NOT inherit reviewStatus (STATUS-01): New uploads start with
-   reviewStatus undefined. Copying the previous status would mark an unreviewed file as approved.
-
-5. Latest version definition is inconsistent across three code paths (REVIEW-01): Extract
-   getGroupHead(versions) utility before REVIEW-01 and use it everywhere.
-
-6. Smart copy shares a GCS object (REVIEW-01): Deleting the original removes the GCS file
-   and breaks the copy. Decide: reference copy with a delete guard, or a full GCS object copy.
-
-**IMPORTANT -- bugs under concurrency or edge cases:**
-
-7. Use Firestore transaction, not batch, for version reorder (VSTK-01): Batches do not
-   check for stale reads; a concurrent upload mid-reorder creates duplicate version numbers.
-   Use db.runTransaction().
-
-8. Firestore in query capped at 30 items (REVIEW-03): Use individual getDoc calls via
-   Promise.all. Cap UI selection at 50 assets for v1.4.
-
-9. Video.js does not reset audio track state on src() change (COMPARE-01): Use
-   player.muted() toggling instead of audio track selection.
-
-10. MOVE-01 must use the existing PUT handler (MOVE-01): The batch-move-all-group-members
-    logic is inside PUT /api/assets/[assetId]. Any new code path silently splits a version group.
-
-**MINOR -- UX issues, not data bugs:**
-- REVIEW-03: Hide the folder browser on selection-based review link pages.
-- REVIEW-03: Show Asset unavailable placeholder when a linked asset is deleted.
-- MOVE-01: Warn when moving from a folder that has active review links.
-- COMPARE-02: Debounce the assetId-change effect 150-200ms to prevent comment-panel flicker.
+7. **Perl availability on Vercel Lambda** -- ignoreShebang auto-detection handles missing /usr/bin/perl via which perl, but if Perl is entirely absent, the spawn fails. Test a real Vercel deploy before Phase A is complete.
 
 ---
 
 ## Implications for Roadmap
 
-### Pre-Coding Decisions Required
+Based on combined research, the feature has a clear four-phase dependency chain. Every later phase
+depends on the stamp pipeline being correct and independently testable first.
 
-| Decision                              | Recommendation                                               |
-|---------------------------------------|--------------------------------------------------------------|
-| reviewStatus field name               | Use reviewStatus. Clearest separation from upload status.    |
-| Status enum values                    | 3 values: approved, needs_revision, in_review. Absent = pending, no badge. |
-| Smart copy: reference vs GCS copy     | Reference copy with a GCS delete guard. Decide before REVIEW-01. |
-| reviewStatus scope                    | Per latest-version doc only. Consistent with grid showing latest-version metadata. |
-| COMPARE-02 layout                     | Tab row below video. Avoids wide 3-column layout.            |
-| Selection review link asset cap       | Cap at 50 for v1.4 to bound signed URL generation latency.  |
+### Phase A: Stamp Pipeline Standalone
 
-### Phase Groupings
+**Rationale:** TS-07 is the root of the dependency tree. Building it standalone lets you verify XMP
+correctness, GCS round-trip, and Perl availability on Vercel before touching any existing routes.
+Failure here is cheap; failure discovered in Phase B costs a full review-link rewrite.
 
-Group A -- Completing open stubs (start here): MOVE-01, STATUS-01
-Group B -- Version stack surgery (self-contained): VSTK-01a + VSTK-01b (one pass)
-Group C -- Copy workflow: REVIEW-01 + REVIEW-02 (one API param + one modal)
-Group D -- Review link scope extension (schema change): REVIEW-03
-Group E -- Compare view refactor (isolated complexity): COMPARE-01 + COMPARE-02 (together)
+**Delivers:** POST /api/assets/[id]/stamp-metadata works end-to-end. Verifies Perl on Vercel.
+Validates XMP output against a file already stamped by the desktop reference app.
+
+**Addresses:** TS-07, TS-06, TS-03, TS-01, TS-02, TS-09, D-05 (freshness check, trivially added here)
+
+**Avoids:** Pitfalls 1 (binary missing), 2 (-stay_open), 3 (et.end() not awaited), 4 (Attrib append), 6 (MP4 faststart), 8 (config namespace mismatch), 9 (/tmp exhaustion)
+
+**Must resolve before starting:** Is updatedAt reliably written on rename and upload-complete?
+Check PUT /api/assets/[assetId] and /api/upload/complete -- add FieldValue.serverTimestamp() if absent.
+
+### Phase B: Review-Link Integration
+
+**Rationale:** Phase A's stampedGcsPath field is the prerequisite. The decorate() change is two
+lines once the field exists. The review-link POST trigger is where the sync/async split matters.
+
+**Delivers:** Creating a review link stamps included assets. Guests receive stamped URLs.
+decorate() falls back gracefully if stamp is missing or stale.
+
+**Addresses:** TS-04, TS-05, TS-08, TS-12
+
+**Avoids:** Pitfall 5 (concurrent stamp race -- findOrCreateStampJob lives here), Pitfall 15 (blocking POST)
+
+**Conflict to resolve:** ARCHITECTURE recommends SYNC_STAMP_THRESHOLD = 3 inline. PITFALLS argues
+even 1 large-file stamp can block for 30s+. **Recommended resolution: implement fully async for all
+counts in Phase B (post-201 return with pendingStampJobIds). Raise the threshold for sync only
+after real Vercel timing data is available.**
+
+### Phase C: UI Feedback
+
+**Rationale:** Depends on Phase B's pendingStampJobIds in the 201 response. UI changes are purely
+additive -- no API changes required.
+
+**Delivers:** CreateReviewLinkModal shows "Applying metadata..." and transitions cleanly. Guest
+download button disabled while stamp is pending. "Meta-stamped" badge on review-link page.
+
+**Addresses:** TS-12, D-01, D-02
+
+**Avoids:** Pitfall 16 (download before stamp -- disable button while stampingStatus pending),
+Pitfall 17 (spinner lies after failure -- must handle status:failed transition to error state
+with fallback download enabled)
+
+### Phase D: Invalidation + Cleanup
+
+**Rationale:** Can run in parallel with Phase C. Rename and version-upload invalidation are
+one-liner writes. Old stamped GCS file cleanup depends on Phase A's buildStampedGcsPath.
+
+**Delivers:** Stale stamps auto-invalidate on rename and version upload. Old stamped GCS objects
+deleted on re-stamp. Asset hard-delete removes stampedGcsPath GCS object.
+
+**Addresses:** TS-10, TS-11
+
+**Avoids:** Pitfall 13 (orphaned GCS files on rename), Pitfall 14 (timestamp type mismatch --
+coerceToDate() at every comparison site)
+
+### Phase Ordering Rationale
+
+- Phase A before B: stamp route is the only integration point decorate() depends on. Cannot modify decorate() safely until the upstream data model is proven.
+- Phase B before C: UI polling requires pendingStampJobIds in the POST response, which Phase B defines.
+- Phase D parallel with C: invalidation writes are independent of UI; shares updatedAt verification work from Phase A.
+- Sync threshold: start fully async; do not bake N=3 into logic before measuring real Vercel execution times.
 
 ### Research Flags
 
-No additional research sprints needed. Codebase knowledge is HIGH confidence across all features.
+Phases needing pre-build verification spikes (not full research sprints):
 
-Pre-build spikes recommended:
-- VSTK-01: Confirm VersionStackModal render location and props interface before extending it.
-- REVIEW-03: Trace CreateReviewLinkModal prop threading path from grid selection toolbar.
-- COMPARE-01/02: Full read of current VersionComparison state shape before the refactor.
+- **Phase A -- Perl on Vercel:** Deploy a one-route spike (et.version() call) before writing stamp logic. Gate Phase A completion on a passing result. If Perl is absent, requires a different runtime strategy (Cloud Run, custom Vercel builder with pre-compiled exiftool).
+- **Phase A -- updatedAt field coverage:** Read rename and upload-complete handlers; confirms or fixes the prerequisite for Phase D.
+- **Phase A -- et.write() -config as extra arg:** Verify et.write(path, tags, ['-overwrite_original', '-config', configPath]) with a live test.
+- **Phase A -- Data field pipe characters:** Confirm exact value against a file already stamped by the desktop app using exiftool -Attrib:all.
+
+Phases with standard patterns (skip research-phase):
+- **Phase B decorate() change:** Two lines against an already-proven field; standard signed-URL cache pattern.
+- **Phase C UI spinner:** Existing loading state in CreateReviewLinkModal; same polling pattern as probe/sprite job status.
+- **Phase D invalidation writes:** One-liner FieldValue.serverTimestamp() writes on existing paths.
+
+---
+
+## Cross-Cutting Findings (Every Phase Must Know)
+
+These conclusions recur across all four research files and apply to every phase:
+
+1. **Stamp is asset-level, not link-level.** One stamped GCS file per asset. decorate() reads stampedGcsPath from the asset doc -- not the review link doc. Avoid any design that stores stamp state per review link.
+
+2. **ExifTool is per-request, et.end() always awaited.** new ExifTool({ maxProcs: 1, maxTasksPerProcess: 1 }) inside the route handler. await et.end() in finally. Never a module-scope singleton. Never -stay_open True in serverless.
+
+3. **Streaming GCS I/O for large files.** Download: downloadToFile() already streams to /tmp. Upload: must use a new uploadStream() helper -- uploadBuffer() will OOM on 500MB+ source files.
+
+4. **updatedAt is the invalidation clock.** If not reliably written on all asset mutation paths today, fix that first. The entire stamp invalidation model depends on it.
+
+5. **Attrib array: read first, normalize, spread, append.** Never write a single-entry Attrib array without reading the existing one first.
+
+6. **coerceToDate() at every timestamp comparison.** Always use coerceToDate() from src/lib/format-date.ts -- raw < / > between Firestore Timestamps and ISO strings silently produces wrong booleans.
 
 ---
 
 ## Confidence Assessment
 
-| Area                               | Confidence  | Notes                                                     |
-|------------------------------------|-------------|-----------------------------------------------------------|
-| No new npm packages required       | HIGH        | Full codebase read; every primitive confirmed present     |
-| Firestore schema changes           | HIGH        | Two new optional fields; no migration needed              |
-| MOVE-01 is nearly complete         | HIGH        | Prop wire chain traced end-to-end in codebase             |
-| VSTK-01 patterns                   | HIGH        | merge-version route is a direct template                  |
-| STATUS-01 field design             | HIGH        | Name collision confirmed; reviewStatus is safe choice     |
-| REVIEW-01/02 backend scope         | HIGH        | Copy route confirmed to never touch comments collection   |
-| REVIEW-03 assetIds fetch pattern   | HIGH        | Promise.all(getDoc) confirmed; in limit documented        |
-| COMPARE-01/02 component refactor   | MEDIUM-HIGH | Props confirmed; Video.js audio from GitHub issues only   |
-| GCS delete guard for ref copies    | MEDIUM      | Requires reading the delete route before REVIEW-01        |
+| Area | Confidence | Notes |
+|------|------------|-------|
+| Stack (exiftool-vendored) | HIGH | Direct match to reference; version and bundle size verified from npm registry |
+| next.config.mjs changes | HIGH | Identical pattern working in production for ffmpeg packages |
+| Subprocess lifecycle (et.end()) | HIGH | CHANGELOG v35.0.0 confirms unreferenced stdio; per-request pattern confirmed |
+| GCS download/upload pattern | HIGH | downloadToFile confirmed; upload streaming gap identified and documented |
+| Job infrastructure fit | HIGH | jobs.ts interface is generic; JobType extension is one line |
+| Signed-URL cache integration | HIGH | getOrCreateSignedUrl is format-agnostic; confirmed with thumbnail and sprite |
+| XMP schema correctness | HIGH | .config and exiftool.js read directly from scf-meta install |
+| Attrib append logic | HIGH | Reference exiftool.js read in full; spread pattern confirmed |
+| decorate() integration point | HIGH | review-links/[token]/route.ts read in full; change is two lines |
+| Feature scope | HIGH | Codebase-verified; anti-features backed by concrete failure modes |
+| Sync/async threshold (N=3) | MEDIUM | Architecture says 3; pitfalls says 0 -- resolve by measuring on Vercel |
+| MP4 faststart preservation | MEDIUM | Documented exiftool behavior; version-dependent; needs post-stamp ffprobe check |
+| et.write() -config as extra arg | MEDIUM | Inferred from API shape; needs live verification |
+| Data field pipe characters | MEDIUM | Value seen in source; needs verification against an already-stamped file |
+| updatedAt field reliability | LOW | Not verified on rename and upload-complete paths |
+| Perl on Vercel Lambda | LOW | ignoreShebang mitigates but does not eliminate risk; requires deploy test |
 
-**Overall: HIGH.** Research is codebase-verified throughout. The two MEDIUM items have safe,
-simple mitigations already identified.
+**Overall confidence:** HIGH for the pipeline design; LOW on two runtime environment questions that
+must be verified before Phase A is complete.
 
-### Gaps to Address Before Coding
+### Gaps to Address
 
-1. GCS delete route audit: Read DELETE /api/assets/[assetId] to confirm whether it checks
-   for shared gcsPath before calling deleteFile. Determines if a guard is needed in REVIEW-01.
-
-2. VersionStackModal exact location: Confirm collocated in AssetCard.tsx or extracted,
-   and whether to extend in place or extract for VSTK-01.
-
-3. CreateReviewLinkModal prop wire path: Trace which component renders it and how assetIds
-   from the grid selection toolbar reaches it before designing REVIEW-03.
-
-4. Full VersionComparison state read: Multiple iterations since v1.2. Read in full before COMPARE-01.
+- **Perl on Vercel:** Deploy a minimal spike (et.version()) before writing stamp logic. If Perl is absent, requires a different runtime strategy (Cloud Run, custom Vercel builder with pre-compiled exiftool).
+- **updatedAt field coverage:** Read PUT /api/assets/[assetId] (rename) and POST /api/upload/complete. This is a Phase A gate, not a Phase D concern.
+- **Sync vs. async threshold:** Implement fully async in Phase B; measure actual Vercel stamp times before raising threshold from 0.
+- **Data field format:** Run exiftool -Attrib:all on a file stamped by the desktop app to confirm whether pipe characters in the Data value are literal or an exiftool struct delimiter.
 
 ---
 
-## Aggregated Sources
+## Sources
 
-- Frame.io Version Stacking V4: https://help.frame.io/en/articles/9101068-version-stacking
-- Frame.io Comparison Viewer V4: https://help.frame.io/en/articles/9952618-comparison-viewer
-- Frame.io Developer Forum Asset Label Status: https://forum.frame.io/t/how-to-update-asset-label-status-via-frameio-api/939
-- Frame.io Shares V4: https://help.frame.io/en/articles/9105232-shares-in-frame-io
-- Frame.io V4 Changelog (PATCH reorder September 2025): https://developer.adobe.com/frameio/guides/Changelog/
-- Codebase 2026-04-08: src/types/index.ts, src/app/api/assets/[assetId]/route.ts,
-  merge-version/route.ts, copy/route.ts, review-links/route.ts, review-links/[token]/route.ts,
-  src/hooks/useComments.ts, src/components/files/AssetCard.tsx,
-  src/components/viewer/VersionComparison.tsx, src/components/review/CreateReviewLinkModal.tsx
-- Firestore official docs: batch vs transaction semantics, in query 30-item limit, no cascade delete.
-- Video.js GitHub issues 8198 and 5607: audio track state on src() change.
-- GCS official docs: signed URL generation is local crypto with service account key.
+### Primary (HIGH confidence)
+- scf-meta app-0.11.9 src/backend/exiftool.js -- reference Attrib append logic, field constants, -config, ExtId computation
+- scf-meta app-0.11.9 public/exiftool/.config -- XMP namespace URI, struct definition, field types
+- src/app/api/assets/[assetId]/generate-sprite/route.ts -- streaming GCS download, binary resolution, tmp cleanup, job pattern
+- src/app/api/review-links/[token]/route.ts -- decorate() function, signed-URL cache, flushUrlWrites pattern
+- src/lib/gcs.ts -- downloadToFile, uploadBuffer (OOM limitation confirmed), generateReadSignedUrl
+- src/lib/jobs.ts -- createJob/updateJob/sweepStaleJobs; JobType union
+- src/lib/signed-url-cache.ts -- getOrCreateSignedUrl interface
+- src/lib/format-date.ts -- coerceToDate (Timestamp vs ISO string)
+- next.config.mjs -- existing outputFileTracingIncludes and serverComponentsExternalPackages patterns
+- src/types/index.ts -- Asset, Job, JobType, ReviewLink types
+- npm view exiftool-vendored / npm view exiftool-vendored.pl -- version, size, platform packaging (verified 2026-04-23)
+- exiftool-vendored CHANGELOG v35.0.0 -- unreferenced stdio, natural process exit
+- exiftool-vendored CHANGELOG v8.17.0 -- ignoreShebang auto-detection for Lambda
+
+### Secondary (MEDIUM confidence)
+- Vercel KB: 250MB uncompressed Lambda bundle limit
+- Vercel docs: Amazon Linux 2023 build image
+- exiftool documentation: MP4 atom rewriting behavior, faststart impact
+- exiftool FAQ: JPEG APP1 segment XMP/EXIF interleaving
+- github.com/photostructure/exiftool-vendored.js/issues/101 -- Lambda compatibility discussion
+
+### Tertiary (LOW confidence -- needs verification)
+- Perl availability in Vercel Pro Node.js Lambda runtime -- no confirmed test
+- SYNC_STAMP_THRESHOLD = 3 timing assumption -- based on estimated benchmarks, not measured on Vercel
+
+---
+
+*Research completed: 2026-04-23*
+*Ready for roadmap: yes*
