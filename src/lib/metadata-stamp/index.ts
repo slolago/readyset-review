@@ -30,6 +30,7 @@
  */
 
 import path from 'path';
+import { existsSync } from 'fs';
 import { ExifTool, type Tags } from 'exiftool-vendored';
 
 /** Hardcoded Meta Ads Object ID from the reference app. */
@@ -49,13 +50,44 @@ export const DATA = '|{"Company":"Ready Set"|}';
  */
 export const META_TZ = 'America/New_York';
 
-/** Absolute path to the custom XMP schema that defines the Attrib namespace. */
-export const ATTRIB_CONFIG_PATH = path.join(
-  process.cwd(),
-  'public',
-  'exiftool-config',
-  'attrib.config',
-);
+/**
+ * Resolves the custom XMP schema file path at first use. Probes candidate
+ * locations because Next.js on Vercel may execute the route with
+ * `process.cwd()` equal to the project root, `.next/standalone/`, or
+ * `/var/task/` depending on how the Lambda was packaged — a single
+ * hardcoded path is unreliable.
+ *
+ * Cached after first successful resolution. Throws if no candidate
+ * resolves — caught by the stamp route's try/catch and surfaced as a
+ * clear 500 with actionable error text, rather than the old silent
+ * failure mode (exiftool runs, writes XMP without the Attrib namespace,
+ * and the stamped file looks identical to the original).
+ *
+ * Deferred to call-time (not module-load) so an import of this file
+ * from an unrelated route doesn't blow up on missing-config — the
+ * failure is scoped to the stamp pipeline.
+ */
+let cachedConfigPath: string | null = null;
+export function getAttribConfigPath(): string {
+  if (cachedConfigPath) return cachedConfigPath;
+  const candidates = [
+    path.join(process.cwd(), 'public', 'exiftool-config', 'attrib.config'),
+    path.join(process.cwd(), '.next', 'standalone', 'public', 'exiftool-config', 'attrib.config'),
+    path.join('/var/task', 'public', 'exiftool-config', 'attrib.config'),
+    // Last-ditch: resolve relative to this file's directory.
+    path.resolve(__dirname, '..', '..', '..', 'public', 'exiftool-config', 'attrib.config'),
+  ];
+  for (const c of candidates) {
+    if (existsSync(c)) {
+      cachedConfigPath = c;
+      return c;
+    }
+  }
+  throw new Error(
+    `ATTRIB config file not found. Tried: ${candidates.join(' | ')}. ` +
+      'Verify next.config.mjs outputFileTracingIncludes contains ./public/exiftool-config/**.',
+  );
+}
 
 /**
  * Today's date in `YYYY:MM:DD` format, in the META_TZ timezone.
@@ -107,13 +139,18 @@ export function deriveExtId(filename: string): string {
  * Returns the final Attrib array length (for post-stamp sanity checks).
  */
 export async function stampAsset(localPath: string, assetName: string): Promise<number> {
+  // Resolve config path BEFORE creating the ExifTool instance so a missing
+  // config file produces a clear error instead of a cryptic exiftool
+  // stderr message later in the pipeline.
+  const configPath = getAttribConfigPath();
+
   const et = new ExifTool({ maxProcs: 1, maxTasksPerProcess: 1 });
 
   try {
     // Read existing Attrib entries. A freshly-uploaded asset has no Attrib;
     // a previously-stamped asset has ≥1. exiftool-vendored returns a single
     // entry as an object, multiple as an array — normalize to array.
-    const tags = await et.read(localPath, ['-config', ATTRIB_CONFIG_PATH]);
+    const tags = await et.read(localPath, ['-config', configPath]);
     const existing = (tags as Tags & { Attrib?: unknown }).Attrib;
     const oldAttrib: Array<Record<string, unknown>> = Array.isArray(existing)
       ? (existing as Array<Record<string, unknown>>)
@@ -141,7 +178,7 @@ export async function stampAsset(localPath: string, assetName: string): Promise<
     await et.write(
       localPath,
       { Attrib } as unknown as Tags,
-      ['-config', ATTRIB_CONFIG_PATH, '-overwrite_original'],
+      ['-config', configPath, '-overwrite_original'],
     );
 
     return Attrib.length;

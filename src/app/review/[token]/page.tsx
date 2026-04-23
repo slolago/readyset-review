@@ -607,7 +607,15 @@ export default function ReviewPage() {
                                   const url = ((asset as any).downloadUrl ?? (asset as any).signedUrl) as string;
                                   forceDownload(url, asset.name);
                                 }}
-                                className="absolute bottom-14 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-frame-card/90 backdrop-blur-sm border border-frame-border rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 text-xs text-white hover:bg-frame-cardHover"
+                                // Accent-colored + always-visible (not hover-only) so the
+                                // download affordance is obvious. Previous version was
+                                // bg-frame-card/90 with hover-reveal, which blended into
+                                // the dark card and was explicitly flagged as hard to see
+                                // in v2.4 feedback. Positioned top-right of the thumbnail
+                                // above any badges, matching the "primary action" corner.
+                                title="Download"
+                                aria-label="Download asset"
+                                className="absolute top-2 right-2 z-20 bg-frame-accent hover:bg-frame-accentHover text-white rounded-lg px-3 py-1.5 flex items-center gap-1.5 text-xs font-semibold shadow-lg shadow-frame-accent/40 transition-colors"
                               >
                                 <Download className="w-3.5 h-3.5" />
                                 Download

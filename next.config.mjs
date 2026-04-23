@@ -65,6 +65,13 @@ const nextConfig = {
         './node_modules/exiftool-vendored/**',
         './node_modules/exiftool-vendored.pl/**',
         './src/lib/metadata-stamp/**',
+        // The custom XMP schema lives in public/ so it ships in the
+        // deploy, but @vercel/nft only traces static imports — the
+        // stamp route resolves the config path at runtime via
+        // process.cwd(), which the tracer can't see. Without this
+        // include, exiftool runs on Vercel but can't find the Attrib
+        // namespace and writes no Attrib:Ads entries.
+        './public/exiftool-config/**',
       ],
     },
   },
