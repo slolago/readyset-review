@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { FieldValue } from 'firebase-admin/firestore';
 import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { getPublicUrl, verifyGcsObject } from '@/lib/gcs';
@@ -60,7 +61,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const updates: Record<string, unknown> = { status: 'ready', size: verify.size };
+    const updates: Record<string, unknown> = {
+      status: 'ready',
+      size: verify.size,
+      // Stamp invalidation clock (v2.4 STAMP-07): a new version's upload-
+      // complete bumps updatedAt on the NEW version's asset doc. The stamp
+      // route's freshness check compares stampedAt < updatedAt and re-stamps
+      // this version; sibling versions in the stack are untouched.
+      updatedAt: FieldValue.serverTimestamp(),
+    };
     if (width) updates.width = width;
     if (height) updates.height = height;
     if (duration) updates.duration = duration;

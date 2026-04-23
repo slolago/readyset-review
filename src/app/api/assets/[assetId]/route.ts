@@ -103,6 +103,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 });
     }
 
+    // Stamp invalidation clock (v2.4 STAMP-06/-07): every mutation that
+    // could change the stamped content (rename → ExtId; future writable
+    // fields) bumps updatedAt. The stamp route's freshness check compares
+    // stampedAt < updatedAt to decide whether to re-stamp. Writing it here
+    // unconditionally keeps invalidation semantics consistent regardless of
+    // which whitelisted field mutated.
+    updates.updatedAt = FieldValue.serverTimestamp();
+
     // Rating: validate early and translate "clear" (0 or null) to
     // FieldValue.delete() right here — not later in the else branch's null
     // coercion — so the folderId batch-update path also honors clears
