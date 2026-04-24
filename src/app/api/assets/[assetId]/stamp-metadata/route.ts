@@ -35,12 +35,15 @@ import { coerceToDate } from '@/lib/format-date';
 import type { Project } from '@/types';
 
 export const runtime = 'nodejs';
-// Vercel Pro allows up to 300s per function invocation. 60s wasn't
-// enough for the full GCS-download → exiftool → GCS-upload cycle on
-// large videos (59MB+ files were hitting SIGKILL mid-pipeline — the
-// job got stuck in status='running' forever, the dedup short-circuited
-// every subsequent attempt, and no stamp ever completed).
-export const maxDuration = 300;
+// Vercel Hobby caps at 60s. Pro/Enterprise allow 300s / 900s. For
+// files large enough that the full GCS-download → exiftool →
+// GCS-upload cycle exceeds 60s on Hobby's network bandwidth, the
+// function SIGKILLs mid-work and the job stays 'running' forever.
+// Mitigation: sweepStaleJobs(90s) + zombie-aware dedup at route
+// entry so repeat attempts aren't blocked. For reliable stamping of
+// videos >30MB, the project needs Pro (300s limit) or a background-
+// worker architecture (out of scope v2.4).
+export const maxDuration = 60;
 
 interface RouteParams {
   params: { assetId: string };
