@@ -35,7 +35,12 @@ import { coerceToDate } from '@/lib/format-date';
 import type { Project } from '@/types';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+// Vercel Pro allows up to 300s per function invocation. 60s wasn't
+// enough for the full GCS-download → exiftool → GCS-upload cycle on
+// large videos (59MB+ files were hitting SIGKILL mid-pipeline — the
+// job got stuck in status='running' forever, the dedup short-circuited
+// every subsequent attempt, and no stamp ever completed).
+export const maxDuration = 300;
 
 interface RouteParams {
   params: { assetId: string };

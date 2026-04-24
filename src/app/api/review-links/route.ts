@@ -8,12 +8,15 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { customAlphabet } from 'nanoid';
 
 // v2.4: POST awaits per-asset stamp jobs; each stamp HTTP call can take
-// 5-15s (download + exiftool + upload). Parallel fan-out keeps total
-// wall time ≈ max(individual), but 60s caps the safe batch size at ~20
-// typical-sized assets. Past that, some stamps may be abandoned; the
-// link is still created and guests fall back to the original URL.
+// 10-60s depending on file size (download + exiftool + upload on
+// Vercel's Lambda network). Parallel fan-out keeps total wall time
+// ≈ max(individual), but we need headroom over the child route's 300s
+// maxDuration. 300s parent means safe for stamp batches up to ~20
+// mid-sized videos (5MB-100MB each). Past that, some stamps will be
+// abandoned; the link is still created and guests fall back to the
+// original URL.
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const generateShortToken = customAlphabet(
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
