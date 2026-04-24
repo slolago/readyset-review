@@ -1,11 +1,33 @@
 import { NextRequest } from 'next/server';
 import { getAdminAuth, getAdminDb } from './firebase-admin';
+import { verifyApiKey } from './api-keys';
 import type { User } from '@/types';
 import { platformRoleAtLeast, type PlatformRole } from './permissions';
 
+/**
+ * Verify the request's credentials. Accepts either:
+ *   - `X-API-Key: rsk_...`  (programmatic access — Zapier, curl, automations)
+ *   - `Authorization: Bearer <firebase-id-token>`  (browser sessions)
+ *
+ * API keys are checked first because they're the faster path (single Firestore
+ * doc read by ID vs. Firebase Auth JWT validation RPC). Both paths resolve to
+ * a `{ uid, email }` shape the rest of the auth pipeline consumes.
+ */
 export async function verifyAuthToken(
   request: NextRequest
 ): Promise<{ uid: string; email: string } | null> {
+  // --- API key path --------------------------------------------------------
+  const apiKey = request.headers.get('X-API-Key') || request.headers.get('x-api-key');
+  if (apiKey) {
+    const uid = await verifyApiKey(apiKey);
+    if (!uid) return null;
+    // Email left empty — downstream permission checks use uid + role from the
+    // user doc. The only consumer that reads email is comment authorship,
+    // which shouldn't run through an API-key-authed request anyway.
+    return { uid, email: '' };
+  }
+
+  // --- Firebase ID token path (browser) ------------------------------------
   const authHeader = request.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
 
