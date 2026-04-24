@@ -8,7 +8,23 @@ import { AssetCard } from '@/components/files/AssetCard';
 import { FilterPopover } from '@/components/ui/FilterPopover';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { RatingStars } from '@/components/ui/RatingStars';
-import type { Asset } from '@/types';
+import type { Asset, ReviewStatus } from '@/types';
+
+// Status filter values — real ReviewStatus values plus the `'none'` sentinel
+// for assets that haven't been triaged yet. Surfaced so users can quickly
+// answer "what still needs review?".
+type StatusFilterValue = ReviewStatus | 'none';
+
+const STATUS_OPTIONS: Array<{
+  value: StatusFilterValue;
+  label: string;
+  dotClass: string;
+}> = [
+  { value: 'approved',       label: 'Approved',       dotClass: 'bg-emerald-400' },
+  { value: 'needs_revision', label: 'Needs Revision', dotClass: 'bg-yellow-400' },
+  { value: 'in_review',      label: 'In Review',      dotClass: 'bg-blue-400' },
+  { value: 'none',           label: 'No status',      dotClass: 'bg-frame-border' },
+];
 
 type SortKey =
   | 'newest'
@@ -51,6 +67,9 @@ export default function AssetsPage() {
   const [durationMax, setDurationMax] = useState<string>('');
   // 0 = no filter; 1–5 = show assets rated >= minRating.
   const [minRating, setMinRating] = useState<number>(0);
+  // Multi-select review-status filter. Empty = no filter. `'none'` in the
+  // set matches assets whose reviewStatus is unset.
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<StatusFilterValue>>(new Set());
   const [sortKey, setSortKey] = useState<SortKey>('newest');
 
   const [totalAvailable, setTotalAvailable] = useState<number | null>(null);
@@ -140,13 +159,18 @@ export default function AssetsPage() {
         // matches the "show me the best" mental model.
         if (!a.rating || a.rating < minRating) return false;
       }
+      if (selectedStatuses.size > 0) {
+        // Map undefined → 'none' so the sentinel matches untriaged assets.
+        const status: StatusFilterValue = (a.reviewStatus ?? 'none') as StatusFilterValue;
+        if (!selectedStatuses.has(status)) return false;
+      }
       if (!q) return true;
       if (a.name.toLowerCase().includes(q)) return true;
       if (a.projectName && a.projectName.toLowerCase().includes(q)) return true;
       if ((a.tags ?? []).some((t) => t.toLowerCase().includes(q))) return true;
       return false;
     });
-  }, [assets, query, selectedProjectIds, selectedTags, durMin, durMax, durationActive, minRating]);
+  }, [assets, query, selectedProjectIds, selectedTags, durMin, durMax, durationActive, minRating, selectedStatuses]);
 
   // Sort pipeline — applied after filter so result counts match the sort the
   // user sees. Unrated assets sort below the lowest rated row for
@@ -191,7 +215,11 @@ export default function AssetsPage() {
   }, [filtered, sortKey]);
 
   const anyFilterActive =
-    selectedProjectIds.size > 0 || selectedTags.size > 0 || durationActive || minRating > 0;
+    selectedProjectIds.size > 0 ||
+    selectedTags.size > 0 ||
+    durationActive ||
+    minRating > 0 ||
+    selectedStatuses.size > 0;
 
   const clearAll = () => {
     setSelectedProjectIds(new Set());
@@ -199,6 +227,7 @@ export default function AssetsPage() {
     setDurationMin('');
     setDurationMax('');
     setMinRating(0);
+    setSelectedStatuses(new Set());
   };
 
   const capped =
@@ -209,6 +238,15 @@ export default function AssetsPage() {
     if (next.has(value)) next.delete(value);
     else next.add(value);
     return next;
+  };
+
+  const toggleStatus = (value: StatusFilterValue) => {
+    setSelectedStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
   };
 
   return (
@@ -280,6 +318,16 @@ export default function AssetsPage() {
 
         <FilterPopover label="Rating" activeCount={minRating > 0 ? 1 : 0}>
           <RatingThresholdInput value={minRating} onChange={setMinRating} />
+        </FilterPopover>
+
+        <FilterPopover label="Status" activeCount={selectedStatuses.size}>
+          <StatusCheckboxList
+            selected={selectedStatuses}
+            onToggle={toggleStatus}
+            onClear={
+              selectedStatuses.size > 0 ? () => setSelectedStatuses(new Set()) : undefined
+            }
+          />
         </FilterPopover>
 
         {anyFilterActive && (
@@ -588,6 +636,64 @@ function DurationRangeInput({
         Only assets with a duration (video / audio) are filtered — images and
         documents are hidden while this filter is active.
       </p>
+    </div>
+  );
+}
+
+function StatusCheckboxList({
+  selected,
+  onToggle,
+  onClear,
+}: {
+  selected: Set<StatusFilterValue>;
+  onToggle: (value: StatusFilterValue) => void;
+  onClear?: () => void;
+}) {
+  // No search input — the option set is a fixed 4-value enum, so the
+  // SearchableCheckboxList pattern doesn't fit. Colored dots match the
+  // ReviewStatusBadge component palette so users learn the color language
+  // in one place.
+  return (
+    <div className="flex flex-col">
+      <div className="py-1">
+        {STATUS_OPTIONS.map((opt) => {
+          const active = selected.has(opt.value);
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onToggle(opt.value)}
+              aria-pressed={active}
+              className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors ${
+                active
+                  ? 'bg-frame-accent/10 text-white'
+                  : 'text-frame-textSecondary hover:text-white hover:bg-frame-cardHover'
+              }`}
+            >
+              <span
+                className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                  active ? 'bg-frame-accent border-frame-accent' : 'border-frame-border'
+                }`}
+              >
+                {active && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+              </span>
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.dotClass}`} />
+              <span className="truncate">{opt.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      {onClear && (
+        <div className="border-t border-frame-border px-2 py-1.5">
+          <button
+            type="button"
+            onClick={onClear}
+            className="w-full text-[11px] text-frame-textMuted hover:text-white transition-colors py-1"
+          >
+            Clear selection
+          </button>
+        </div>
+      )}
     </div>
   );
 }
