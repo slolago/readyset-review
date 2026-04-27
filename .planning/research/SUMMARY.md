@@ -1,6 +1,6 @@
 # Project Research Summary
 
-**Project:** readyset-review
+**Project:** readyset-scope
 **Milestone:** v2.4 -- Meta XMP Stamping on Delivery
 **Domain:** Server-side XMP metadata injection for Meta ad-delivery attribution
 **Researched:** 2026-04-23

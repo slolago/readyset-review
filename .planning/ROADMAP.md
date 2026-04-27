@@ -1,4 +1,4 @@
-# Roadmap: readyset-review
+# Roadmap: readyset-scope
 
 ## Milestones
 

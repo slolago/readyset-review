@@ -1,4 +1,4 @@
-# Requirements: readyset-review
+# Requirements: readyset-scope
 
 **Defined:** 2026-04-23 (v2.4 — Meta XMP stamping on delivery)
 **Core Value:** Fast, accurate video review — frame-level precision, rich metadata, and fluid version management without leaving the browser.

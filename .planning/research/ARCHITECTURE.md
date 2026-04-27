@@ -1,6 +1,6 @@
 # Architecture: v2.4 XMP Metadata Stamping Integration
 
-**Project:** readyset-review
+**Project:** readyset-scope
 **Researched:** 2026-04-23
 **Confidence:** HIGH — all integration points verified against live codebase
 **Scope:** How XMP stamping slots into the existing review-link pipeline without structural teardown

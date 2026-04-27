@@ -1,6 +1,6 @@
-# readyset-review
+# readyset-scope
 
-Frame.io V4 clone — internal media review platform.
+Internal media review platform (Frame.io V4-style) for Ready Set creative teams.
 
 ## What This Is
 
@@ -57,8 +57,9 @@ Fast, accurate video review — frame-level precision, rich metadata, and fluid 
 
 ## Repositories
 
-- origin: slolago/readyset-review
-- vercel: slolago/readyset-review-vercel
+- scope: ReadySetCo/readyset-scope (canonical, post-rename)
+- origin: slolago/readyset-review (legacy mirror, pre-rename)
+- vercel: slolago/readyset-review-vercel (legacy mirror, pre-rename)
 
 ## Requirements
 

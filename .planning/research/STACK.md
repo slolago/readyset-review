@@ -1,6 +1,6 @@
 # Technology Stack — v2.4 Meta XMP Stamping
 
-**Project:** readyset-review
+**Project:** readyset-scope
 **Researched:** 2026-04-23
 **Scope:** Server-side XMP embedding addendum only. Existing stack (Next.js 14, Firebase, GCS, ffmpeg pipeline) is validated and not re-examined except where XMP stamping integrates with it.
 

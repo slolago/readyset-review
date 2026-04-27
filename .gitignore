@@ -38,8 +38,9 @@ service-account.json
 *-service-account.json
 firebase-adminsdk*.json
 
-# gcp service account JSONs
+# gcp service account JSONs (keep both legacy + new naming during migration)
 frame-clone-*.json
+readyset-scope-*.json
 
 # claude local settings (may contain tokens)
 .claude/settings.local.json

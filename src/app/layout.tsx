@@ -13,7 +13,7 @@ import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 import { Toaster } from 'react-hot-toast';
 
 export const metadata: Metadata = {
-  title: 'Ready Set — Media Review Platform',
+  title: 'Readyset Scope — Media Review Platform',
   description: 'Professional video and image review platform for creative teams',
   icons: {
     icon: '/icon.svg',
