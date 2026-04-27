@@ -62,7 +62,7 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
   ];
 
   return (
-    <div className={`group bg-frame-card rounded-xl overflow-hidden transition-all hover:bg-frame-cardHover ${selectionStyle('project', 'idle')}`}>
+    <div className={`group bg-scope-card rounded-xl overflow-hidden transition-all hover:bg-scope-cardHover ${selectionStyle('project', 'idle')}`}>
       {/* Color bar */}
       <div className="h-1" style={{ backgroundColor: color }} />
 
@@ -76,11 +76,11 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
               <FolderOpen className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-semibold text-white truncate group-hover:text-frame-accent transition-colors">
+              <h3 className="font-semibold text-white truncate group-hover:text-scope-accent transition-colors">
                 {project.name}
               </h3>
               {project.description && (
-                <p className="text-frame-textMuted text-xs mt-0.5 truncate">
+                <p className="text-scope-textMuted text-xs mt-0.5 truncate">
                   {project.description}
                 </p>
               )}
@@ -90,7 +90,7 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
           {menuItems.length > 0 && (
             <Dropdown
               trigger={
-                <button className="w-7 h-7 flex items-center justify-center rounded-lg text-frame-textMuted hover:text-white hover:bg-frame-border transition-colors opacity-0 group-hover:opacity-100">
+                <button className="w-7 h-7 flex items-center justify-center rounded-lg text-scope-textMuted hover:text-white hover:bg-scope-border transition-colors opacity-0 group-hover:opacity-100">
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               }
@@ -100,11 +100,11 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-frame-textMuted text-xs">
+          <div className="flex items-center gap-1.5 text-scope-textMuted text-xs">
             <Users className="w-3.5 h-3.5" />
             <span>{project.collaborators?.length || 1} member{project.collaborators?.length !== 1 ? 's' : ''}</span>
           </div>
-          <span className="text-frame-textMuted text-xs">{formatRelativeTime(updatedAt)}</span>
+          <span className="text-scope-textMuted text-xs">{formatRelativeTime(updatedAt)}</span>
         </div>
       </div>
 

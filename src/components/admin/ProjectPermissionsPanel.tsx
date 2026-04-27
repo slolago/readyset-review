@@ -161,21 +161,21 @@ export function ProjectPermissionsPanel({ projectId, onClose, getIdToken }: Prop
             </h3>
             <div className="space-y-2">
               {/* Owner row — read-only */}
-              <div className="flex items-center gap-3 px-3 py-2.5 bg-frame-bg rounded-lg border border-frame-border">
+              <div className="flex items-center gap-3 px-3 py-2.5 bg-scope-bg rounded-lg border border-scope-border">
                 <Avatar name={data.project.ownerName} size="sm" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white font-medium truncate">{data.project.ownerName}</p>
-                  <p className="text-xs text-frame-textMuted truncate">{data.project.ownerEmail}</p>
+                  <p className="text-xs text-scope-textMuted truncate">{data.project.ownerEmail}</p>
                 </div>
                 <Badge variant="purple">owner</Badge>
               </div>
               {data.collaborators.length === 0 && (
-                <p className="text-xs text-frame-textMuted py-2">No collaborators.</p>
+                <p className="text-xs text-scope-textMuted py-2">No collaborators.</p>
               )}
               {data.collaborators.map((c) => (
                 <div
                   key={c.userId}
-                  className="flex items-center gap-3 px-3 py-2.5 bg-frame-bg rounded-lg border border-frame-border"
+                  className="flex items-center gap-3 px-3 py-2.5 bg-scope-bg rounded-lg border border-scope-border"
                 >
                   <Avatar name={c.name} size="sm" />
                   <div className="flex-1 min-w-0">
@@ -192,13 +192,13 @@ export function ProjectPermissionsPanel({ projectId, onClose, getIdToken }: Prop
                         </span>
                       )}
                     </p>
-                    <p className="text-xs text-frame-textMuted truncate">{c.email}</p>
+                    <p className="text-xs text-scope-textMuted truncate">{c.email}</p>
                   </div>
                   <select
                     value={c.role}
                     disabled={busy === c.userId || c.role === 'owner'}
                     onChange={(e) => handleRoleChange(c, e.target.value as 'editor' | 'reviewer')}
-                    className="bg-frame-bg border border-frame-border rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-frame-accent disabled:opacity-50"
+                    className="bg-scope-bg border border-scope-border rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-scope-accent disabled:opacity-50"
                   >
                     <option value="editor">editor</option>
                     <option value="reviewer">reviewer</option>
@@ -214,17 +214,17 @@ export function ProjectPermissionsPanel({ projectId, onClose, getIdToken }: Prop
               Review Links ({data.reviewLinks.length})
             </h3>
             {data.reviewLinks.length === 0 ? (
-              <p className="text-xs text-frame-textMuted py-2">No review links.</p>
+              <p className="text-xs text-scope-textMuted py-2">No review links.</p>
             ) : (
-              <div className="overflow-x-auto border border-frame-border rounded-lg">
+              <div className="overflow-x-auto border border-scope-border rounded-lg">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-frame-border bg-frame-bg">
-                      <th className="text-left px-3 py-2 font-semibold text-frame-textMuted uppercase tracking-wider">Token</th>
-                      <th className="text-left px-3 py-2 font-semibold text-frame-textMuted uppercase tracking-wider">Creator</th>
-                      <th className="text-left px-3 py-2 font-semibold text-frame-textMuted uppercase tracking-wider">Created</th>
-                      <th className="text-left px-3 py-2 font-semibold text-frame-textMuted uppercase tracking-wider">Expires</th>
-                      <th className="text-left px-3 py-2 font-semibold text-frame-textMuted uppercase tracking-wider">Flags</th>
+                    <tr className="border-b border-scope-border bg-scope-bg">
+                      <th className="text-left px-3 py-2 font-semibold text-scope-textMuted uppercase tracking-wider">Token</th>
+                      <th className="text-left px-3 py-2 font-semibold text-scope-textMuted uppercase tracking-wider">Creator</th>
+                      <th className="text-left px-3 py-2 font-semibold text-scope-textMuted uppercase tracking-wider">Created</th>
+                      <th className="text-left px-3 py-2 font-semibold text-scope-textMuted uppercase tracking-wider">Expires</th>
+                      <th className="text-left px-3 py-2 font-semibold text-scope-textMuted uppercase tracking-wider">Flags</th>
                       <th className="px-3 py-2" />
                     </tr>
                   </thead>
@@ -234,38 +234,38 @@ export function ProjectPermissionsPanel({ projectId, onClose, getIdToken }: Prop
                       const expires = toDate(rl.expiresAt);
                       const isConfirming = confirmRevoke === rl.token;
                       return (
-                        <tr key={rl.token} className="border-b border-frame-border/50 last:border-0">
-                          <td className="px-3 py-2 font-mono text-frame-textSecondary">{rl.token.slice(0, 8)}</td>
+                        <tr key={rl.token} className="border-b border-scope-border/50 last:border-0">
+                          <td className="px-3 py-2 font-mono text-scope-textSecondary">{rl.token.slice(0, 8)}</td>
                           <td className="px-3 py-2 text-white">{rl.createdByName}</td>
-                          <td className="px-3 py-2 text-frame-textSecondary">
+                          <td className="px-3 py-2 text-scope-textSecondary">
                             {created ? created.toLocaleDateString() : '—'}
                           </td>
-                          <td className="px-3 py-2 text-frame-textSecondary">
+                          <td className="px-3 py-2 text-scope-textSecondary">
                             {expires ? (
                               <span className="inline-flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
                                 {expires.toLocaleDateString()}
                               </span>
                             ) : (
-                              <span className="text-frame-textMuted">Never</span>
+                              <span className="text-scope-textMuted">Never</span>
                             )}
                           </td>
                           <td className="px-3 py-2">
                             <div className="flex items-center gap-1.5">
                               <MessageSquare
-                                className={`w-3.5 h-3.5 ${rl.allowComments ? 'text-frame-accent' : 'text-frame-textMuted/40'}`}
+                                className={`w-3.5 h-3.5 ${rl.allowComments ? 'text-scope-accent' : 'text-scope-textMuted/40'}`}
                                 aria-label={rl.allowComments ? 'Comments enabled' : 'Comments disabled'}
                               />
                               <Download
-                                className={`w-3.5 h-3.5 ${rl.allowDownloads ? 'text-frame-accent' : 'text-frame-textMuted/40'}`}
+                                className={`w-3.5 h-3.5 ${rl.allowDownloads ? 'text-scope-accent' : 'text-scope-textMuted/40'}`}
                                 aria-label={rl.allowDownloads ? 'Downloads enabled' : 'Downloads disabled'}
                               />
                               <CheckCircle2
-                                className={`w-3.5 h-3.5 ${rl.allowApprovals ? 'text-frame-accent' : 'text-frame-textMuted/40'}`}
+                                className={`w-3.5 h-3.5 ${rl.allowApprovals ? 'text-scope-accent' : 'text-scope-textMuted/40'}`}
                                 aria-label={rl.allowApprovals ? 'Approvals enabled' : 'Approvals disabled'}
                               />
                               <Layers
-                                className={`w-3.5 h-3.5 ${rl.showAllVersions ? 'text-frame-accent' : 'text-frame-textMuted/40'}`}
+                                className={`w-3.5 h-3.5 ${rl.showAllVersions ? 'text-scope-accent' : 'text-scope-textMuted/40'}`}
                                 aria-label={rl.showAllVersions ? 'All versions shown' : 'Latest version only'}
                               />
                               {rl.hasPassword && (
@@ -276,7 +276,7 @@ export function ProjectPermissionsPanel({ projectId, onClose, getIdToken }: Prop
                           <td className="px-3 py-2 text-right">
                             {isConfirming ? (
                               <div className="inline-flex items-center gap-2">
-                                <span className="text-frame-textSecondary">Revoke?</span>
+                                <span className="text-scope-textSecondary">Revoke?</span>
                                 <button
                                   onClick={() => handleRevoke(rl.token)}
                                   disabled={busy === rl.token}
@@ -286,7 +286,7 @@ export function ProjectPermissionsPanel({ projectId, onClose, getIdToken }: Prop
                                 </button>
                                 <button
                                   onClick={() => setConfirmRevoke(null)}
-                                  className="text-frame-textMuted hover:text-white"
+                                  className="text-scope-textMuted hover:text-white"
                                 >
                                   Cancel
                                 </button>
@@ -294,7 +294,7 @@ export function ProjectPermissionsPanel({ projectId, onClose, getIdToken }: Prop
                             ) : (
                               <button
                                 onClick={() => setConfirmRevoke(rl.token)}
-                                className="inline-flex items-center gap-1 text-frame-textMuted hover:text-red-400 transition-colors"
+                                className="inline-flex items-center gap-1 text-scope-textMuted hover:text-red-400 transition-colors"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                                 Revoke
@@ -316,18 +316,18 @@ export function ProjectPermissionsPanel({ projectId, onClose, getIdToken }: Prop
               Pending Invites ({data.pendingInvites.length})
             </h3>
             {data.pendingInvites.length === 0 ? (
-              <p className="text-xs text-frame-textMuted py-2">No pending invites.</p>
+              <p className="text-xs text-scope-textMuted py-2">No pending invites.</p>
             ) : (
               <div className="space-y-2">
                 {data.pendingInvites.map((p) => (
                   <div
                     key={p.userId}
-                    className="flex items-center gap-3 px-3 py-2 bg-frame-bg rounded-lg border border-frame-border"
+                    className="flex items-center gap-3 px-3 py-2 bg-scope-bg rounded-lg border border-scope-border"
                   >
                     <Avatar name={p.name} size="sm" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white truncate">{p.name}</p>
-                      <p className="text-xs text-frame-textMuted truncate">{p.email}</p>
+                      <p className="text-xs text-scope-textMuted truncate">{p.email}</p>
                     </div>
                     <Badge variant="warning">Pending</Badge>
                   </div>

@@ -26,7 +26,7 @@ export function UploadPlaceholderCard({ item }: UploadPlaceholderCardProps) {
 
   return (
     <div
-      className="group bg-frame-card rounded-xl overflow-hidden opacity-80 cursor-wait select-none"
+      className="group bg-scope-card rounded-xl overflow-hidden opacity-80 cursor-wait select-none"
       data-testid="upload-placeholder"
     >
       {/* Thumbnail area — spinner (or error icon) centered, with a
@@ -41,7 +41,7 @@ export function UploadPlaceholderCard({ item }: UploadPlaceholderCardProps) {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <Loader2 className="w-8 h-8 text-frame-accent animate-spin" />
+            <Loader2 className="w-8 h-8 text-scope-accent animate-spin" />
             <span className="text-xs font-mono text-white/80 tabular-nums">
               {isComplete ? 'Processing…' : `${item.progress}%`}
             </span>
@@ -52,7 +52,7 @@ export function UploadPlaceholderCard({ item }: UploadPlaceholderCardProps) {
         {!isError && (
           <div className="absolute left-0 right-0 bottom-0 h-1 bg-black/50">
             <div
-              className="h-full bg-frame-accent transition-[width] duration-150 ease-out"
+              className="h-full bg-scope-accent transition-[width] duration-150 ease-out"
               style={{ width: `${isComplete ? 100 : item.progress}%` }}
             />
           </div>
@@ -66,12 +66,12 @@ export function UploadPlaceholderCard({ item }: UploadPlaceholderCardProps) {
           {item.file.name}
         </p>
         <div className="flex items-center justify-between mt-0.5">
-          <p className="text-xs text-frame-textMuted">{formatBytes(item.file.size)}</p>
-          <span className="text-[10px] font-semibold text-frame-accent uppercase tracking-wider">
+          <p className="text-xs text-scope-textMuted">{formatBytes(item.file.size)}</p>
+          <span className="text-[10px] font-semibold text-scope-accent uppercase tracking-wider">
             {isError ? 'Failed' : isComplete ? 'Finalizing' : 'Uploading'}
           </span>
         </div>
-        <p className="text-xs text-frame-textMuted mt-0.5">{timeLabel}</p>
+        <p className="text-xs text-scope-textMuted mt-0.5">{timeLabel}</p>
       </div>
     </div>
   );

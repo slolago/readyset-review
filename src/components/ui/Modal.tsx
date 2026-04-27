@@ -72,7 +72,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         className={cn(
-          'relative w-full bg-frame-card border border-frame-border rounded-2xl shadow-2xl shadow-black/50 animate-slide-up overflow-hidden',
+          'relative w-full bg-scope-card border border-scope-border rounded-2xl shadow-2xl shadow-black/50 animate-slide-up overflow-hidden',
           sizes[size],
           className
         )}
@@ -83,12 +83,12 @@ export function Modal({
         )}
 
         {title ? (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-frame-border">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-scope-border">
             <h2 id={titleId} className="text-base font-semibold text-white">{title}</h2>
             <button
               onClick={onClose}
               aria-label="Close"
-              className="text-frame-textMuted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-frame-cardHover"
+              className="text-scope-textMuted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-scope-cardHover"
             >
               <X className="w-4 h-4" />
             </button>
@@ -99,7 +99,7 @@ export function Modal({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="absolute top-3 right-3 z-10 text-frame-textMuted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-frame-cardHover"
+            className="absolute top-3 right-3 z-10 text-scope-textMuted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-scope-cardHover"
           >
             <X className="w-4 h-4" />
           </button>

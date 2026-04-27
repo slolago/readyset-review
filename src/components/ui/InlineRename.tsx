@@ -68,7 +68,7 @@ export function InlineRename({
     <div ref={containerRef} className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
       <input
         ref={inputRef}
-        className="flex-1 bg-frame-bg border border-frame-accent rounded px-1.5 py-0.5 text-sm font-medium text-white outline-none focus:ring-1 focus:ring-frame-accent"
+        className="flex-1 bg-scope-bg border border-scope-accent rounded px-1.5 py-0.5 text-sm font-medium text-white outline-none focus:ring-1 focus:ring-scope-accent"
         value={draft}
         placeholder={placeholder}
         onChange={(e) => setDraft(e.target.value)}
@@ -86,7 +86,7 @@ export function InlineRename({
         type="button"
         title="Confirm"
         onClick={commit}
-        className="p-1 rounded hover:bg-frame-accent/20 text-frame-accent"
+        className="p-1 rounded hover:bg-scope-accent/20 text-scope-accent"
       >
         <Check className="w-3.5 h-3.5" />
       </button>
@@ -94,7 +94,7 @@ export function InlineRename({
         type="button"
         title="Cancel"
         onClick={onCancel}
-        className="p-1 rounded hover:bg-frame-border text-frame-textMuted"
+        className="p-1 rounded hover:bg-scope-border text-scope-textMuted"
       >
         <X className="w-3.5 h-3.5" />
       </button>

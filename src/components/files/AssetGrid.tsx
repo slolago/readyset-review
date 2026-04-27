@@ -57,7 +57,7 @@ export const AssetGrid = React.memo(function AssetGrid({
 
   return (
     <div>
-      <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider mb-3">
+      <h3 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider mb-3">
         Assets ({assets.length + placeholders.length})
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">

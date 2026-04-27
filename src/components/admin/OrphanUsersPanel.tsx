@@ -117,12 +117,12 @@ export function OrphanUsersPanel({ getIdToken }: Props) {
   return (
     <div>
       {/* Header */}
-      <div className="px-6 py-4 border-b border-frame-border flex items-center justify-between gap-3">
+      <div className="px-6 py-4 border-b border-scope-border flex items-center justify-between gap-3">
         <div>
           <p className="text-sm text-white font-medium">
             {loading ? 'Loading…' : `${users.length} orphan user${users.length === 1 ? '' : 's'}`}
           </p>
-          <p className="text-xs text-frame-textMuted mt-0.5">
+          <p className="text-xs text-scope-textMuted mt-0.5">
             Viewers never invited and not on any project.
           </p>
         </div>
@@ -133,7 +133,7 @@ export function OrphanUsersPanel({ getIdToken }: Props) {
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="px-6 py-3 bg-frame-accent/5 border-b border-frame-border flex items-center justify-between gap-3">
+        <div className="px-6 py-3 bg-scope-accent/5 border-b border-scope-border flex items-center justify-between gap-3">
           <span className="text-sm text-white">
             {selected.size} selected
           </span>
@@ -159,7 +159,7 @@ export function OrphanUsersPanel({ getIdToken }: Props) {
                 </button>
                 <button
                   onClick={() => setConfirmBulkDelete(false)}
-                  className="text-frame-textMuted hover:text-white"
+                  className="text-scope-textMuted hover:text-white"
                 >
                   Cancel
                 </button>
@@ -183,24 +183,24 @@ export function OrphanUsersPanel({ getIdToken }: Props) {
       {loading ? (
         <div className="flex items-center justify-center py-16"><Spinner /></div>
       ) : users.length === 0 ? (
-        <div className="py-16 text-center text-frame-textSecondary text-sm">
+        <div className="py-16 text-center text-scope-textSecondary text-sm">
           No orphan users.
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-frame-border">
+              <tr className="border-b border-scope-border">
                 <th className="px-6 py-3 w-10">
                   <input
                     type="checkbox"
                     checked={allSelected}
                     onChange={toggleAll}
-                    className="accent-frame-accent"
+                    className="accent-scope-accent"
                   />
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-frame-textMuted uppercase tracking-wider">User</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Joined</th>
+                <th className="text-left px-6 py-3 text-xs font-semibold text-scope-textMuted uppercase tracking-wider">User</th>
+                <th className="text-left px-6 py-3 text-xs font-semibold text-scope-textMuted uppercase tracking-wider">Joined</th>
               </tr>
             </thead>
             <tbody>
@@ -209,7 +209,7 @@ export function OrphanUsersPanel({ getIdToken }: Props) {
                 return (
                   <tr
                     key={u.id}
-                    className="border-b border-frame-border/50 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                    className="border-b border-scope-border/50 hover:bg-white/[0.02] transition-colors cursor-pointer"
                     onClick={() => toggleOne(u.id)}
                   >
                     <td className="px-6 py-4">
@@ -218,7 +218,7 @@ export function OrphanUsersPanel({ getIdToken }: Props) {
                         checked={selected.has(u.id)}
                         onChange={() => toggleOne(u.id)}
                         onClick={(e) => e.stopPropagation()}
-                        className="accent-frame-accent"
+                        className="accent-scope-accent"
                       />
                     </td>
                     <td className="px-6 py-4">
@@ -226,12 +226,12 @@ export function OrphanUsersPanel({ getIdToken }: Props) {
                         <Avatar src={u.avatar} name={u.name} size="sm" />
                         <div>
                           <p className="text-sm font-medium text-white">{u.name}</p>
-                          <p className="text-xs text-frame-textMuted">{u.email}</p>
+                          <p className="text-xs text-scope-textMuted">{u.email}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-frame-textSecondary">
+                      <span className="text-sm text-scope-textSecondary">
                         {created ? formatRelativeTime(created) : '—'}
                       </span>
                     </td>

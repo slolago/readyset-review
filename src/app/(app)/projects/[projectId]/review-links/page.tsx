@@ -18,16 +18,16 @@ function ReviewLinkCard({ link, projectId }: { link: ReviewLink; projectId: stri
   return (
     <div
       onClick={() => router.push(`/projects/${projectId}/review-links/${link.token}`)}
-      className="bg-frame-card border border-frame-border rounded-xl p-4 cursor-pointer hover:bg-frame-cardHover transition-colors flex flex-col gap-2"
+      className="bg-scope-card border border-scope-border rounded-xl p-4 cursor-pointer hover:bg-scope-cardHover transition-colors flex flex-col gap-2"
     >
       <div className="flex items-center gap-2">
-        <LinkIcon className="w-4 h-4 text-frame-accent flex-shrink-0" />
+        <LinkIcon className="w-4 h-4 text-scope-accent flex-shrink-0" />
         <span className="text-sm font-medium text-white truncate">{link.name}</span>
       </div>
-      <div className="text-xs text-frame-textMuted">
+      <div className="text-xs text-scope-textMuted">
         {link.folderId ? 'Folder share' : 'Project share'}
       </div>
-      <div className="text-xs text-frame-textMuted">
+      <div className="text-xs text-scope-textMuted">
         {date.toLocaleDateString()}
       </div>
     </div>
@@ -77,7 +77,7 @@ export default function ReviewLinksListPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-8 py-4 border-b border-frame-border flex items-center justify-between gap-4">
+      <div className="px-8 py-4 border-b border-scope-border flex items-center justify-between gap-4">
         <nav className="flex items-center gap-1 text-sm">
           <span className="text-white font-medium">Review Links</span>
         </nav>
@@ -90,8 +90,8 @@ export default function ReviewLinksListPage() {
             className={cn(
               'p-1.5 rounded transition-colors',
               viewMode === 'grid'
-                ? 'text-white bg-frame-border'
-                : 'text-frame-textMuted hover:text-white'
+                ? 'text-white bg-scope-border'
+                : 'text-scope-textMuted hover:text-white'
             )}
           >
             <LayoutGrid className="w-4 h-4" />
@@ -102,8 +102,8 @@ export default function ReviewLinksListPage() {
             className={cn(
               'p-1.5 rounded transition-colors',
               viewMode === 'list'
-                ? 'text-white bg-frame-border'
-                : 'text-frame-textMuted hover:text-white'
+                ? 'text-white bg-scope-border'
+                : 'text-scope-textMuted hover:text-white'
             )}
           >
             <LayoutList className="w-4 h-4" />
@@ -119,9 +119,9 @@ export default function ReviewLinksListPage() {
           </div>
         ) : links.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <LinkIcon className="w-10 h-10 text-frame-textMuted" />
+            <LinkIcon className="w-10 h-10 text-scope-textMuted" />
             <p className="text-white font-medium text-sm">No review links yet</p>
-            <p className="text-frame-textMuted text-xs text-center max-w-xs">
+            <p className="text-scope-textMuted text-xs text-center max-w-xs">
               Create one from the Share button or a folder menu
             </p>
           </div>
@@ -135,7 +135,7 @@ export default function ReviewLinksListPage() {
           /* List mode */
           <div className="w-full">
             {/* Table header */}
-            <div className="grid grid-cols-[1fr_140px_140px] gap-4 px-3 py-2 border-b border-frame-border text-xs font-semibold text-frame-textMuted uppercase tracking-wider">
+            <div className="grid grid-cols-[1fr_140px_140px] gap-4 px-3 py-2 border-b border-scope-border text-xs font-semibold text-scope-textMuted uppercase tracking-wider">
               <span>Name</span>
               <span>Scope</span>
               <span>Created</span>
@@ -150,16 +150,16 @@ export default function ReviewLinksListPage() {
                 <div
                   key={link.id}
                   onClick={() => router.push(`/projects/${projectId}/review-links/${link.token}`)}
-                  className="grid grid-cols-[1fr_140px_140px] gap-4 px-3 py-3 border-b border-frame-border hover:bg-frame-cardHover cursor-pointer transition-colors"
+                  className="grid grid-cols-[1fr_140px_140px] gap-4 px-3 py-3 border-b border-scope-border hover:bg-scope-cardHover cursor-pointer transition-colors"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <LinkIcon className="w-4 h-4 text-frame-accent flex-shrink-0" />
+                    <LinkIcon className="w-4 h-4 text-scope-accent flex-shrink-0" />
                     <span className="text-sm text-white truncate">{link.name}</span>
                   </div>
-                  <span className="text-xs text-frame-textMuted self-center">
+                  <span className="text-xs text-scope-textMuted self-center">
                     {link.folderId ? 'Folder share' : 'Project share'}
                   </span>
-                  <span className="text-xs text-frame-textMuted self-center">
+                  <span className="text-xs text-scope-textMuted self-center">
                     {date.toLocaleDateString()}
                   </span>
                 </div>

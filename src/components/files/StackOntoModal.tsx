@@ -36,21 +36,21 @@ export function StackOntoModal({ source, candidates, onPick, onClose }: StackOnt
       onClick={onClose}
     >
       <div
-        className="bg-frame-card border border-frame-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+        className="bg-scope-card border border-scope-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-frame-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-scope-border">
           <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-frame-accent" />
+            <Layers className="w-4 h-4 text-scope-accent" />
             <h3 className="text-sm font-semibold text-white">Stack onto</h3>
           </div>
-          <button onClick={onClose} className="text-frame-textMuted hover:text-white transition-colors">
+          <button onClick={onClose} className="text-scope-textMuted hover:text-white transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="px-5 py-3 border-b border-frame-border">
-          <p className="text-xs text-frame-textMuted mb-2 truncate">
+        <div className="px-5 py-3 border-b border-scope-border">
+          <p className="text-xs text-scope-textMuted mb-2 truncate">
             Stacking <span className="text-white">{source.name}</span> onto…
           </p>
           <input
@@ -58,24 +58,24 @@ export function StackOntoModal({ source, candidates, onPick, onClose }: StackOnt
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search siblings…"
-            className="w-full bg-frame-bg border border-frame-border rounded px-2 py-1.5 text-sm text-white outline-none focus:border-frame-accent"
+            className="w-full bg-scope-bg border border-scope-border rounded px-2 py-1.5 text-sm text-white outline-none focus:border-scope-accent"
           />
         </div>
 
         <div className="max-h-64 overflow-y-auto py-2">
           {visible.length === 0 ? (
-            <p className="text-center text-sm text-frame-textMuted py-8">No eligible siblings.</p>
+            <p className="text-center text-sm text-scope-textMuted py-8">No eligible siblings.</p>
           ) : (
             visible.map((c) => (
               <button
                 key={c.id}
                 onClick={() => onPick(c.id)}
-                className="w-full flex items-center gap-2 px-5 py-2.5 text-sm text-frame-textSecondary hover:text-white hover:bg-frame-border/50 transition-colors text-left"
+                className="w-full flex items-center gap-2 px-5 py-2.5 text-sm text-scope-textSecondary hover:text-white hover:bg-scope-border/50 transition-colors text-left"
               >
                 {c.type === 'video' ? (
-                  <Film className="w-4 h-4 flex-shrink-0 text-frame-textMuted" />
+                  <Film className="w-4 h-4 flex-shrink-0 text-scope-textMuted" />
                 ) : (
-                  <ImageIcon className="w-4 h-4 flex-shrink-0 text-frame-textMuted" />
+                  <ImageIcon className="w-4 h-4 flex-shrink-0 text-scope-textMuted" />
                 )}
                 <span className="truncate">{c.name}</span>
               </button>
@@ -83,10 +83,10 @@ export function StackOntoModal({ source, candidates, onPick, onClose }: StackOnt
           )}
         </div>
 
-        <div className="px-5 py-3 border-t border-frame-border">
+        <div className="px-5 py-3 border-t border-scope-border">
           <button
             onClick={onClose}
-            className="w-full py-2 text-sm text-frame-textMuted hover:text-white transition-colors"
+            className="w-full py-2 text-sm text-scope-textMuted hover:text-white transition-colors"
           >
             Cancel
           </button>

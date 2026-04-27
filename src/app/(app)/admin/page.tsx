@@ -163,16 +163,16 @@ export default function AdminPage() {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="relative overflow-hidden border-b border-frame-border bg-frame-sidebar">
+      <div className="relative overflow-hidden border-b border-scope-border bg-scope-sidebar">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(122,0,223,0.12)_0%,transparent_60%)]" />
         <div className="relative px-8 py-6 max-w-5xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-frame-accent/10 border border-frame-accent/20 text-frame-accent rounded-xl flex items-center justify-center">
+            <div className="w-9 h-9 bg-scope-accent/10 border border-scope-accent/20 text-scope-accent rounded-xl flex items-center justify-center">
               <Shield className="w-4.5 h-4.5" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">Admin Panel</h1>
-              <p className="text-frame-textSecondary text-sm">Manage users, roles, and projects</p>
+              <p className="text-scope-textSecondary text-sm">Manage users, roles, and projects</p>
             </div>
           </div>
           <Button onClick={() => setShowCreate(true)} icon={<UserPlus className="w-4 h-4" />}>
@@ -192,13 +192,13 @@ export default function AdminPage() {
             { label: 'Editors', value: editorCount, icon: Users },
             { label: 'Viewers', value: viewerCount, icon: Users },
           ].map(({ label, value, icon: Icon }) => (
-            <div key={label} className="bg-frame-card border border-frame-border rounded-xl px-5 py-4 flex items-center gap-4">
-              <div className="w-9 h-9 bg-frame-accent/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Icon className="w-4 h-4 text-frame-accent" />
+            <div key={label} className="bg-scope-card border border-scope-border rounded-xl px-5 py-4 flex items-center gap-4">
+              <div className="w-9 h-9 bg-scope-accent/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Icon className="w-4 h-4 text-scope-accent" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-white">{value}</p>
-                <p className="text-xs text-frame-textMuted">{label}</p>
+                <p className="text-xs text-scope-textMuted">{label}</p>
               </div>
             </div>
           ))}
@@ -206,7 +206,7 @@ export default function AdminPage() {
       )}
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-frame-border mb-6">
+      <div className="flex gap-1 border-b border-scope-border mb-6">
         {([
           { key: 'users' as const, label: 'Users', icon: Users },
           { key: 'projects' as const, label: 'All Projects', icon: FolderOpen },
@@ -218,8 +218,8 @@ export default function AdminPage() {
             onClick={() => setActiveTab(key)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
               activeTab === key
-                ? 'border-frame-accent text-white'
-                : 'border-transparent text-frame-textSecondary hover:text-white'
+                ? 'border-scope-accent text-white'
+                : 'border-transparent text-scope-textSecondary hover:text-white'
             }`}
           >
             <Icon className="w-4 h-4" />
@@ -230,12 +230,12 @@ export default function AdminPage() {
 
       {/* Tab content */}
       {activeTab === 'users' && (
-        <div className="bg-frame-card border border-frame-border rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-frame-border flex items-center justify-between">
+        <div className="bg-scope-card border border-scope-border rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-scope-border flex items-center justify-between">
             <div>
               <h2 className="font-semibold text-white">Users</h2>
               {!loading && (
-                <p className="text-frame-textSecondary text-xs mt-0.5">
+                <p className="text-scope-textSecondary text-xs mt-0.5">
                   {users.length} {users.length === 1 ? 'user' : 'users'} registered
                 </p>
               )}
@@ -254,11 +254,11 @@ export default function AdminPage() {
       )}
 
       {activeTab === 'projects' && (
-        <div className="bg-frame-card border border-frame-border rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-frame-border">
+        <div className="bg-scope-card border border-scope-border rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-scope-border">
             <h2 className="font-semibold text-white">All Projects</h2>
             {!projectsLoading && (
-              <p className="text-frame-textSecondary text-xs mt-0.5">
+              <p className="text-scope-textSecondary text-xs mt-0.5">
                 {projects.length} {projects.length === 1 ? 'project' : 'projects'} in the system
               </p>
             )}
@@ -273,16 +273,16 @@ export default function AdminPage() {
       )}
 
       {activeTab === 'orphans' && (
-        <div className="bg-frame-card border border-frame-border rounded-xl overflow-hidden">
+        <div className="bg-scope-card border border-scope-border rounded-xl overflow-hidden">
           <OrphanUsersPanel getIdToken={getIdToken} />
         </div>
       )}
 
       {activeTab === 'safezones' && (
-        <div className="bg-frame-card border border-frame-border rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-frame-border">
+        <div className="bg-scope-card border border-scope-border rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-scope-border">
             <h2 className="font-semibold text-white">Safe Zones</h2>
-            <p className="text-frame-textSecondary text-xs mt-0.5">
+            <p className="text-scope-textSecondary text-xs mt-0.5">
               Manage overlay images shown in the video player
             </p>
           </div>

@@ -555,7 +555,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
               <p className="text-white text-sm mb-3">{loadError}</p>
               <button
                 onClick={() => { setLoadError(null); videoRef.current?.load(); }}
-                className="px-4 py-2 bg-frame-accent hover:bg-frame-accentHover text-white text-sm rounded-lg transition-colors"
+                className="px-4 py-2 bg-scope-accent hover:bg-scope-accentHover text-white text-sm rounded-lg transition-colors"
               >
                 Retry
               </button>
@@ -594,7 +594,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
               onClear={() => canvasRef.current?.clear()}
             />
             <div className="flex gap-2">
-              <button onClick={handleAnnotationCapture} className="px-5 py-2 bg-frame-accent hover:bg-frame-accentHover text-white text-sm font-medium rounded-lg shadow-lg transition-colors">
+              <button onClick={handleAnnotationCapture} className="px-5 py-2 bg-scope-accent hover:bg-scope-accentHover text-white text-sm font-medium rounded-lg shadow-lg transition-colors">
                 Attach to comment
               </button>
               <button onClick={handleAnnotationCancel} className="p-2 bg-black/70 hover:bg-black/90 text-white rounded-lg transition-colors">
@@ -606,7 +606,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
         {/* Read-only annotation label */}
         {!isAnnotationMode && displayShapes && displayShapes !== '[]' && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-frame-accent/80 backdrop-blur-sm text-white text-xs rounded-full z-10 pointer-events-none">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-scope-accent/80 backdrop-blur-sm text-white text-xs rounded-full z-10 pointer-events-none">
             Showing annotation
           </div>
         )}
@@ -695,7 +695,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
               );
             })}
             {/* Progress fill — z-10 so it covers range markers as playback advances */}
-            <div className="absolute left-0 top-0 h-full bg-frame-accent rounded-full pointer-events-none z-10" style={{ width: `${progress}%` }} />
+            <div className="absolute left-0 top-0 h-full bg-scope-accent rounded-full pointer-events-none z-10" style={{ width: `${progress}%` }} />
             {/* Thumb — z-20, sits on top of the progress fill */}
             <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white rounded-full shadow pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-20" style={{ left: `${progress}%` }} />
             {/* Timed-comment dots — positioned 12px above the scrubber's top
@@ -734,7 +734,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
                     >
                       <div className="bg-[#1e1e1e] border border-white/10 rounded-lg shadow-xl p-2.5 text-left">
                         <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-[10px] font-mono text-frame-accent font-medium">
+                          <span className="text-[10px] font-mono text-scope-accent font-medium">
                             {formatDuration(c.timestamp ?? 0)}
                           </span>
                           {hasAnnotation && (
@@ -761,7 +761,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         {/* Controls row */}
         <div className="flex items-center gap-3">
           {/* Play/pause */}
-          <button onClick={togglePlay} className="w-8 h-8 flex items-center justify-center text-white hover:text-frame-accent transition-colors">
+          <button onClick={togglePlay} className="w-8 h-8 flex items-center justify-center text-white hover:text-scope-accent transition-colors">
             {playing ? <Pause className="w-5 h-5" fill="currentColor" /> : <Play className="w-5 h-5" fill="currentColor" />}
           </button>
 
@@ -839,7 +839,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           <button
             onClick={() => setShowVU((v) => !v)}
             title={`${showVU ? 'Hide' : 'Show'} VU meter`}
-            className={`transition-colors ${showVU ? 'text-frame-accent hover:text-frame-accentHover' : 'text-white/40 hover:text-white/70'}`}
+            className={`transition-colors ${showVU ? 'text-scope-accent hover:text-scope-accentHover' : 'text-white/40 hover:text-white/70'}`}
           >
             <Activity className="w-4 h-4" />
           </button>
@@ -859,7 +859,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
                 title={`Mark IN at current time${loopIn !== undefined ? ` (currently ${formatDuration(loopIn)})` : ''}`}
                 className={`w-6 h-6 flex items-center justify-center font-mono text-base leading-none font-bold transition-colors ${
                   loopIn !== undefined
-                    ? 'text-frame-accent hover:text-frame-accentHover'
+                    ? 'text-scope-accent hover:text-scope-accentHover'
                     : 'text-white/40 hover:text-white/70'
                 }`}
               >
@@ -881,7 +881,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
                 }
                 className={`w-6 h-6 flex items-center justify-center font-mono text-base leading-none font-bold transition-colors ${
                   loopOut !== undefined
-                    ? 'text-frame-accent hover:text-frame-accentHover'
+                    ? 'text-scope-accent hover:text-scope-accentHover'
                     : loopIn !== undefined && currentTime > loopIn
                     ? 'text-white/40 hover:text-white/70'
                     : 'text-white/20 cursor-not-allowed'
@@ -896,7 +896,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           <button
             onClick={() => setLoop((v) => !v)}
             title={`Loop ${loop ? 'on' : 'off'}`}
-            className={`transition-colors ${loop ? 'text-frame-accent hover:text-frame-accentHover' : 'text-white/40 hover:text-white/70'}`}
+            className={`transition-colors ${loop ? 'text-scope-accent hover:text-scope-accentHover' : 'text-white/40 hover:text-white/70'}`}
           >
             <Repeat className="w-4 h-4" />
           </button>
@@ -932,7 +932,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
             <button
               onClick={handleDownloadStill}
               aria-label="Download still"
-              className="w-7 h-7 flex items-center justify-center text-white hover:text-frame-accent transition-colors"
+              className="w-7 h-7 flex items-center justify-center text-white hover:text-scope-accent transition-colors"
             >
               <ArrowDownToLine className="w-4 h-4" />
             </button>
@@ -949,7 +949,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
             <button
               onClick={() => forceDownload(downloadUrl, asset.name)}
               title="Download"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-frame-accent/15 border border-frame-accent/40 hover:bg-frame-accent/25 hover:border-frame-accent rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-scope-accent/15 border border-scope-accent/40 hover:bg-scope-accent/25 hover:border-scope-accent rounded-lg transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
               Download

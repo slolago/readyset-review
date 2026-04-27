@@ -117,34 +117,34 @@ export function AddToReviewLinkModal({
   return (
     <Modal isOpen onClose={onClose} title="Add to review link" size="md">
       <div className="space-y-3">
-        <p className="text-sm text-frame-textSecondary">
+        <p className="text-sm text-scope-textSecondary">
           Choose a review link to append <span className="text-white font-medium">{countLabel || 'selected items'}</span>.
         </p>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-frame-textMuted" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-scope-textMuted" />
           <input
             type="text"
             autoFocus
             placeholder="Search review links..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-frame-bg border border-frame-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-frame-textMuted focus:outline-none focus:border-frame-accent transition-colors"
+            className="w-full bg-scope-bg border border-scope-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-scope-textMuted focus:outline-none focus:border-scope-accent transition-colors"
           />
         </div>
 
         {/* Create new */}
         <button
           onClick={onCreateNew}
-          className="w-full flex items-center gap-2.5 p-3 rounded-xl border border-dashed border-frame-border hover:border-frame-accent hover:bg-frame-accent/5 transition-colors text-left"
+          className="w-full flex items-center gap-2.5 p-3 rounded-xl border border-dashed border-scope-border hover:border-scope-accent hover:bg-scope-accent/5 transition-colors text-left"
         >
-          <div className="w-8 h-8 rounded-lg bg-frame-accent/15 flex items-center justify-center flex-shrink-0">
-            <Plus className="w-4 h-4 text-frame-accent" />
+          <div className="w-8 h-8 rounded-lg bg-scope-accent/15 flex items-center justify-center flex-shrink-0">
+            <Plus className="w-4 h-4 text-scope-accent" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-white">Create new review link</p>
-            <p className="text-xs text-frame-textMuted">Start a fresh link with these items</p>
+            <p className="text-xs text-scope-textMuted">Start a fresh link with these items</p>
           </div>
         </button>
 
@@ -156,8 +156,8 @@ export function AddToReviewLinkModal({
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-8">
-              <LinkIcon className="w-6 h-6 text-frame-textMuted mx-auto mb-2" />
-              <p className="text-xs text-frame-textMuted">
+              <LinkIcon className="w-6 h-6 text-scope-textMuted mx-auto mb-2" />
+              <p className="text-xs text-scope-textMuted">
                 {search ? 'No links match your search' : 'No review links yet for this project'}
               </p>
             </div>
@@ -171,17 +171,17 @@ export function AddToReviewLinkModal({
                   key={link.token}
                   onClick={() => handleAddTo(link)}
                   disabled={saving}
-                  className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-frame-cardHover transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed group"
+                  className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-scope-cardHover transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed group"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-frame-accent/10 border border-frame-accent/20 flex items-center justify-center flex-shrink-0">
-                    <LinkIcon className="w-4 h-4 text-frame-accent" />
+                  <div className="w-8 h-8 rounded-lg bg-scope-accent/10 border border-scope-accent/20 flex items-center justify-center flex-shrink-0">
+                    <LinkIcon className="w-4 h-4 text-scope-accent" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-medium text-white truncate">{link.name}</p>
                       {link.hasPassword && <Lock className="w-3 h-3 text-yellow-400 flex-shrink-0" />}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-frame-textMuted mt-0.5">
+                    <div className="flex items-center gap-2 text-xs text-scope-textMuted mt-0.5">
                       {(link.folderIds?.length || link.folderId) ? (
                         <span className="flex items-center gap-1">
                           <FolderIcon className="w-3 h-3" />
@@ -198,7 +198,7 @@ export function AddToReviewLinkModal({
                       {date && <span>· {formatRelativeTime(date)}</span>}
                     </div>
                   </div>
-                  <Check className="w-4 h-4 text-frame-textMuted opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <Check className="w-4 h-4 text-scope-textMuted opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
               );
             })

@@ -19,7 +19,7 @@ export function DocumentViewer({ asset }: Props) {
   const url = (asset as any).signedUrl as string | undefined;
   if (!url) {
     return (
-      <div className="w-full h-full flex items-center justify-center text-frame-textMuted text-sm">
+      <div className="w-full h-full flex items-center justify-center text-scope-textMuted text-sm">
         Loading…
       </div>
     );

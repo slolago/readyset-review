@@ -43,7 +43,7 @@ export function PlayerBgPicker({ value, onChange }: PlayerBgPickerProps) {
                   onClick={() => { onChange(opt.value); setOpen(false); }}
                   title={opt.label}
                   className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${
-                    selected ? 'border-frame-accent' : 'border-white/20'
+                    selected ? 'border-scope-accent' : 'border-white/20'
                   }`}
                   style={{ backgroundColor: opt.value }}
                   aria-label={opt.label}

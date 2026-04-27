@@ -206,8 +206,8 @@ export default function AssetViewerPage() {
   if (!asset) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-        <p className="text-frame-textSecondary text-lg font-medium">Asset not found</p>
-        <Link href={`/projects/${projectId}`} className="mt-4 text-sm text-frame-accent hover:underline">
+        <p className="text-scope-textSecondary text-lg font-medium">Asset not found</p>
+        <Link href={`/projects/${projectId}`} className="mt-4 text-sm text-scope-accent hover:underline">
           Back to project
         </Link>
       </div>
@@ -220,23 +220,23 @@ export default function AssetViewerPage() {
 
 
   return (
-    <div className="flex flex-col h-screen bg-frame-bg">
+    <div className="flex flex-col h-screen bg-scope-bg">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-frame-border flex-shrink-0 gap-4 bg-frame-sidebar">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-scope-border flex-shrink-0 gap-4 bg-scope-sidebar">
         <div className="flex items-center gap-2 min-w-0">
           <Link
             href={backHref}
-            className="flex items-center gap-1.5 text-frame-textSecondary hover:text-white transition-colors flex-shrink-0 text-xs font-medium px-2 py-1.5 rounded-lg hover:bg-frame-cardHover"
+            className="flex items-center gap-1.5 text-scope-textSecondary hover:text-white transition-colors flex-shrink-0 text-xs font-medium px-2 py-1.5 rounded-lg hover:bg-scope-cardHover"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
             <span>{project?.name || 'Project'}</span>
           </Link>
-          <span className="text-frame-border text-xs">/</span>
+          <span className="text-scope-border text-xs">/</span>
           <h1 className="text-sm font-semibold text-white truncate">{asset.name}</h1>
           <ReviewStatusBadge status={displayAsset?.reviewStatus} />
           <Dropdown
             trigger={
-              <button className="flex items-center gap-1 text-frame-textSecondary hover:text-white transition-colors text-xs px-1.5 py-1 rounded-lg hover:bg-frame-cardHover flex-shrink-0" title="Set review status">
+              <button className="flex items-center gap-1 text-scope-textSecondary hover:text-white transition-colors text-xs px-1.5 py-1 rounded-lg hover:bg-scope-cardHover flex-shrink-0" title="Set review status">
                 <Tag className="w-3 h-3" />
               </button>
             }
@@ -259,7 +259,7 @@ export default function AssetViewerPage() {
               },
               {
                 label: 'Clear status',
-                icon: <X className="w-4 h-4 text-frame-textMuted" />,
+                icon: <X className="w-4 h-4 text-scope-textMuted" />,
                 onClick: () => handleSetStatus(null),
                 divider: true,
               },
@@ -289,7 +289,7 @@ export default function AssetViewerPage() {
                 const url = (displayAsset as any).downloadUrl ?? (displayAsset as any).signedUrl;
                 if (url) forceDownload(url, displayAsset.name);
               }}
-              className="flex items-center gap-1.5 text-frame-textSecondary hover:text-white transition-colors flex-shrink-0 text-xs font-medium px-2 py-1.5 rounded-lg hover:bg-frame-cardHover"
+              className="flex items-center gap-1.5 text-scope-textSecondary hover:text-white transition-colors flex-shrink-0 text-xs font-medium px-2 py-1.5 rounded-lg hover:bg-scope-cardHover"
               title="Download"
             >
               <Download className="w-3.5 h-3.5" />
@@ -298,7 +298,7 @@ export default function AssetViewerPage() {
           )}
           <button
             onClick={() => setShowReviewModal(true)}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-white bg-frame-accent hover:bg-frame-accentHover rounded-xl transition-colors shadow-sm shadow-frame-accent/20"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-white bg-scope-accent hover:bg-scope-accentHover rounded-xl transition-colors shadow-sm shadow-scope-accent/20"
           >
             <Share2 className="w-3.5 h-3.5" />
             Share

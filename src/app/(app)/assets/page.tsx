@@ -23,7 +23,7 @@ const STATUS_OPTIONS: Array<{
   { value: 'approved',       label: 'Approved',       dotClass: 'bg-emerald-400' },
   { value: 'needs_revision', label: 'Needs Revision', dotClass: 'bg-yellow-400' },
   { value: 'in_review',      label: 'In Review',      dotClass: 'bg-blue-400' },
-  { value: 'none',           label: 'No status',      dotClass: 'bg-frame-border' },
+  { value: 'none',           label: 'No status',      dotClass: 'bg-scope-border' },
 ];
 
 type SortKey =
@@ -253,28 +253,28 @@ export default function AssetsPage() {
     <div className="p-8 max-w-7xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white mb-1">Assets</h1>
-        <p className="text-sm text-frame-textSecondary">
+        <p className="text-sm text-scope-textSecondary">
           All assets across the projects you have access to.
         </p>
       </div>
 
       {/* Search */}
       <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-frame-textMuted pointer-events-none" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-scope-textMuted pointer-events-none" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by file name, project, or tag…"
           aria-label="Search assets"
-          className="w-full pl-10 pr-10 py-2.5 bg-frame-card border border-frame-border rounded-xl text-sm text-white placeholder-frame-textMuted focus:outline-none focus:border-frame-accent focus:ring-1 focus:ring-frame-accent/30 transition-all"
+          className="w-full pl-10 pr-10 py-2.5 bg-scope-card border border-scope-border rounded-xl text-sm text-white placeholder-scope-textMuted focus:outline-none focus:border-scope-accent focus:ring-1 focus:ring-scope-accent/30 transition-all"
         />
         {query && (
           <button
             type="button"
             onClick={() => setQuery('')}
             aria-label="Clear search"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-frame-textMuted hover:text-white transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-scope-textMuted hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -334,7 +334,7 @@ export default function AssetsPage() {
           <button
             type="button"
             onClick={clearAll}
-            className="text-xs text-frame-textMuted hover:text-white transition-colors ml-1 px-2 py-1.5"
+            className="text-xs text-scope-textMuted hover:text-white transition-colors ml-1 px-2 py-1.5"
           >
             Clear filters
           </button>
@@ -346,9 +346,9 @@ export default function AssetsPage() {
           <Dropdown
             align="right"
             trigger={
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-frame-card border border-frame-border text-frame-textSecondary hover:text-white hover:border-frame-borderLight transition-colors">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-scope-card border border-scope-border text-scope-textSecondary hover:text-white hover:border-scope-borderLight transition-colors">
                 <ArrowUpDown className="w-3 h-3" />
-                <span className="text-frame-textMuted">Sort:</span>
+                <span className="text-scope-textMuted">Sort:</span>
                 <span>{SORT_LABELS[sortKey]}</span>
               </span>
             }
@@ -357,7 +357,7 @@ export default function AssetsPage() {
               onClick: () => setSortKey(key),
               icon:
                 sortKey === key ? (
-                  <Check className="w-3.5 h-3.5 text-frame-accent" />
+                  <Check className="w-3.5 h-3.5 text-scope-accent" />
                 ) : (
                   <span className="w-3.5 h-3.5" />
                 ),
@@ -368,12 +368,12 @@ export default function AssetsPage() {
 
       {/* Result count / cap hint */}
       {!loading && (
-        <div className="flex items-center justify-between mb-3 text-xs text-frame-textMuted">
+        <div className="flex items-center justify-between mb-3 text-xs text-scope-textMuted">
           <span>
             {sorted.length} {sorted.length === 1 ? 'asset' : 'assets'}
           </span>
           {capped && (
-            <span className="text-frame-textMuted/80">
+            <span className="text-scope-textMuted/80">
               Showing most recent {limit} of {totalAvailable} — search narrows within this window
             </span>
           )}
@@ -386,19 +386,19 @@ export default function AssetsPage() {
           {Array.from({ length: 10 }).map((_, i) => (
             <div
               key={i}
-              className="aspect-video bg-frame-card rounded-xl animate-pulse border border-frame-border"
+              className="aspect-video bg-scope-card rounded-xl animate-pulse border border-scope-border"
             />
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <div className="text-center py-16 bg-frame-card border border-frame-border rounded-2xl">
-          <div className="w-12 h-12 bg-frame-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <Film className="w-6 h-6 text-frame-accent" />
+        <div className="text-center py-16 bg-scope-card border border-scope-border rounded-2xl">
+          <div className="w-12 h-12 bg-scope-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <Film className="w-6 h-6 text-scope-accent" />
           </div>
           <p className="text-white font-semibold">
             {query.trim() || anyFilterActive ? 'No assets match your filters' : 'No assets yet'}
           </p>
-          <p className="text-frame-textMuted text-sm mt-1">
+          <p className="text-scope-textMuted text-sm mt-1">
             {query.trim() || anyFilterActive
               ? 'Try a different search or clear the filters.'
               : 'Upload assets from any project and they\u2019ll appear here.'}
@@ -418,7 +418,7 @@ export default function AssetsPage() {
               <div className="px-1 flex items-center gap-1.5 flex-wrap min-h-[14px]">
                 {asset.projectName && (
                   <p
-                    className="text-[11px] text-frame-textMuted truncate"
+                    className="text-[11px] text-scope-textMuted truncate"
                     title={asset.projectName}
                   >
                     {asset.projectName}
@@ -426,17 +426,17 @@ export default function AssetsPage() {
                 )}
                 {asset.tags && asset.tags.length > 0 && (
                   <>
-                    {asset.projectName && <span className="text-frame-textMuted/40">·</span>}
+                    {asset.projectName && <span className="text-scope-textMuted/40">·</span>}
                     {asset.tags.slice(0, 3).map((tag) => (
                       <span
                         key={tag}
-                        className="text-[10px] font-medium text-frame-accent/80"
+                        className="text-[10px] font-medium text-scope-accent/80"
                       >
                         #{tag}
                       </span>
                     ))}
                     {asset.tags.length > 3 && (
-                      <span className="text-[10px] text-frame-textMuted">
+                      <span className="text-[10px] text-scope-textMuted">
                         +{asset.tags.length - 3}
                       </span>
                     )}
@@ -482,24 +482,24 @@ function SearchableCheckboxList({
 
   return (
     <div className="flex flex-col">
-      <div className="p-2 border-b border-frame-border">
+      <div className="p-2 border-b border-scope-border">
         <input
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={searchPlaceholder}
           aria-label={searchPlaceholder}
-          className="w-full px-2.5 py-1.5 bg-frame-bg border border-frame-border rounded-md text-xs text-white placeholder-frame-textMuted focus:outline-none focus:border-frame-accent"
+          className="w-full px-2.5 py-1.5 bg-scope-bg border border-scope-border rounded-md text-xs text-white placeholder-scope-textMuted focus:outline-none focus:border-scope-accent"
           autoFocus
         />
       </div>
       <div className="max-h-64 overflow-y-auto py-1">
         {items.length === 0 ? (
-          <p className="px-3 py-4 text-xs text-frame-textMuted text-center leading-relaxed">
+          <p className="px-3 py-4 text-xs text-scope-textMuted text-center leading-relaxed">
             {emptyMessage ?? 'No options.'}
           </p>
         ) : visible.length === 0 ? (
-          <p className="px-3 py-3 text-xs text-frame-textMuted text-center">
+          <p className="px-3 py-3 text-xs text-scope-textMuted text-center">
             No matches.
           </p>
         ) : (
@@ -512,16 +512,16 @@ function SearchableCheckboxList({
                 onClick={() => onToggle(item.value)}
                 className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors ${
                   active
-                    ? 'bg-frame-accent/10 text-white'
-                    : 'text-frame-textSecondary hover:text-white hover:bg-frame-cardHover'
+                    ? 'bg-scope-accent/10 text-white'
+                    : 'text-scope-textSecondary hover:text-white hover:bg-scope-cardHover'
                 }`}
                 aria-pressed={active}
               >
                 <span
                   className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
                     active
-                      ? 'bg-frame-accent border-frame-accent'
-                      : 'border-frame-border'
+                      ? 'bg-scope-accent border-scope-accent'
+                      : 'border-scope-border'
                   }`}
                 >
                   {active && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
@@ -533,11 +533,11 @@ function SearchableCheckboxList({
         )}
       </div>
       {onClear && (
-        <div className="border-t border-frame-border px-2 py-1.5">
+        <div className="border-t border-scope-border px-2 py-1.5">
           <button
             type="button"
             onClick={onClear}
-            className="w-full text-[11px] text-frame-textMuted hover:text-white transition-colors py-1"
+            className="w-full text-[11px] text-scope-textMuted hover:text-white transition-colors py-1"
           >
             Clear selection
           </button>
@@ -568,7 +568,7 @@ function DurationRangeInput({
   return (
     <div className="p-3 space-y-3">
       <div>
-        <p className="text-[10px] font-semibold text-frame-textMuted uppercase tracking-wider mb-1.5">
+        <p className="text-[10px] font-semibold text-scope-textMuted uppercase tracking-wider mb-1.5">
           Presets
         </p>
         <div className="flex flex-wrap gap-1">
@@ -584,8 +584,8 @@ function DurationRangeInput({
                 }}
                 className={`px-2 py-1 rounded-md text-[11px] font-medium transition-colors ${
                   active
-                    ? 'bg-frame-accent text-white'
-                    : 'bg-frame-border/50 text-frame-textSecondary hover:text-white hover:bg-frame-border'
+                    ? 'bg-scope-accent text-white'
+                    : 'bg-scope-border/50 text-scope-textSecondary hover:text-white hover:bg-scope-border'
                 }`}
               >
                 {p.label}
@@ -595,7 +595,7 @@ function DurationRangeInput({
         </div>
       </div>
       <div>
-        <p className="text-[10px] font-semibold text-frame-textMuted uppercase tracking-wider mb-1.5">
+        <p className="text-[10px] font-semibold text-scope-textMuted uppercase tracking-wider mb-1.5">
           Custom (seconds)
         </p>
         <div className="flex items-center gap-2">
@@ -606,9 +606,9 @@ function DurationRangeInput({
             onChange={(e) => onMinChange(e.target.value)}
             placeholder="Min"
             aria-label="Minimum duration in seconds"
-            className="w-full px-2.5 py-1.5 bg-frame-bg border border-frame-border rounded-md text-xs text-white placeholder-frame-textMuted focus:outline-none focus:border-frame-accent"
+            className="w-full px-2.5 py-1.5 bg-scope-bg border border-scope-border rounded-md text-xs text-white placeholder-scope-textMuted focus:outline-none focus:border-scope-accent"
           />
-          <span className="text-xs text-frame-textMuted">–</span>
+          <span className="text-xs text-scope-textMuted">–</span>
           <input
             type="number"
             min={0}
@@ -616,7 +616,7 @@ function DurationRangeInput({
             onChange={(e) => onMaxChange(e.target.value)}
             placeholder="Max"
             aria-label="Maximum duration in seconds"
-            className="w-full px-2.5 py-1.5 bg-frame-bg border border-frame-border rounded-md text-xs text-white placeholder-frame-textMuted focus:outline-none focus:border-frame-accent"
+            className="w-full px-2.5 py-1.5 bg-scope-bg border border-scope-border rounded-md text-xs text-white placeholder-scope-textMuted focus:outline-none focus:border-scope-accent"
           />
         </div>
         {(min || max) && (
@@ -626,13 +626,13 @@ function DurationRangeInput({
               onMinChange('');
               onMaxChange('');
             }}
-            className="mt-2 text-[11px] text-frame-textMuted hover:text-white transition-colors"
+            className="mt-2 text-[11px] text-scope-textMuted hover:text-white transition-colors"
           >
             Clear
           </button>
         )}
       </div>
-      <p className="text-[10px] text-frame-textMuted leading-relaxed">
+      <p className="text-[10px] text-scope-textMuted leading-relaxed">
         Only assets with a duration (video / audio) are filtered — images and
         documents are hidden while this filter is active.
       </p>
@@ -666,13 +666,13 @@ function StatusCheckboxList({
               aria-pressed={active}
               className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors ${
                 active
-                  ? 'bg-frame-accent/10 text-white'
-                  : 'text-frame-textSecondary hover:text-white hover:bg-frame-cardHover'
+                  ? 'bg-scope-accent/10 text-white'
+                  : 'text-scope-textSecondary hover:text-white hover:bg-scope-cardHover'
               }`}
             >
               <span
                 className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
-                  active ? 'bg-frame-accent border-frame-accent' : 'border-frame-border'
+                  active ? 'bg-scope-accent border-scope-accent' : 'border-scope-border'
                 }`}
               >
                 {active && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
@@ -684,11 +684,11 @@ function StatusCheckboxList({
         })}
       </div>
       {onClear && (
-        <div className="border-t border-frame-border px-2 py-1.5">
+        <div className="border-t border-scope-border px-2 py-1.5">
           <button
             type="button"
             onClick={onClear}
-            className="w-full text-[11px] text-frame-textMuted hover:text-white transition-colors py-1"
+            className="w-full text-[11px] text-scope-textMuted hover:text-white transition-colors py-1"
           >
             Clear selection
           </button>
@@ -707,16 +707,16 @@ function RatingThresholdInput({
 }) {
   return (
     <div className="p-3 space-y-2">
-      <p className="text-[10px] font-semibold text-frame-textMuted uppercase tracking-wider">
+      <p className="text-[10px] font-semibold text-scope-textMuted uppercase tracking-wider">
         Minimum rating
       </p>
       <div className="flex items-center gap-3">
         <RatingStars value={value} onChange={onChange} size="md" />
-        <span className="text-xs text-frame-textSecondary tabular-nums min-w-[40px]">
+        <span className="text-xs text-scope-textSecondary tabular-nums min-w-[40px]">
           {value > 0 ? `${value}+ ★` : 'Any'}
         </span>
       </div>
-      <p className="text-[10px] text-frame-textMuted leading-relaxed">
+      <p className="text-[10px] text-scope-textMuted leading-relaxed">
         Shows assets rated at or above the selected threshold. Unrated assets
         are hidden while this filter is active. Click the current star to
         clear.
@@ -725,7 +725,7 @@ function RatingThresholdInput({
         <button
           type="button"
           onClick={() => onChange(0)}
-          className="text-[11px] text-frame-textMuted hover:text-white transition-colors"
+          className="text-[11px] text-scope-textMuted hover:text-white transition-colors"
         >
           Clear
         </button>

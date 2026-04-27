@@ -187,21 +187,21 @@ export function CommentSidebar({
   const hasAnnotation = !!pendingAnnotation && pendingAnnotation !== '[]';
 
   return (
-    <div className="w-80 flex-shrink-0 bg-frame-sidebar border-l border-frame-border flex flex-col">
+    <div className="w-80 flex-shrink-0 bg-scope-sidebar border-l border-scope-border flex flex-col">
       {/* Tab bar */}
-      <div className="flex border-b border-frame-border flex-shrink-0">
+      <div className="flex border-b border-scope-border flex-shrink-0">
         <button
           onClick={() => setActiveTab('comments')}
           className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors flex-1 justify-center border-b-2 ${
             activeTab === 'comments'
-              ? 'border-frame-accent text-white'
-              : 'border-transparent text-frame-textMuted hover:text-white'
+              ? 'border-scope-accent text-white'
+              : 'border-transparent text-scope-textMuted hover:text-white'
           }`}
         >
           <MessageSquare className="w-3.5 h-3.5" />
           Comments
           {topLevel.length > 0 && activeTab === 'comments' && (
-            <span className="ml-0.5 text-xs bg-frame-accent/20 text-frame-accent px-1.5 py-0.5 rounded-full">
+            <span className="ml-0.5 text-xs bg-scope-accent/20 text-scope-accent px-1.5 py-0.5 rounded-full">
               {topLevel.length}
             </span>
           )}
@@ -210,8 +210,8 @@ export function CommentSidebar({
           onClick={() => setActiveTab('info')}
           className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors flex-1 justify-center border-b-2 ${
             activeTab === 'info'
-              ? 'border-frame-accent text-white'
-              : 'border-transparent text-frame-textMuted hover:text-white'
+              ? 'border-scope-accent text-white'
+              : 'border-transparent text-scope-textMuted hover:text-white'
           }`}
         >
           <Info className="w-3.5 h-3.5" />
@@ -226,9 +226,9 @@ export function CommentSidebar({
       {activeTab === 'comments' && <div ref={listRef} className="flex-1 overflow-y-auto p-4 space-y-1">
         {topLevel.length === 0 ? (
           <div className="text-center py-8">
-            <MessageSquare className="w-8 h-8 text-frame-textMuted mx-auto mb-2" />
-            <p className="text-frame-textMuted text-sm">No comments yet</p>
-            {!readOnly && <p className="text-frame-textMuted text-xs mt-1">Be the first to comment</p>}
+            <MessageSquare className="w-8 h-8 text-scope-textMuted mx-auto mb-2" />
+            <p className="text-scope-textMuted text-sm">No comments yet</p>
+            {!readOnly && <p className="text-scope-textMuted text-xs mt-1">Be the first to comment</p>}
           </div>
         ) : (
           topLevel.map((comment) => (
@@ -259,11 +259,11 @@ export function CommentSidebar({
 
       {/* Input */}
       {activeTab === 'comments' && !readOnly && (
-        <div className="border-t border-frame-border p-4 space-y-2">
+        <div className="border-t border-scope-border p-4 space-y-2">
           {replyTo && (
-            <div className="flex items-center justify-between px-2 py-1.5 bg-frame-accent/10 rounded-lg">
-              <span className="text-xs text-frame-accent">Replying to comment</span>
-              <button onClick={() => setReplyTo(null)} className="text-frame-textMuted hover:text-white"><X className="w-3.5 h-3.5" /></button>
+            <div className="flex items-center justify-between px-2 py-1.5 bg-scope-accent/10 rounded-lg">
+              <span className="text-xs text-scope-accent">Replying to comment</span>
+              <button onClick={() => setReplyTo(null)} className="text-scope-textMuted hover:text-white"><X className="w-3.5 h-3.5" /></button>
             </div>
           )}
 
@@ -277,23 +277,23 @@ export function CommentSidebar({
           )}
 
           {hasAnnotation && !isAnnotationMode && (
-            <div className="flex items-center justify-between px-2 py-1.5 bg-frame-accent/10 rounded-lg">
-              <span className="text-xs text-frame-accent flex items-center gap-1.5">
+            <div className="flex items-center justify-between px-2 py-1.5 bg-scope-accent/10 rounded-lg">
+              <span className="text-xs text-scope-accent flex items-center gap-1.5">
                 <CheckCircle2 className="w-3 h-3" />
                 Annotation attached
                 {includeTimestamp && asset.type === 'video' && (
-                  <span className="text-frame-textMuted">@ {formatTimestamp(currentTime)}</span>
+                  <span className="text-scope-textMuted">@ {formatTimestamp(currentTime)}</span>
                 )}
               </span>
-              <button onClick={onClearAnnotation} className="text-frame-textMuted hover:text-white"><X className="w-3.5 h-3.5" /></button>
+              <button onClick={onClearAnnotation} className="text-scope-textMuted hover:text-white"><X className="w-3.5 h-3.5" /></button>
             </div>
           )}
 
           {/* Range banner — appears when in AND out are set. Makes it obvious
               the comment will scope to a segment, not a single timestamp. */}
           {inPoint !== undefined && outPoint !== undefined && (
-            <div className="flex items-center justify-between px-2.5 py-1.5 bg-frame-accent/10 border border-frame-accent/30 rounded-lg">
-              <span className="text-xs text-frame-accent flex items-center gap-1.5 font-medium">
+            <div className="flex items-center justify-between px-2.5 py-1.5 bg-scope-accent/10 border border-scope-accent/30 rounded-lg">
+              <span className="text-xs text-scope-accent flex items-center gap-1.5 font-medium">
                 <Scissors className="w-3 h-3" />
                 Commenting on range
                 <span className="font-mono text-[11px]">
@@ -303,7 +303,7 @@ export function CommentSidebar({
               <button
                 onClick={() => { setInPoint(undefined); setOutPoint(undefined); }}
                 title="Clear range"
-                className="text-frame-textMuted hover:text-white"
+                className="text-scope-textMuted hover:text-white"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -320,7 +320,7 @@ export function CommentSidebar({
               <button
                 onClick={() => setInPoint(undefined)}
                 title="Cancel range"
-                className="text-frame-textMuted hover:text-white"
+                className="text-scope-textMuted hover:text-white"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -339,7 +339,7 @@ export function CommentSidebar({
                 handleSubmit();
               }
             }}
-            className="w-full bg-frame-bg border border-frame-border rounded-lg px-3 py-2.5 text-sm text-white placeholder-frame-textMuted resize-none focus:outline-none focus:border-frame-accent transition-colors"
+            className="w-full bg-scope-bg border border-scope-border rounded-lg px-3 py-2.5 text-sm text-white placeholder-scope-textMuted resize-none focus:outline-none focus:border-scope-accent transition-colors"
           />
 
           <div className="flex items-center justify-between">
@@ -349,7 +349,7 @@ export function CommentSidebar({
                   type="button"
                   onClick={() => setIncludeTimestamp((v) => !v)}
                   disabled={inPoint !== undefined && outPoint !== undefined}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${includeTimestamp ? 'bg-frame-accent/15 text-frame-accent' : 'text-frame-textMuted hover:text-white'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${includeTimestamp ? 'bg-scope-accent/15 text-scope-accent' : 'text-scope-textMuted hover:text-white'} disabled:opacity-40 disabled:cursor-not-allowed`}
                 >
                   <Clock className="w-3 h-3" />
                   {includeTimestamp ? formatTimestamp(currentTime) : 'No time'}
@@ -359,8 +359,8 @@ export function CommentSidebar({
                 <div
                   className={`inline-flex items-center rounded-lg overflow-hidden border ${
                     inPoint !== undefined
-                      ? 'border-frame-accent/40'
-                      : 'border-frame-border'
+                      ? 'border-scope-accent/40'
+                      : 'border-scope-border'
                   }`}
                 >
                   <button
@@ -368,8 +368,8 @@ export function CommentSidebar({
                     onClick={() => setInPoint(currentTime)}
                     className={`flex items-center gap-1 px-2 py-1 text-xs transition-colors ${
                       inPoint !== undefined
-                        ? 'bg-frame-accent/15 text-frame-accent'
-                        : 'text-frame-textMuted hover:text-white'
+                        ? 'bg-scope-accent/15 text-scope-accent'
+                        : 'text-scope-textMuted hover:text-white'
                     }`}
                     title="Mark range start at current time (I)"
                   >
@@ -394,10 +394,10 @@ export function CommentSidebar({
                     }}
                     className={`flex items-center gap-1 px-2 py-1 text-xs transition-colors border-l ${
                       outPoint !== undefined
-                        ? 'bg-frame-accent/15 text-frame-accent border-frame-accent/30'
+                        ? 'bg-scope-accent/15 text-scope-accent border-scope-accent/30'
                         : inPoint !== undefined
-                        ? 'text-yellow-400 animate-pulse border-frame-accent/30'
-                        : 'text-frame-textMuted/50 cursor-not-allowed border-frame-border'
+                        ? 'text-yellow-400 animate-pulse border-scope-accent/30'
+                        : 'text-scope-textMuted/50 cursor-not-allowed border-scope-border'
                     }`}
                     title={inPoint === undefined ? 'Mark IN first' : 'Mark range end at current time (O)'}
                   >
@@ -414,7 +414,7 @@ export function CommentSidebar({
                 type="button"
                 onClick={onRequestAnnotation}
                 disabled={isAnnotationMode}
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${isAnnotationMode || hasAnnotation ? 'bg-frame-accent/15 text-frame-accent' : 'text-frame-textMuted hover:text-white'}`}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${isAnnotationMode || hasAnnotation ? 'bg-scope-accent/15 text-scope-accent' : 'text-scope-textMuted hover:text-white'}`}
               >
                 <Pencil className="w-3 h-3" />
                 Draw
@@ -423,7 +423,7 @@ export function CommentSidebar({
             <button
               onClick={handleSubmit}
               disabled={!text.trim() || submitting}
-              className="w-8 h-8 flex items-center justify-center bg-frame-accent hover:bg-frame-accentHover disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors"
+              className="w-8 h-8 flex items-center justify-center bg-scope-accent hover:bg-scope-accentHover disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors"
             >
               <Send className="w-4 h-4 text-white" />
             </button>

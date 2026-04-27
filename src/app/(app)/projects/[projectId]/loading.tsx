@@ -4,7 +4,7 @@ export default function ProjectRootLoading() {
   return (
     <div className="flex flex-col h-full">
       {/* Tab bar skeleton */}
-      <div className="flex items-center gap-2 px-8 pt-3 border-b border-frame-border bg-frame-sidebar">
+      <div className="flex items-center gap-2 px-8 pt-3 border-b border-scope-border bg-scope-sidebar">
         <Skeleton className="h-8 w-20" />
         <Skeleton className="h-8 w-28" />
       </div>

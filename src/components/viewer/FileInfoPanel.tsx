@@ -248,7 +248,7 @@ export function FileInfoPanel({ asset, isGuest = false }: FileInfoPanelProps) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-5">
       <div className="flex items-center justify-between">
-        <p className="text-xs uppercase tracking-wide text-frame-textMuted font-semibold">
+        <p className="text-xs uppercase tracking-wide text-scope-textMuted font-semibold">
           File Information
         </p>
         {asset.type === 'video' && !isGuest && (
@@ -256,7 +256,7 @@ export function FileInfoPanel({ asset, isGuest = false }: FileInfoPanelProps) {
             onClick={runProbe}
             disabled={probing}
             title={asset.probed ? 'Re-probe metadata with ffprobe' : 'Extract accurate metadata with ffprobe'}
-            className="flex items-center gap-1 text-xs text-frame-textMuted hover:text-frame-accent transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 text-xs text-scope-textMuted hover:text-scope-accent transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3 h-3 ${probing ? 'animate-spin' : ''}`} />
             {probing ? 'Probing…' : asset.probed ? 'Re-probe' : 'Probe'}
@@ -265,7 +265,7 @@ export function FileInfoPanel({ asset, isGuest = false }: FileInfoPanelProps) {
       </div>
 
       {asset.type === 'video' && !asset.probed && !isGuest && (
-        <p className="text-[11px] text-frame-textMuted -mt-3 leading-snug">
+        <p className="text-[11px] text-scope-textMuted -mt-3 leading-snug">
           Some fields may be inaccurate — client-extracted. Click Probe for server-verified metadata.
         </p>
       )}
@@ -273,7 +273,7 @@ export function FileInfoPanel({ asset, isGuest = false }: FileInfoPanelProps) {
       {!isGuest && (
         <>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-frame-textMuted mb-2 font-semibold">
+            <p className="text-[10px] uppercase tracking-wider text-scope-textMuted mb-2 font-semibold">
               Rating
             </p>
             <div className="flex items-center gap-3">
@@ -283,7 +283,7 @@ export function FileInfoPanel({ asset, isGuest = false }: FileInfoPanelProps) {
                   type="button"
                   onClick={() => handleRatingChange(0)}
                   disabled={savingRating}
-                  className="text-[11px] text-frame-textMuted hover:text-white transition-colors"
+                  className="text-[11px] text-scope-textMuted hover:text-white transition-colors"
                 >
                   Clear
                 </button>
@@ -297,13 +297,13 @@ export function FileInfoPanel({ asset, isGuest = false }: FileInfoPanelProps) {
 
       {sections.map((section) => (
         <div key={section.title}>
-          <p className="text-[10px] uppercase tracking-wider text-frame-textMuted mb-2 font-semibold">
+          <p className="text-[10px] uppercase tracking-wider text-scope-textMuted mb-2 font-semibold">
             {section.title}
           </p>
           <dl className="space-y-2">
             {section.rows.map(({ label, value }) => (
               <div key={label} className="flex justify-between gap-3 items-baseline">
-                <dt className="text-xs text-frame-textSecondary flex-shrink-0">{label}</dt>
+                <dt className="text-xs text-scope-textSecondary flex-shrink-0">{label}</dt>
                 <dd className="text-xs text-white text-right break-all font-mono tabular-nums">{value}</dd>
               </div>
             ))}

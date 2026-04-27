@@ -27,7 +27,7 @@ export function ReviewHeader({ reviewLink, projectName }: ReviewHeaderProps) {
 
   return (
     <>
-      <header className="bg-frame-sidebar border-b border-frame-border px-6 py-3 flex items-center justify-between flex-shrink-0">
+      <header className="bg-scope-sidebar border-b border-scope-border px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
           <Image
             src="/logo-horizontal.png"
@@ -36,16 +36,16 @@ export function ReviewHeader({ reviewLink, projectName }: ReviewHeaderProps) {
             height={28}
             className="object-contain"
           />
-          <div className="w-px h-5 bg-frame-border" />
+          <div className="w-px h-5 bg-scope-border" />
           <div>
             <h1 className="text-sm font-semibold text-white leading-tight">{reviewLink.name}</h1>
-            <p className="text-xs text-frame-textMuted">{projectName}</p>
+            <p className="text-xs text-scope-textMuted">{projectName}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border border-frame-border text-frame-textMuted">
+        <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border border-scope-border text-scope-textMuted">
           {reviewLink.allowComments ? (
             <>
-              <MessageSquare className="w-3 h-3 text-frame-accent" />
+              <MessageSquare className="w-3 h-3 text-scope-accent" />
               <span>Comments enabled</span>
             </>
           ) : (

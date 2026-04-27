@@ -40,7 +40,7 @@ const VersionLabel = memo(function VersionLabel({
         onClick={() => onTogglePicker(side)}
         className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium max-w-[200px] transition-colors ${
           side === 'B'
-            ? 'bg-frame-accent/80 hover:bg-frame-accent text-white'
+            ? 'bg-scope-accent/80 hover:bg-scope-accent text-white'
             : 'bg-black/60 hover:bg-black/80 text-white'
         }`}
       >
@@ -50,7 +50,7 @@ const VersionLabel = memo(function VersionLabel({
       {isOpen && (
         <div
           data-picker
-          className={`absolute top-full mt-1 bg-frame-card border border-frame-border rounded-lg shadow-xl overflow-y-auto z-30 min-w-[200px] max-w-[280px] max-h-64 ${
+          className={`absolute top-full mt-1 bg-scope-card border border-scope-border rounded-lg shadow-xl overflow-y-auto z-30 min-w-[200px] max-w-[280px] max-h-64 ${
             side === 'B' ? 'right-0' : 'left-0'
           }`}
         >
@@ -67,8 +67,8 @@ const VersionLabel = memo(function VersionLabel({
                   incompatible
                     ? 'text-white/25 cursor-not-allowed'
                     : v.id === asset.id
-                    ? 'text-frame-accent font-semibold hover:bg-frame-cardHover'
-                    : 'text-white hover:bg-frame-cardHover'
+                    ? 'text-scope-accent font-semibold hover:bg-scope-cardHover'
+                    : 'text-white hover:bg-scope-cardHover'
                 }`}
               >
                 V{v.version} — {v.name}
@@ -503,7 +503,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
   const [isDragging, setIsDragging] = useState(false);
   // Grabbing the slider handle while zoomed misaligns the split boundary
   // from the transformed media content (clip-path is in media-local space,
-  // handle is in frame-space). The simplest correct fix is to reset zoom
+  // handle is in scope-space). The simplest correct fix is to reset zoom
   // the moment the user grabs the handle — they were inspecting detail,
   // now they want the split authoritative again.
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -731,7 +731,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
       }
       if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
         e.preventDefault();
-        const step = e.shiftKey ? 1 / 30 : 5; // frame-advance with shift, else 5s
+        const step = e.shiftKey ? 1 / 30 : 5; // scope-advance with shift, else 5s
         const dir = e.code === 'ArrowLeft' ? -1 : 1;
         const vA = videoARef.current;
         const vB = videoBRef.current;
@@ -1005,7 +1005,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
               onClick={handleSeekClick}
             >
               <div
-                className="absolute left-0 top-0 h-full bg-frame-accent rounded-full pointer-events-none"
+                className="absolute left-0 top-0 h-full bg-scope-accent rounded-full pointer-events-none"
                 style={{ width: `${progress}%` }}
               />
               <div
@@ -1021,7 +1021,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
             <button
               onClick={togglePlay}
               title="Play / Pause (Space)"
-              className="w-8 h-8 flex items-center justify-center text-white hover:text-frame-accent transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-white hover:text-scope-accent transition-colors"
             >
               {isPlaying ? <Pause className="w-5 h-5" fill="currentColor" /> : <Play className="w-5 h-5" fill="currentColor" />}
             </button>
@@ -1087,7 +1087,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
                   onClick={() => setActiveSide('A')}
                   title={`Listen to V${assetA.version} (1)`}
                   className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                    activeSide === 'A' ? 'bg-frame-accent text-white' : 'text-white/50 hover:text-white'
+                    activeSide === 'A' ? 'bg-scope-accent text-white' : 'text-white/50 hover:text-white'
                   }`}
                 >
                   V{assetA.version}
@@ -1096,7 +1096,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
                   onClick={() => setActiveSide('B')}
                   title={`Listen to V${assetB.version} (2)`}
                   className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                    activeSide === 'B' ? 'bg-frame-accent text-white' : 'text-white/50 hover:text-white'
+                    activeSide === 'B' ? 'bg-scope-accent text-white' : 'text-white/50 hover:text-white'
                   }`}
                 >
                   V{assetB.version}
@@ -1129,7 +1129,7 @@ export function VersionComparison({ versions }: VersionComparisonProps) {
             <button
               onClick={() => setShowVU((v) => !v)}
               title={`${showVU ? 'Hide' : 'Show'} VU meter`}
-              className={`transition-colors ${showVU ? 'text-frame-accent hover:text-frame-accentHover' : 'text-white/40 hover:text-white/70'}`}
+              className={`transition-colors ${showVU ? 'text-scope-accent hover:text-scope-accentHover' : 'text-white/40 hover:text-white/70'}`}
             >
               <Activity className="w-4 h-4" />
             </button>

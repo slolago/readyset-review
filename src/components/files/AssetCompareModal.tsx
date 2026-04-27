@@ -199,7 +199,7 @@ export function AssetCompareModal({ assetA, assetB, onClose, projectId: _project
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-2 text-white">
-          <GitCompare className="w-4 h-4 text-frame-accent" />
+          <GitCompare className="w-4 h-4 text-scope-accent" />
           <span className="text-sm font-medium">Compare Assets</span>
         </div>
 
@@ -210,7 +210,7 @@ export function AssetCompareModal({ assetA, assetB, onClose, projectId: _project
             title="Side by side"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               viewMode === 'side-by-side'
-                ? 'bg-frame-accent text-white'
+                ? 'bg-scope-accent text-white'
                 : 'text-white/60 hover:text-white'
             }`}
           >
@@ -222,7 +222,7 @@ export function AssetCompareModal({ assetA, assetB, onClose, projectId: _project
             title="Slider comparison"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               viewMode === 'slider'
-                ? 'bg-frame-accent text-white'
+                ? 'bg-scope-accent text-white'
                 : 'text-white/60 hover:text-white'
             }`}
           >
@@ -247,13 +247,13 @@ export function AssetCompareModal({ assetA, assetB, onClose, projectId: _project
           <div className="flex flex-col flex-1 min-w-0">
             <div
               className={`px-4 py-2 border-b border-white/10 flex-shrink-0 flex items-center gap-2 cursor-pointer transition-colors ${
-                audioSide === 'A' ? 'bg-frame-accent/10' : 'hover:bg-white/5'
+                audioSide === 'A' ? 'bg-scope-accent/10' : 'hover:bg-white/5'
               }`}
               onClick={() => setAudioSide('A')}
               title="Click to hear this side's audio"
             >
               {audioSide === 'A'
-                ? <Volume2 className="w-3 h-3 text-frame-accent flex-shrink-0" />
+                ? <Volume2 className="w-3 h-3 text-scope-accent flex-shrink-0" />
                 : <VolumeX className="w-3 h-3 text-white/30 flex-shrink-0" />}
               <p className="text-xs font-medium text-white truncate" title={assetA.name}>{assetA.name}</p>
             </div>
@@ -273,13 +273,13 @@ export function AssetCompareModal({ assetA, assetB, onClose, projectId: _project
           <div className="flex flex-col flex-1 min-w-0">
             <div
               className={`px-4 py-2 border-b border-white/10 flex-shrink-0 flex items-center gap-2 cursor-pointer transition-colors ${
-                audioSide === 'B' ? 'bg-frame-accent/10' : 'hover:bg-white/5'
+                audioSide === 'B' ? 'bg-scope-accent/10' : 'hover:bg-white/5'
               }`}
               onClick={() => setAudioSide('B')}
               title="Click to hear this side's audio"
             >
               {audioSide === 'B'
-                ? <Volume2 className="w-3 h-3 text-frame-accent flex-shrink-0" />
+                ? <Volume2 className="w-3 h-3 text-scope-accent flex-shrink-0" />
                 : <VolumeX className="w-3 h-3 text-white/30 flex-shrink-0" />}
               <p className="text-xs font-medium text-white truncate" title={assetB.name}>{assetB.name}</p>
             </div>
@@ -370,7 +370,7 @@ export function AssetCompareModal({ assetA, assetB, onClose, projectId: _project
               step={0.01}
               value={currentTime}
               onChange={handleSeek}
-              className="flex-1 h-1.5 accent-frame-accent cursor-pointer"
+              className="flex-1 h-1.5 accent-scope-accent cursor-pointer"
             />
             <span className="text-xs text-white/50 w-10 tabular-nums">{formatTime(duration)}</span>
           </div>
@@ -378,7 +378,7 @@ export function AssetCompareModal({ assetA, assetB, onClose, projectId: _project
           <div className="flex items-center justify-center gap-4">
             <button
               onClick={togglePlayPause}
-              className="flex items-center gap-2 px-4 py-2 bg-frame-accent hover:bg-frame-accent/80 text-white rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-scope-accent hover:bg-scope-accent/80 text-white rounded-lg text-sm font-medium transition-colors"
             >
               {isPlaying ? <><Pause className="w-4 h-4" />Pause</> : <><Play className="w-4 h-4" />Play</>}
             </button>
@@ -389,9 +389,9 @@ export function AssetCompareModal({ assetA, assetB, onClose, projectId: _project
               className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors"
             >
               {audioSide === 'A' ? (
-                <><Volume2 className="w-3.5 h-3.5 text-frame-accent" /><span>Audio: Left</span></>
+                <><Volume2 className="w-3.5 h-3.5 text-scope-accent" /><span>Audio: Left</span></>
               ) : (
-                <><VolumeX className="w-3.5 h-3.5 text-white/40" /><Volume2 className="w-3.5 h-3.5 text-frame-accent" /><span>Audio: Right</span></>
+                <><VolumeX className="w-3.5 h-3.5 text-white/40" /><Volume2 className="w-3.5 h-3.5 text-scope-accent" /><span>Audio: Right</span></>
               )}
             </button>
           </div>
@@ -414,8 +414,8 @@ export function AssetCompareModal({ assetA, assetB, onClose, projectId: _project
               ) : (
                 (audioSide === 'A' ? commentsA : commentsB).map((c: any) => (
                   <div key={c.id} className="flex gap-2.5">
-                    <div className="w-5 h-5 rounded-full bg-frame-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-[9px] font-bold text-frame-accent">
+                    <div className="w-5 h-5 rounded-full bg-scope-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-[9px] font-bold text-scope-accent">
                         {(c.authorName || c.authorEmail || '?')[0].toUpperCase()}
                       </span>
                     </div>

@@ -3,16 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --frame-bg: #08080f;
-  --frame-sidebar: #0e0e18;
-  --frame-card: #13131f;
-  --frame-card-hover: #1a1a28;
-  --frame-border: #22223a;
-  --frame-accent: #7a00df;
-  --frame-accent-hover: #9120f0;
-  --frame-green: #00d084;
-  --frame-text: #ffffff;
-  --frame-text-secondary: #9090b0;
+  --scope-bg: #08080f;
+  --scope-sidebar: #0e0e18;
+  --scope-card: #13131f;
+  --scope-card-hover: #1a1a28;
+  --scope-border: #22223a;
+  --scope-accent: #7a00df;
+  --scope-accent-hover: #9120f0;
+  --scope-green: #00d084;
+  --scope-text: #ffffff;
+  --scope-text-secondary: #9090b0;
   --rs-gradient: linear-gradient(135deg, #0693e3 0%, #7a00df 100%);
 }
 
@@ -22,8 +22,8 @@
 
 html,
 body {
-  background-color: var(--frame-bg);
-  color: var(--frame-text);
+  background-color: var(--scope-bg);
+  color: var(--scope-text);
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

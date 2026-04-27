@@ -56,12 +56,12 @@ export default function ProjectsPage() {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="relative overflow-hidden border-b border-frame-border bg-frame-sidebar">
+      <div className="relative overflow-hidden border-b border-scope-border bg-scope-sidebar">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(122,0,223,0.12)_0%,transparent_60%)]" />
         <div className="relative px-8 py-6 max-w-7xl mx-auto flex items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-white">Projects</h1>
-            <p className="text-frame-textSecondary text-sm mt-0.5">
+            <p className="text-scope-textSecondary text-sm mt-0.5">
               {projects.length} project{projects.length !== 1 ? 's' : ''}
             </p>
           </div>
@@ -74,19 +74,19 @@ export default function ProjectsPage() {
       <div className="p-8 max-w-7xl mx-auto">
         {/* Search */}
         <div className="relative mb-6 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-frame-textMuted" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-scope-textMuted" />
           <input
             type="text"
             placeholder="Search projects..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className={`w-full bg-frame-card border border-frame-border rounded-xl pl-9 py-2.5 text-sm text-white placeholder-frame-textMuted focus:outline-none focus:border-frame-accent transition-colors ${search ? 'pr-10' : 'pr-4'}`}
+            className={`w-full bg-scope-card border border-scope-border rounded-xl pl-9 py-2.5 text-sm text-white placeholder-scope-textMuted focus:outline-none focus:border-scope-accent transition-colors ${search ? 'pr-10' : 'pr-4'}`}
           />
           {search && (
             <button
               onClick={() => setSearch('')}
               title="Clear search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-frame-border text-frame-textMuted hover:text-white transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-scope-border text-scope-textMuted hover:text-white transition-colors"
             >
               <X className="w-3.5 h-3.5" />
             </button>

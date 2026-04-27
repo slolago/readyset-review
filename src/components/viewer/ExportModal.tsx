@@ -249,19 +249,19 @@ export function ExportModal({
       onClick={() => ui !== 'encoding' && onClose()}
     >
       <div
-        className="bg-frame-card border border-frame-border rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden"
+        className="bg-scope-card border border-scope-border rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-frame-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-scope-border">
           <div className="flex items-center gap-2">
-            <Scissors className="w-4 h-4 text-frame-accent" />
+            <Scissors className="w-4 h-4 text-scope-accent" />
             <h3 className="text-sm font-semibold text-white">Export</h3>
           </div>
           <button
             onClick={() => ui !== 'encoding' && onClose()}
             disabled={ui === 'encoding'}
-            className="text-frame-textMuted hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="text-scope-textMuted hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <X className="w-4 h-4" />
           </button>
@@ -289,7 +289,7 @@ export function ExportModal({
             <div className="text-sm text-white font-medium mb-1">
               Duration not available yet
             </div>
-            <div className="text-xs text-frame-textMuted">
+            <div className="text-xs text-scope-textMuted">
               This asset is still processing. Export will be available once
               metadata is ready — try again in a moment.
             </div>
@@ -298,9 +298,9 @@ export function ExportModal({
           <>
         {/* Trim bar */}
         <div className="px-5 pt-4">
-          <div className="flex items-center justify-between text-[11px] text-frame-textSecondary mb-1.5">
+          <div className="flex items-center justify-between text-[11px] text-scope-textSecondary mb-1.5">
             <span>In: <span className="text-white font-mono">{formatTime(inPt)}</span></span>
-            <span className={clipTooLong ? 'text-frame-red' : ''}>
+            <span className={clipTooLong ? 'text-scope-red' : ''}>
               Length: <span className="font-mono">{formatTime(clipDur)}</span>
               {clipTooLong && <span className="ml-1">(max 0:45.000)</span>}
             </span>
@@ -315,24 +315,24 @@ export function ExportModal({
             className="relative h-8 flex items-center cursor-pointer select-none"
           >
             {/* Track */}
-            <div className="absolute left-0 right-0 h-2 bg-frame-border rounded-full" />
+            <div className="absolute left-0 right-0 h-2 bg-scope-border rounded-full" />
             {/* Selection fill */}
             <div
-              className="absolute h-2 bg-frame-accent/50 rounded-full"
+              className="absolute h-2 bg-scope-accent/50 rounded-full"
               style={{ left: `${inPct}%`, right: `${100 - outPct}%` }}
             />
             {/* IN handle */}
             <div
               onPointerDown={handlePointerDown('in')}
               title="In point"
-              className="absolute w-3 h-5 -ml-1.5 bg-frame-accent rounded-sm shadow-lg cursor-ew-resize hover:bg-frame-accentHover"
+              className="absolute w-3 h-5 -ml-1.5 bg-scope-accent rounded-sm shadow-lg cursor-ew-resize hover:bg-scope-accentHover"
               style={{ left: `${inPct}%` }}
             />
             {/* OUT handle */}
             <div
               onPointerDown={handlePointerDown('out')}
               title="Out point"
-              className="absolute w-3 h-5 -ml-1.5 bg-frame-accent rounded-sm shadow-lg cursor-ew-resize hover:bg-frame-accentHover"
+              className="absolute w-3 h-5 -ml-1.5 bg-scope-accent rounded-sm shadow-lg cursor-ew-resize hover:bg-scope-accentHover"
               style={{ left: `${outPct}%` }}
             />
           </div>
@@ -340,8 +340,8 @@ export function ExportModal({
 
         {/* Format toggle */}
         <div className="px-5 pt-4">
-          <div className="text-[11px] text-frame-textSecondary mb-1.5">Format</div>
-          <div className="inline-flex bg-frame-bg border border-frame-border rounded-lg p-0.5">
+          <div className="text-[11px] text-scope-textSecondary mb-1.5">Format</div>
+          <div className="inline-flex bg-scope-bg border border-scope-border rounded-lg p-0.5">
             {(['mp4', 'gif'] as const).map((f) => (
               <button
                 key={f}
@@ -349,15 +349,15 @@ export function ExportModal({
                 disabled={ui === 'encoding'}
                 className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
                   format === f
-                    ? 'bg-frame-accent text-white'
-                    : 'text-frame-textSecondary hover:text-white'
+                    ? 'bg-scope-accent text-white'
+                    : 'text-scope-textSecondary hover:text-white'
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {f.toUpperCase()}
               </button>
             ))}
           </div>
-          <p className="mt-1.5 text-[11px] text-frame-textMuted">
+          <p className="mt-1.5 text-[11px] text-scope-textMuted">
             {format === 'mp4'
               ? 'Re-encodes to H.264/AAC if the source can\u2019t be stream-copied. Max 45 seconds.'
               : '480p, 12 fps, looping. Max 45 seconds.'}
@@ -366,7 +366,7 @@ export function ExportModal({
 
         {/* Filename */}
         <div className="px-5 pt-4">
-          <label className="text-[11px] text-frame-textSecondary mb-1.5 block">
+          <label className="text-[11px] text-scope-textSecondary mb-1.5 block">
             Filename
           </label>
           <div className="flex items-stretch gap-2">
@@ -376,10 +376,10 @@ export function ExportModal({
               onChange={(e) => setFilename(sanitizeFilenameInput(e.target.value))}
               disabled={ui === 'encoding'}
               maxLength={80}
-              className="flex-1 bg-frame-bg border border-frame-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-frame-accent disabled:opacity-50"
+              className="flex-1 bg-scope-bg border border-scope-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-scope-accent disabled:opacity-50"
               placeholder="clip-name"
             />
-            <span className="text-xs text-frame-textMuted self-center">
+            <span className="text-xs text-scope-textMuted self-center">
               .{format}
             </span>
           </div>
@@ -389,25 +389,25 @@ export function ExportModal({
         )}
 
         {/* Footer — submit / status / download */}
-        <div className="px-5 py-4 mt-4 border-t border-frame-border flex items-center justify-between gap-3">
-          <div className="text-[11px] text-frame-textMuted min-h-[1em]">
+        <div className="px-5 py-4 mt-4 border-t border-scope-border flex items-center justify-between gap-3">
+          <div className="text-[11px] text-scope-textMuted min-h-[1em]">
             {ui === 'encoding' && 'Encoding on the server — this may take up to a few minutes for longer clips.'}
             {ui === 'failed' && errorMsg && (
-              <span className="text-frame-red">{errorMsg}</span>
+              <span className="text-scope-red">{errorMsg}</span>
             )}
           </div>
 
           {isWaitingForDuration ? (
             <button
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-white bg-frame-border hover:bg-frame-borderLight rounded-xl"
+              className="px-4 py-2 text-xs font-semibold text-white bg-scope-border hover:bg-scope-borderLight rounded-xl"
             >
               Close
             </button>
           ) : ui === 'ready' && signedUrl ? (
             <button
               onClick={handleDownload}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-frame-green hover:brightness-110 rounded-xl transition-all"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-scope-green hover:brightness-110 rounded-xl transition-all"
             >
               <Download className="w-3.5 h-3.5" />
               Download
@@ -416,7 +416,7 @@ export function ExportModal({
             <button
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-frame-accent hover:bg-frame-accentHover rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-scope-accent hover:bg-scope-accentHover rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {ui === 'encoding' ? (
                 <>

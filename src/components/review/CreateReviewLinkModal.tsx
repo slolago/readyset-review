@@ -99,26 +99,26 @@ export function CreateReviewLinkModal({
     <Modal isOpen onClose={onClose} title="Create Review Link" size="md">
       {createdLink ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 p-3 bg-frame-green/10 border border-frame-green/20 rounded-xl">
-            <Check className="w-5 h-5 text-frame-green flex-shrink-0" />
-            <p className="text-sm text-frame-green font-medium">Review link created!</p>
+          <div className="flex items-center gap-2 p-3 bg-scope-green/10 border border-scope-green/20 rounded-xl">
+            <Check className="w-5 h-5 text-scope-green flex-shrink-0" />
+            <p className="text-sm text-scope-green font-medium">Review link created!</p>
           </div>
 
           <div className="flex gap-2">
-            <div className="flex-1 px-3 py-2.5 bg-frame-bg border border-frame-border rounded-lg">
-              <p className="text-xs text-frame-textMuted truncate">{createdLink}</p>
+            <div className="flex-1 px-3 py-2.5 bg-scope-bg border border-scope-border rounded-lg">
+              <p className="text-xs text-scope-textMuted truncate">{createdLink}</p>
             </div>
             <button
               onClick={handleCopy}
-              className="px-3 py-2 bg-frame-card hover:bg-frame-cardHover border border-frame-border rounded-lg text-frame-textSecondary hover:text-white transition-colors flex items-center gap-1.5 text-sm"
+              className="px-3 py-2 bg-scope-card hover:bg-scope-cardHover border border-scope-border rounded-lg text-scope-textSecondary hover:text-white transition-colors flex items-center gap-1.5 text-sm"
             >
-              {copied ? <Check className="w-4 h-4 text-frame-green" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className="w-4 h-4 text-scope-green" /> : <Copy className="w-4 h-4" />}
             </button>
             <a
               href={createdLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-2 bg-frame-card hover:bg-frame-cardHover border border-frame-border rounded-lg text-frame-textSecondary hover:text-white transition-colors"
+              className="px-3 py-2 bg-scope-card hover:bg-scope-cardHover border border-scope-border rounded-lg text-scope-textSecondary hover:text-white transition-colors"
             >
               <ExternalLink className="w-4 h-4" />
             </a>
@@ -140,7 +140,7 @@ export function CreateReviewLinkModal({
           className="space-y-4"
         >
           {assetIds?.length ? (
-            <p className="text-xs text-frame-textMuted mb-3">This link will include {assetIds.length} selected asset{assetIds.length !== 1 ? 's' : ''}.</p>
+            <p className="text-xs text-scope-textMuted mb-3">This link will include {assetIds.length} selected asset{assetIds.length !== 1 ? 's' : ''}.</p>
           ) : null}
           <Input
             label="Link name"
@@ -149,11 +149,11 @@ export function CreateReviewLinkModal({
             onChange={(e) => setName(e.target.value)}
           />
 
-          <div className="space-y-1 divide-y divide-frame-border/40">
+          <div className="space-y-1 divide-y divide-scope-border/40">
             <div className="flex items-center justify-between gap-3 py-2">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-white">Allow comments</p>
-                <p className="text-xs text-frame-textMuted mt-0.5">
+                <p className="text-xs text-scope-textMuted mt-0.5">
                   Viewers can leave comments and annotations
                 </p>
               </div>
@@ -161,7 +161,7 @@ export function CreateReviewLinkModal({
                 type="button"
                 onClick={() => setAllowComments((v) => !v)}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                  allowComments ? 'bg-frame-accent' : 'bg-frame-border'
+                  allowComments ? 'bg-scope-accent' : 'bg-scope-border'
                 }`}
               >
                 <span
@@ -175,7 +175,7 @@ export function CreateReviewLinkModal({
             <div className="flex items-center justify-between gap-3 py-2">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-white">Allow downloads</p>
-                <p className="text-xs text-frame-textMuted mt-0.5">
+                <p className="text-xs text-scope-textMuted mt-0.5">
                   Viewers can download the original files
                 </p>
               </div>
@@ -183,7 +183,7 @@ export function CreateReviewLinkModal({
                 type="button"
                 onClick={() => setAllowDownloads((v) => !v)}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                  allowDownloads ? 'bg-frame-accent' : 'bg-frame-border'
+                  allowDownloads ? 'bg-scope-accent' : 'bg-scope-border'
                 }`}
               >
                 <span
@@ -197,7 +197,7 @@ export function CreateReviewLinkModal({
             <div className="flex items-center justify-between gap-3 py-2">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-white">Allow approvals</p>
-                <p className="text-xs text-frame-textMuted mt-0.5">
+                <p className="text-xs text-scope-textMuted mt-0.5">
                   Viewers can approve or request changes
                 </p>
               </div>
@@ -205,7 +205,7 @@ export function CreateReviewLinkModal({
                 type="button"
                 onClick={() => setAllowApprovals((v) => !v)}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                  allowApprovals ? 'bg-frame-accent' : 'bg-frame-border'
+                  allowApprovals ? 'bg-scope-accent' : 'bg-scope-border'
                 }`}
               >
                 <span
@@ -219,7 +219,7 @@ export function CreateReviewLinkModal({
             <div className="flex items-center justify-between gap-3 py-2">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-white">Show all versions</p>
-                <p className="text-xs text-frame-textMuted mt-0.5">
+                <p className="text-xs text-scope-textMuted mt-0.5">
                   Viewers see all asset versions, not just the latest
                 </p>
               </div>
@@ -227,7 +227,7 @@ export function CreateReviewLinkModal({
                 type="button"
                 onClick={() => setShowAllVersions((v) => !v)}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                  showAllVersions ? 'bg-frame-accent' : 'bg-frame-border'
+                  showAllVersions ? 'bg-scope-accent' : 'bg-scope-border'
                 }`}
               >
                 <span
@@ -240,7 +240,7 @@ export function CreateReviewLinkModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-frame-textSecondary mb-1.5">Expires</label>
+            <label className="block text-xs font-medium text-scope-textSecondary mb-1.5">Expires</label>
             <div className="grid grid-cols-4 gap-1.5">
               {([
                 { v: 'never', label: 'Never' },
@@ -254,8 +254,8 @@ export function CreateReviewLinkModal({
                   onClick={() => setExpiresIn(v)}
                   className={`min-w-0 px-1 py-1.5 text-xs rounded-lg border transition-colors truncate ${
                     expiresIn === v
-                      ? 'bg-frame-accent/15 border-frame-accent text-frame-accent'
-                      : 'border-frame-border text-frame-textSecondary hover:text-white hover:border-frame-borderLight'
+                      ? 'bg-scope-accent/15 border-scope-accent text-scope-accent'
+                      : 'border-scope-border text-scope-textSecondary hover:text-white hover:border-scope-borderLight'
                   }`}
                 >
                   {label}
@@ -300,16 +300,16 @@ export function CreateReviewLinkModal({
               loading={loading === 'metadata'}
               disabled={loading !== null}
               onClick={() => handleCreate(true)}
-              icon={<Sparkles className="w-4 h-4 text-frame-accent" />}
+              icon={<Sparkles className="w-4 h-4 text-scope-accent" />}
               // Accent-tinted — clearly branded with the app's purple so
               // it reads as a "premium secondary" action (not buried as
               // plain outline). Same pattern as the review-link Download
               // button upgrade.
-              className="w-full bg-frame-accent/10 border-frame-accent/40 text-white hover:bg-frame-accent/20 hover:border-frame-accent hover:text-white disabled:hover:bg-frame-accent/10 disabled:hover:border-frame-accent/40"
+              className="w-full bg-scope-accent/10 border-scope-accent/40 text-white hover:bg-scope-accent/20 hover:border-scope-accent hover:text-white disabled:hover:bg-scope-accent/10 disabled:hover:border-scope-accent/40"
             >
               {loading === 'metadata' ? 'Applying metadata…' : 'Create + Apply Meta Metadata'}
             </Button>
-            <p className="text-[10px] text-frame-textMuted leading-snug pt-1">
+            <p className="text-[10px] text-scope-textMuted leading-snug pt-1">
               {loading === 'metadata'
                 ? 'Stamping each asset with Meta XMP attribution — this may take up to a minute per video.'
                 : 'Metadata stamp embeds Meta Ads attribution (Attrib XMP namespace) in every asset the guest receives. Leave off for fast standard delivery.'}

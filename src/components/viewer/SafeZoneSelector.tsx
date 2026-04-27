@@ -65,7 +65,7 @@ export function SafeZoneSelector({ selected, onSelect }: SafeZoneSelectorProps) 
         title="Safe Zones overlay"
         className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs border rounded-lg transition-colors ${
           selected
-            ? 'text-white border-frame-accent bg-frame-accent/20 hover:bg-frame-accent/30'
+            ? 'text-white border-scope-accent bg-scope-accent/20 hover:bg-scope-accent/30'
             : 'text-white/70 hover:text-white border-white/10 hover:border-white/30'
         }`}
       >
@@ -81,7 +81,7 @@ export function SafeZoneSelector({ selected, onSelect }: SafeZoneSelectorProps) 
             className="w-full flex items-center justify-between px-3 py-2 text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors border-b border-white/5"
           >
             <span>None</span>
-            {!selected && <Check className="w-3.5 h-3.5 text-frame-accent" />}
+            {!selected && <Check className="w-3.5 h-3.5 text-scope-accent" />}
           </button>
 
           {loading && (
@@ -107,7 +107,7 @@ export function SafeZoneSelector({ selected, onSelect }: SafeZoneSelectorProps) 
                     >
                       <span>{zone.name}</span>
                       {selected === zone.imageUrl && (
-                        <Check className="w-3.5 h-3.5 text-frame-accent flex-shrink-0" />
+                        <Check className="w-3.5 h-3.5 text-scope-accent flex-shrink-0" />
                       )}
                     </button>
                   ))}

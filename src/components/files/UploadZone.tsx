@@ -51,8 +51,8 @@ export function UploadZone({ projectId, folderId, onUploadComplete }: UploadZone
         className={cn(
           'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all',
           isDragActive || isDragOver
-            ? 'border-frame-accent bg-frame-accent/5'
-            : 'border-frame-border hover:border-frame-borderLight hover:bg-frame-cardHover'
+            ? 'border-scope-accent bg-scope-accent/5'
+            : 'border-scope-border hover:border-scope-borderLight hover:bg-scope-cardHover'
         )}
       >
         <input {...getInputProps()} />
@@ -61,8 +61,8 @@ export function UploadZone({ projectId, folderId, onUploadComplete }: UploadZone
             className={cn(
               'w-12 h-12 rounded-xl flex items-center justify-center',
               isDragActive || isDragOver
-                ? 'bg-frame-accent/20 text-frame-accent'
-                : 'bg-frame-card text-frame-textMuted'
+                ? 'bg-scope-accent/20 text-scope-accent'
+                : 'bg-scope-card text-scope-textMuted'
             )}
           >
             <Upload className="w-6 h-6" />
@@ -71,7 +71,7 @@ export function UploadZone({ projectId, folderId, onUploadComplete }: UploadZone
             <p className="text-sm font-medium text-white">
               {isDragActive ? 'Drop files here' : 'Upload files'}
             </p>
-            <p className="text-xs text-frame-textMuted mt-1">
+            <p className="text-xs text-scope-textMuted mt-1">
               Drag &amp; drop or click — video, images, PDF, ZIP, fonts, HTML, design files
             </p>
           </div>
@@ -80,21 +80,21 @@ export function UploadZone({ projectId, folderId, onUploadComplete }: UploadZone
 
       {/* Upload queue */}
       {hasUploads && (
-        <div className="bg-frame-card border border-frame-border rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-frame-border">
-            <p className="text-xs font-semibold text-frame-textSecondary uppercase tracking-wider">
+        <div className="bg-scope-card border border-scope-border rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-scope-border">
+            <p className="text-xs font-semibold text-scope-textSecondary uppercase tracking-wider">
               Uploads ({uploads.length})
             </p>
             {activeUploads.length === 0 && (
               <button
                 onClick={clearCompleted}
-                className="text-xs text-frame-textMuted hover:text-white transition-colors"
+                className="text-xs text-scope-textMuted hover:text-white transition-colors"
               >
                 Clear all
               </button>
             )}
           </div>
-          <div className="divide-y divide-frame-border max-h-48 overflow-y-auto">
+          <div className="divide-y divide-scope-border max-h-48 overflow-y-auto">
             {uploads.map((upload) => (
               <UploadItem key={upload.id} item={upload} />
             ))}
@@ -110,11 +110,11 @@ function UploadItem({ item }: { item: UploadItem }) {
     <div className="px-4 py-3 flex items-center gap-3">
       <div className="flex-1 min-w-0">
         <p className="text-sm text-white truncate">{item.file.name}</p>
-        <p className="text-xs text-frame-textMuted mt-0.5">{formatBytes(item.file.size)}</p>
+        <p className="text-xs text-scope-textMuted mt-0.5">{formatBytes(item.file.size)}</p>
         {item.status === 'uploading' && (
-          <div className="mt-2 bg-frame-bg rounded-full h-1.5">
+          <div className="mt-2 bg-scope-bg rounded-full h-1.5">
             <div
-              className="bg-frame-accent h-1.5 rounded-full upload-progress-bar"
+              className="bg-scope-accent h-1.5 rounded-full upload-progress-bar"
               style={{ width: `${item.progress}%` }}
             />
           </div>
@@ -126,10 +126,10 @@ function UploadItem({ item }: { item: UploadItem }) {
 
       <div className="flex-shrink-0">
         {item.status === 'uploading' && (
-          <span className="text-xs text-frame-textSecondary">{item.progress}%</span>
+          <span className="text-xs text-scope-textSecondary">{item.progress}%</span>
         )}
         {item.status === 'complete' && (
-          <CheckCircle className="w-5 h-5 text-frame-green" />
+          <CheckCircle className="w-5 h-5 text-scope-green" />
         )}
         {item.status === 'error' && (
           <AlertCircle className="w-5 h-5 text-red-400" />

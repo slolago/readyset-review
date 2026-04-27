@@ -20,15 +20,15 @@ export default function ProjectRootPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Tab bar — only shown at project root, above the FolderBrowser header */}
-      <div className="flex items-center gap-1 px-8 pt-3 border-b border-frame-border bg-frame-sidebar">
+      <div className="flex items-center gap-1 px-8 pt-3 border-b border-scope-border bg-scope-sidebar">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 text-sm font-medium rounded-t transition-colors ${
               activeTab === tab.id
-                ? 'text-white border-b-2 border-frame-accent -mb-px'
-                : 'text-frame-textMuted hover:text-white'
+                ? 'text-white border-b-2 border-scope-accent -mb-px'
+                : 'text-scope-textMuted hover:text-white'
             }`}
           >
             {tab.label}

@@ -62,7 +62,7 @@ function parseDateOrEpoch(raw: any): Date {
 function ScopeLabel({ link }: { link: ReviewLinkRow }) {
   if (link.assetIds?.length) {
     return (
-      <span className="flex items-center gap-1 text-xs text-frame-textSecondary">
+      <span className="flex items-center gap-1 text-xs text-scope-textSecondary">
         <Layers className="w-3 h-3" />
         {link.assetIds.length} asset{link.assetIds.length !== 1 ? 's' : ''}
       </span>
@@ -70,14 +70,14 @@ function ScopeLabel({ link }: { link: ReviewLinkRow }) {
   }
   if (link.folderId) {
     return (
-      <span className="flex items-center gap-1 text-xs text-frame-textSecondary">
+      <span className="flex items-center gap-1 text-xs text-scope-textSecondary">
         <Folder className="w-3 h-3" />
         Folder
       </span>
     );
   }
   return (
-    <span className="flex items-center gap-1 text-xs text-frame-textSecondary">
+    <span className="flex items-center gap-1 text-xs text-scope-textSecondary">
       <LinkIcon className="w-3 h-3" />
       Project
     </span>
@@ -91,7 +91,7 @@ function InitialsAvatar({ name }: { name: string; email: string }) {
     .join('')
     .toUpperCase()
     .slice(0, 2);
-  const colors = ['bg-frame-accent', 'bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500'];
+  const colors = ['bg-scope-accent', 'bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500'];
   const idx = (name.charCodeAt(0) || 0) % colors.length;
   return (
     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${colors[idx]}`}>
@@ -220,26 +220,26 @@ function InspectPanel({
   return (
     <div className="flex flex-col h-full">
       {/* Panel header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-frame-border flex-shrink-0">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-scope-border flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <LinkIcon className="w-4 h-4 text-frame-accent flex-shrink-0" />
+          <LinkIcon className="w-4 h-4 text-scope-accent flex-shrink-0" />
           <h3 className="text-sm font-semibold text-white truncate">{link.name}</h3>
         </div>
-        <button onClick={onClose} className="text-frame-textMuted hover:text-white transition-colors flex-shrink-0 ml-2">
+        <button onClick={onClose} className="text-scope-textMuted hover:text-white transition-colors flex-shrink-0 ml-2">
           <X className="w-4 h-4" />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {/* URL + actions */}
-        <div className="px-5 py-4 border-b border-frame-border space-y-2">
-          <div className="flex items-center gap-2 bg-frame-bg border border-frame-border rounded-lg px-3 py-2">
-            <span className="text-xs text-frame-textMuted flex-1 truncate font-mono">{reviewUrl}</span>
+        <div className="px-5 py-4 border-b border-scope-border space-y-2">
+          <div className="flex items-center gap-2 bg-scope-bg border border-scope-border rounded-lg px-3 py-2">
+            <span className="text-xs text-scope-textMuted flex-1 truncate font-mono">{reviewUrl}</span>
           </div>
           <div className="flex gap-2">
             <button
               onClick={handleCopy}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-frame-accent hover:bg-frame-accentHover rounded-lg transition-colors"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-scope-accent hover:bg-scope-accentHover rounded-lg transition-colors"
             >
               {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               {copied ? 'Copied!' : 'Copy link'}
@@ -248,7 +248,7 @@ function InspectPanel({
               href={reviewUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-frame-textSecondary hover:text-white bg-frame-border hover:bg-frame-borderLight rounded-lg transition-colors"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-scope-textSecondary hover:text-white bg-scope-border hover:bg-scope-borderLight rounded-lg transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               Open
@@ -257,26 +257,26 @@ function InspectPanel({
         </div>
 
         {/* Details */}
-        <div className="px-5 py-4 border-b border-frame-border space-y-3">
-          <h4 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Details</h4>
+        <div className="px-5 py-4 border-b border-scope-border space-y-3">
+          <h4 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider">Details</h4>
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-frame-textSecondary">Project</span>
+              <span className="text-scope-textSecondary">Project</span>
               <Link
                 href={`/projects/${link.projectId}`}
-                className="text-frame-accent hover:underline text-xs font-medium flex items-center gap-1"
+                className="text-scope-accent hover:underline text-xs font-medium flex items-center gap-1"
               >
                 {link.projectName}
                 <ChevronRight className="w-3 h-3" />
               </Link>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-frame-textSecondary">Scope</span>
+              <span className="text-scope-textSecondary">Scope</span>
               <ScopeLabel link={link} />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-frame-textSecondary">Created</span>
-              <span className="text-xs text-frame-textSecondary" title={date.toLocaleDateString()}>
+              <span className="text-scope-textSecondary">Created</span>
+              <span className="text-xs text-scope-textSecondary" title={date.toLocaleDateString()}>
                 {formatRelativeTime(date)}
               </span>
             </div>
@@ -284,13 +284,13 @@ function InspectPanel({
         </div>
 
         {/* Contents */}
-        <div className="px-5 py-4 border-b border-frame-border space-y-3">
+        <div className="px-5 py-4 border-b border-scope-border space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Contents</h4>
+            <h4 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider">Contents</h4>
             {contents?.canEdit && (
               <button
                 onClick={() => setShowAddFromProject(true)}
-                className="flex items-center gap-1 text-xs text-frame-accent hover:text-frame-accentHover font-medium transition-colors"
+                className="flex items-center gap-1 text-xs text-scope-accent hover:text-scope-accentHover font-medium transition-colors"
               >
                 <Plus className="w-3 h-3" />
                 Add from project
@@ -304,7 +304,7 @@ function InspectPanel({
             </div>
           ) : !contents || (contents.assets.length === 0 && contents.folders.length === 0) ? (
             <div className="text-center py-4">
-              <p className="text-xs text-frame-textMuted">
+              <p className="text-xs text-scope-textMuted">
                 {contents?.projectId ? 'No items yet — this link shows the whole project. Add items to curate it.' : 'No items'}
               </p>
             </div>
@@ -314,12 +314,12 @@ function InspectPanel({
               {contents.folders.map((f: any) => (
                 <div
                   key={`f-${f.id}`}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-frame-cardHover group transition-colors"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-scope-cardHover group transition-colors"
                 >
                   {f._deleted ? (
                     <>
-                      <Folder className="w-3.5 h-3.5 text-frame-textMuted flex-shrink-0" />
-                      <span className="text-xs text-frame-textMuted italic truncate flex-1">Deleted folder</span>
+                      <Folder className="w-3.5 h-3.5 text-scope-textMuted flex-shrink-0" />
+                      <span className="text-xs text-scope-textMuted italic truncate flex-1">Deleted folder</span>
                     </>
                   ) : (
                     <Link
@@ -327,8 +327,8 @@ function InspectPanel({
                       title="Open folder in project"
                       className="flex items-center gap-2 min-w-0 flex-1 group/name"
                     >
-                      <Folder className="w-3.5 h-3.5 text-frame-accent flex-shrink-0" />
-                      <span className="text-xs text-white truncate group-hover/name:text-frame-accent transition-colors">{f.name}</span>
+                      <Folder className="w-3.5 h-3.5 text-scope-accent flex-shrink-0" />
+                      <span className="text-xs text-white truncate group-hover/name:text-scope-accent transition-colors">{f.name}</span>
                     </Link>
                   )}
                   {contents?.canEdit && !f._deleted && (
@@ -336,7 +336,7 @@ function InspectPanel({
                       onClick={() => handleRemove({ folderId: f.id })}
                       disabled={mutating === f.id}
                       title="Remove folder from link"
-                      className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
+                      className="opacity-0 group-hover:opacity-100 text-scope-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -346,7 +346,7 @@ function InspectPanel({
                       onClick={() => handleRemove({ folderId: f.id })}
                       disabled={mutating === f.id}
                       title="Remove broken reference"
-                      className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
+                      className="opacity-0 group-hover:opacity-100 text-scope-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -358,23 +358,23 @@ function InspectPanel({
                 const thumb = a.thumbnailSignedUrl as string | undefined;
                 const body = (
                   <>
-                    <div className="w-8 h-6 rounded overflow-hidden bg-frame-bg flex-shrink-0 flex items-center justify-center">
+                    <div className="w-8 h-6 rounded overflow-hidden bg-scope-bg flex-shrink-0 flex items-center justify-center">
                       {a._deleted ? (
-                        <X className="w-3 h-3 text-frame-textMuted" />
+                        <X className="w-3 h-3 text-scope-textMuted" />
                       ) : thumb ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={thumb} alt="" className="w-full h-full object-cover" />
                       ) : a.type === 'video' ? (
-                        <Film className="w-3 h-3 text-frame-textMuted" />
+                        <Film className="w-3 h-3 text-scope-textMuted" />
                       ) : (
-                        <ImageIcon className="w-3 h-3 text-frame-textMuted" />
+                        <ImageIcon className="w-3 h-3 text-scope-textMuted" />
                       )}
                     </div>
                     <span className="text-xs truncate flex-1">
                       {a._deleted ? (
-                        <span className="text-frame-textMuted italic">Deleted asset</span>
+                        <span className="text-scope-textMuted italic">Deleted asset</span>
                       ) : (
-                        <span className="text-white group-hover/name:text-frame-accent transition-colors">{a.name}</span>
+                        <span className="text-white group-hover/name:text-scope-accent transition-colors">{a.name}</span>
                       )}
                     </span>
                   </>
@@ -382,7 +382,7 @@ function InspectPanel({
                 return (
                   <div
                     key={`a-${a.id}`}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-frame-cardHover group transition-colors"
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-scope-cardHover group transition-colors"
                   >
                     {a._deleted ? (
                       <div className="flex items-center gap-2 min-w-0 flex-1">{body}</div>
@@ -400,7 +400,7 @@ function InspectPanel({
                         onClick={() => handleRemove({ assetId: a.id })}
                         disabled={mutating === a.id}
                         title={a._deleted ? 'Remove broken reference' : 'Remove asset from link'}
-                        className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
+                        className="opacity-0 group-hover:opacity-100 text-scope-textMuted hover:text-red-400 p-1 rounded transition-all disabled:opacity-50"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -413,8 +413,8 @@ function InspectPanel({
         </div>
 
         {/* Permissions */}
-        <div className="px-5 py-4 border-b border-frame-border space-y-3">
-          <h4 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Permissions</h4>
+        <div className="px-5 py-4 border-b border-scope-border space-y-3">
+          <h4 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider">Permissions</h4>
           <div className="space-y-2">
             {[
               { label: 'Comments', enabled: link.allowComments, icon: MessageSquare },
@@ -423,11 +423,11 @@ function InspectPanel({
               { label: 'Password protected', enabled: !!(link as any).hasPassword || !!link.password, icon: Shield },
             ].map(({ label, enabled, icon: Icon }) => (
               <div key={label} className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs text-frame-textSecondary">
+                <span className="flex items-center gap-1.5 text-xs text-scope-textSecondary">
                   <Icon className="w-3.5 h-3.5" />
                   {label}
                 </span>
-                <span className={`text-xs font-medium ${enabled ? 'text-emerald-400' : 'text-frame-textMuted'}`}>
+                <span className={`text-xs font-medium ${enabled ? 'text-emerald-400' : 'text-scope-textMuted'}`}>
                   {enabled ? 'On' : 'Off'}
                 </span>
               </div>
@@ -436,8 +436,8 @@ function InspectPanel({
         </div>
 
         {/* Viewers / Access */}
-        <div className="px-5 py-4 border-b border-frame-border space-y-3">
-          <h4 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider flex items-center gap-1.5">
+        <div className="px-5 py-4 border-b border-scope-border space-y-3">
+          <h4 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider flex items-center gap-1.5">
             <Eye className="w-3.5 h-3.5" />
             People with access
           </h4>
@@ -447,9 +447,9 @@ function InspectPanel({
             </div>
           ) : viewers.length === 0 ? (
             <div className="text-center py-4">
-              <Users className="w-6 h-6 text-frame-textMuted mx-auto mb-2" />
-              <p className="text-xs text-frame-textMuted">No activity yet</p>
-              <p className="text-xs text-frame-textMuted mt-0.5">Share this link to get feedback</p>
+              <Users className="w-6 h-6 text-scope-textMuted mx-auto mb-2" />
+              <p className="text-xs text-scope-textMuted">No activity yet</p>
+              <p className="text-xs text-scope-textMuted mt-0.5">Share this link to get feedback</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -459,12 +459,12 @@ function InspectPanel({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white font-medium truncate">{v.name}</p>
                     {v.email && (
-                      <p className="text-xs text-frame-textMuted truncate">{v.email}</p>
+                      <p className="text-xs text-scope-textMuted truncate">{v.email}</p>
                     )}
                   </div>
                   <div className="flex-shrink-0 text-right">
-                    <p className="text-xs text-frame-accent font-medium">{v.commentCount} comment{v.commentCount !== 1 ? 's' : ''}</p>
-                    <p className="text-xs text-frame-textMuted">
+                    <p className="text-xs text-scope-accent font-medium">{v.commentCount} comment{v.commentCount !== 1 ? 's' : ''}</p>
+                    <p className="text-xs text-scope-textMuted">
                       {v.lastSeen ? formatRelativeTime(parseDateOrEpoch(v.lastSeen)) : ''}
                     </p>
                   </div>
@@ -489,7 +489,7 @@ function InspectPanel({
                 </button>
                 <button
                   onClick={() => setConfirmDelete(false)}
-                  className="flex-1 py-2 text-xs font-medium text-frame-textSecondary hover:text-white bg-frame-border rounded-lg transition-colors"
+                  className="flex-1 py-2 text-xs font-medium text-scope-textSecondary hover:text-white bg-scope-border rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
@@ -561,15 +561,15 @@ export default function ReviewLinksPage() {
   return (
     <div className="min-h-full flex flex-col">
       {/* Header */}
-      <div className="relative overflow-hidden border-b border-frame-border bg-frame-sidebar flex-shrink-0">
+      <div className="relative overflow-hidden border-b border-scope-border bg-scope-sidebar flex-shrink-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(122,0,223,0.12)_0%,transparent_60%)]" />
         <div className="relative px-8 py-6 max-w-7xl mx-auto">
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-4 h-4 text-frame-accent" />
-            <span className="text-frame-accent text-xs font-semibold uppercase tracking-wider">Sharing</span>
+            <Sparkles className="w-4 h-4 text-scope-accent" />
+            <span className="text-scope-accent text-xs font-semibold uppercase tracking-wider">Sharing</span>
           </div>
           <h1 className="text-2xl font-bold text-white">Review Links</h1>
-          <p className="text-frame-textSecondary mt-1 text-sm">
+          <p className="text-scope-textSecondary mt-1 text-sm">
             All share links across your projects &mdash; see who&apos;s viewing and leave feedback.
           </p>
         </div>
@@ -586,18 +586,18 @@ export default function ReviewLinksPage() {
               </div>
             ) : links.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-16 h-16 bg-frame-accent/10 rounded-2xl flex items-center justify-center mb-4">
-                  <LinkIcon className="w-8 h-8 text-frame-accent" />
+                <div className="w-16 h-16 bg-scope-accent/10 rounded-2xl flex items-center justify-center mb-4">
+                  <LinkIcon className="w-8 h-8 text-scope-accent" />
                 </div>
                 <p className="text-white font-semibold text-lg">No review links yet</p>
-                <p className="text-frame-textMuted text-sm mt-2 max-w-xs">
+                <p className="text-scope-textMuted text-sm mt-2 max-w-xs">
                   Create a review link from any project folder or asset selection to share with clients.
                 </p>
               </div>
             ) : (
-              <div className="bg-frame-card border border-frame-border rounded-xl overflow-hidden">
+              <div className="bg-scope-card border border-scope-border rounded-xl overflow-hidden">
                 {/* Table header */}
-                <div className="grid grid-cols-[1fr_160px_120px_80px_100px_120px] gap-4 px-5 py-3 border-b border-frame-border text-xs font-semibold text-frame-textMuted uppercase tracking-wider">
+                <div className="grid grid-cols-[1fr_160px_120px_80px_100px_120px] gap-4 px-5 py-3 border-b border-scope-border text-xs font-semibold text-scope-textMuted uppercase tracking-wider">
                   <span>Name</span>
                   <span>Project</span>
                   <span>Scope</span>
@@ -613,11 +613,11 @@ export default function ReviewLinksPage() {
                     <div
                       key={link.token}
                       onClick={() => setInspecting(isInspecting ? null : link)}
-                      className={`grid grid-cols-[1fr_160px_120px_80px_100px_120px] gap-4 px-5 py-3.5 border-b border-frame-border/50 hover:bg-frame-cardHover transition-colors cursor-pointer ${isInspecting ? 'bg-frame-accent/5 border-l-2 border-l-frame-accent' : ''}`}
+                      className={`grid grid-cols-[1fr_160px_120px_80px_100px_120px] gap-4 px-5 py-3.5 border-b border-scope-border/50 hover:bg-scope-cardHover transition-colors cursor-pointer ${isInspecting ? 'bg-scope-accent/5 border-l-2 border-l-scope-accent' : ''}`}
                     >
                       {/* Name */}
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <LinkIcon className="w-4 h-4 text-frame-accent flex-shrink-0" />
+                        <LinkIcon className="w-4 h-4 text-scope-accent flex-shrink-0" />
                         <span className="text-sm font-medium text-white truncate">{link.name}</span>
                         {((link as any).hasPassword || link.password) && (
                           <span title="Password protected" className="flex-shrink-0">
@@ -645,7 +645,7 @@ export default function ReviewLinksPage() {
                         <Link
                           href={`/projects/${link.projectId}`}
                           onClick={e => e.stopPropagation()}
-                          className="text-xs text-frame-accent hover:underline truncate block"
+                          className="text-xs text-scope-accent hover:underline truncate block"
                         >
                           {link.projectName}
                         </Link>
@@ -658,7 +658,7 @@ export default function ReviewLinksPage() {
 
                       {/* Comments */}
                       <div className="self-center">
-                        <span className={`flex items-center gap-1 text-xs ${link._commentCount > 0 ? 'text-frame-accent font-medium' : 'text-frame-textMuted'}`}>
+                        <span className={`flex items-center gap-1 text-xs ${link._commentCount > 0 ? 'text-scope-accent font-medium' : 'text-scope-textMuted'}`}>
                           <MessageSquare className="w-3 h-3" />
                           {link._commentCount}
                         </span>
@@ -666,7 +666,7 @@ export default function ReviewLinksPage() {
 
                       {/* Created */}
                       <div className="self-center">
-                        <span className="text-xs text-frame-textSecondary" title={date.toLocaleDateString()}>
+                        <span className="text-xs text-scope-textSecondary" title={date.toLocaleDateString()}>
                           {formatRelativeTime(date)}
                         </span>
                       </div>
@@ -676,7 +676,7 @@ export default function ReviewLinksPage() {
                         <button
                           onClick={() => handleCopyLink(link)}
                           title="Copy link"
-                          className="p-1.5 rounded-lg text-frame-textMuted hover:text-white hover:bg-frame-border transition-colors"
+                          className="p-1.5 rounded-lg text-scope-textMuted hover:text-white hover:bg-scope-border transition-colors"
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
@@ -685,14 +685,14 @@ export default function ReviewLinksPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Open review"
-                          className="p-1.5 rounded-lg text-frame-textMuted hover:text-white hover:bg-frame-border transition-colors"
+                          className="p-1.5 rounded-lg text-scope-textMuted hover:text-white hover:bg-scope-border transition-colors"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                         <button
                           onClick={() => setInspecting(isInspecting ? null : link)}
                           title="Inspect"
-                          className={`p-1.5 rounded-lg transition-colors ${isInspecting ? 'text-frame-accent bg-frame-accent/15' : 'text-frame-textMuted hover:text-white hover:bg-frame-border'}`}
+                          className={`p-1.5 rounded-lg transition-colors ${isInspecting ? 'text-scope-accent bg-scope-accent/15' : 'text-scope-textMuted hover:text-white hover:bg-scope-border'}`}
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
@@ -707,7 +707,7 @@ export default function ReviewLinksPage() {
 
         {/* Inspect panel - slide in from right */}
         {inspecting && (
-          <div className="w-80 flex-shrink-0 border-l border-frame-border bg-frame-sidebar overflow-hidden flex flex-col">
+          <div className="w-80 flex-shrink-0 border-l border-scope-border bg-scope-sidebar overflow-hidden flex flex-col">
             <InspectPanel
               link={inspecting}
               onClose={() => setInspecting(null)}

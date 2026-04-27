@@ -134,26 +134,26 @@ export const AssetListView = memo(function AssetListView({
     }
   }
 
-  const headerCellClass = 'py-2 px-3 text-xs font-medium text-frame-textMuted uppercase tracking-wider';
+  const headerCellClass = 'py-2 px-3 text-xs font-medium text-scope-textMuted uppercase tracking-wider';
   const sortableButtonClass = 'flex items-center gap-1 hover:text-white transition-colors';
 
   return (
     <div>
-      <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider mb-3">
+      <h3 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider mb-3">
         Assets ({assets.length + placeholders.length})
       </h3>
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-frame-border text-left">
+          <tr className="border-b border-scope-border text-left">
             {onToggleSelect && (
               <th className={headerCellClass} style={{ width: '2.5rem' }}>
                 <div
                   onClick={handleSelectAllClick}
                   className={`w-4 h-4 rounded border-2 flex items-center justify-center cursor-pointer transition-colors ${
                     allSelected
-                      ? 'bg-frame-accent border-frame-accent'
+                      ? 'bg-scope-accent border-scope-accent'
                       : someSelected
-                      ? 'bg-frame-accent/50 border-frame-accent'
+                      ? 'bg-scope-accent/50 border-scope-accent'
                       : 'bg-transparent border-white/30 hover:border-white/50'
                   }`}
                   title={allSelected ? 'Deselect all' : 'Select all'}
@@ -478,8 +478,8 @@ function AssetListRow({
           e.stopPropagation();
           ctxMenu.open(`row-${asset.id}`, { x: e.clientX, y: e.clientY }, assetActions);
         }}
-        className={`cursor-pointer hover:bg-frame-card/50 transition-colors border-b border-frame-border/40 ${
-          isSelected ? 'bg-frame-accent/10' : ''
+        className={`cursor-pointer hover:bg-scope-card/50 transition-colors border-b border-scope-border/40 ${
+          isSelected ? 'bg-scope-accent/10' : ''
         }`}
       >
         {onToggleSelect && (
@@ -491,7 +491,7 @@ function AssetListRow({
             }}
           >
             <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors pointer-events-none ${
-              isSelected ? 'bg-frame-accent border-frame-accent' : 'bg-transparent border-white/30'
+              isSelected ? 'bg-scope-accent border-scope-accent' : 'bg-transparent border-white/30'
             }`}>
               {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
             </div>
@@ -500,14 +500,14 @@ function AssetListRow({
 
         {/* Thumbnail */}
         <td className="px-3 py-2 w-12">
-          <div className="relative w-10 h-10 rounded overflow-hidden bg-frame-bg flex-shrink-0 flex items-center justify-center">
+          <div className="relative w-10 h-10 rounded overflow-hidden bg-scope-bg flex-shrink-0 flex items-center justify-center">
             {asset.type === 'image' && signedUrl ? (
               <Image src={signedUrl} alt={asset.name} fill sizes="40px" className="object-cover" unoptimized />
             ) : asset.type === 'video' && thumbnailSignedUrl ? (
               <Image src={thumbnailSignedUrl} alt={asset.name} fill sizes="40px" className="object-cover" unoptimized />
             ) : (() => {
               const Icon = ICON_COMPONENTS[TYPE_META[asset.type].iconName];
-              return <Icon className="w-5 h-5 text-frame-textMuted" />;
+              return <Icon className="w-5 h-5 text-scope-textMuted" />;
             })()}
           </div>
         </td>
@@ -545,20 +545,20 @@ function AssetListRow({
               {asset.reviewStatus ? (
                 <ReviewStatusBadge status={asset.reviewStatus} />
               ) : (
-                <span className="text-xs text-frame-textMuted group-hover:text-white transition-colors">—</span>
+                <span className="text-xs text-scope-textMuted group-hover:text-white transition-colors">—</span>
               )}
-              <ChevronDownIcon className="w-3 h-3 text-frame-textMuted opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ChevronDownIcon className="w-3 h-3 text-scope-textMuted opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
             {statusMenuOpen && (
-              <div role="menu" className="absolute left-0 top-full mt-1 z-50 bg-frame-card border border-frame-border rounded-xl shadow-2xl overflow-hidden min-w-[160px]">
+              <div role="menu" className="absolute left-0 top-full mt-1 z-50 bg-scope-card border border-scope-border rounded-xl shadow-2xl overflow-hidden min-w-[160px]">
                 {REVIEW_STATUS_OPTIONS.map(opt => (
                   <button
                     key={String(opt.value)}
                     role="menuitem"
                     onClick={() => handleSetStatus(opt.value)}
                     onKeyDown={(e) => { if (e.key === 'Escape') setStatusMenuOpen(false); }}
-                    className={`w-full text-left px-3 py-2 text-xs hover:bg-frame-border/50 transition-colors flex items-center gap-2 ${
-                      opt.value === null ? 'text-frame-textMuted border-t border-frame-border/50 mt-1 pt-2' : 'text-white'
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-scope-border/50 transition-colors flex items-center gap-2 ${
+                      opt.value === null ? 'text-scope-textMuted border-t border-scope-border/50 mt-1 pt-2' : 'text-white'
                     }`}
                   >
                     {opt.value && (
@@ -574,7 +574,7 @@ function AssetListRow({
 
         {/* Comments */}
         <td className="px-3 py-2">
-          <span className="text-frame-textMuted">
+          <span className="text-scope-textMuted">
             {(asset as any)._commentCount ?? 0}
           </span>
         </td>
@@ -582,28 +582,28 @@ function AssetListRow({
         {/* Versions */}
         <td className="px-3 py-2">
           {versionCount > 1 ? (
-            <span className="inline-flex items-center gap-1 text-xs text-frame-textSecondary">
+            <span className="inline-flex items-center gap-1 text-xs text-scope-textSecondary">
               <Layers className="w-3.5 h-3.5" />
               {versionCount}
             </span>
           ) : (
-            <span className="text-frame-textMuted">—</span>
+            <span className="text-scope-textMuted">—</span>
           )}
         </td>
 
         {/* Size */}
         <td className="px-3 py-2">
-          <span className="text-frame-textSecondary">{formatBytes(asset.size)}</span>
+          <span className="text-scope-textSecondary">{formatBytes(asset.size)}</span>
         </td>
 
         {/* Date uploaded */}
         <td className="px-3 py-2" title={date.toLocaleDateString()}>
-          <span className="text-frame-textSecondary">{formatRelativeTime(date)}</span>
+          <span className="text-scope-textSecondary">{formatRelativeTime(date)}</span>
         </td>
 
         {/* Uploaded by */}
         <td className="px-3 py-2">
-          <span className="text-frame-textSecondary truncate max-w-[120px] block">
+          <span className="text-scope-textSecondary truncate max-w-[120px] block">
             {uploaderName ?? asset.uploadedBy}
           </span>
         </td>

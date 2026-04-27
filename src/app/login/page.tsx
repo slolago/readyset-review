@@ -26,20 +26,20 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-frame-bg flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-frame-accent border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-scope-bg flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-scope-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-frame-bg flex">
+    <div className="min-h-screen bg-scope-bg flex">
       {/* Left panel — branding */}
       <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-12 overflow-hidden">
         {/* Gradient background blobs */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(122,0,223,0.25)_0%,transparent_60%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(6,147,227,0.15)_0%,transparent_60%)]" />
-        <div className="absolute inset-0 border-r border-frame-border" />
+        <div className="absolute inset-0 border-r border-scope-border" />
 
         {/* Grid overlay */}
         <div
@@ -63,7 +63,7 @@ export default function LoginPage() {
             Review. Collaborate.<br />
             <span className="gradient-text">Ship faster.</span>
           </h2>
-          <p className="text-frame-textSecondary text-base max-w-xs mx-auto">
+          <p className="text-scope-textSecondary text-base max-w-xs mx-auto">
             Professional media review platform built for creative teams.
           </p>
 
@@ -72,7 +72,7 @@ export default function LoginPage() {
             {['Video review', 'Annotations', 'Version control', 'Team collaboration'].map((f) => (
               <span
                 key={f}
-                className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-frame-textSecondary"
+                className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-scope-textSecondary"
               >
                 {f}
               </span>
@@ -98,13 +98,13 @@ export default function LoginPage() {
 
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-white">Welcome back</h1>
-            <p className="text-frame-textSecondary text-sm mt-2">
+            <p className="text-scope-textSecondary text-sm mt-2">
               Sign in to access your projects and review media with your team.
             </p>
           </div>
 
           {/* Card */}
-          <div className="bg-frame-card border border-frame-border rounded-2xl p-6 shadow-xl">
+          <div className="bg-scope-card border border-scope-border rounded-2xl p-6 shadow-xl">
             <button
               onClick={handleGoogleSignIn}
               className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-900 font-semibold py-3 px-4 rounded-xl transition-all duration-150 shadow-sm hover:shadow-md text-sm"
@@ -115,18 +115,18 @@ export default function LoginPage() {
 
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-frame-border" />
+                <div className="w-full border-t border-scope-border" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-frame-card px-3 text-xs text-frame-textMuted">
+                <span className="bg-scope-card px-3 text-xs text-scope-textMuted">
                   Secure authentication
                 </span>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 text-xs text-frame-textMuted">
-              <div className="w-4 h-4 rounded-full bg-frame-green/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <svg className="w-2.5 h-2.5 text-frame-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="flex items-start gap-3 text-xs text-scope-textMuted">
+              <div className="w-4 h-4 rounded-full bg-scope-green/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg className="w-2.5 h-2.5 text-scope-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -134,14 +134,14 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <p className="text-center text-frame-textMuted text-xs mt-6">
+          <p className="text-center text-scope-textMuted text-xs mt-6">
             By continuing, you agree to our{' '}
-            <span className="text-frame-textSecondary hover:text-white cursor-pointer transition-colors">Terms of Service</span>
+            <span className="text-scope-textSecondary hover:text-white cursor-pointer transition-colors">Terms of Service</span>
             {' '}and{' '}
-            <span className="text-frame-textSecondary hover:text-white cursor-pointer transition-colors">Privacy Policy</span>.
+            <span className="text-scope-textSecondary hover:text-white cursor-pointer transition-colors">Privacy Policy</span>.
           </p>
 
-          <p className="text-center text-frame-textMuted text-xs mt-3">
+          <p className="text-center text-scope-textMuted text-xs mt-3">
             &copy; {new Date().getFullYear()} Ready Set. All rights reserved.
           </p>
         </div>

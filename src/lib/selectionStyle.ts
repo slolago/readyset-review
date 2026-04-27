@@ -15,7 +15,7 @@ export type SelectionState =
  *   hovered            → accent/30 border
  *   focused            → ring-2 with offset
  *   parent-of-selected → dashed accent border (lower intensity)
- *   idle               → neutral frame-border
+ *   idle               → neutral scope-border
  *
  * Nesting intensity: project ≤ folder ≤ asset ≤ version (deeper = brighter).
  */
@@ -32,19 +32,19 @@ export function selectionStyle(
       // inside a selected asset still reads as "more selected".
       return [
         base,
-        'border-frame-accent',
+        'border-scope-accent',
         level === 'version' || level === 'asset'
-          ? 'ring-1 ring-frame-accent bg-frame-accent/10'
-          : 'bg-frame-accent/5',
+          ? 'ring-1 ring-scope-accent bg-scope-accent/10'
+          : 'bg-scope-accent/5',
       ].join(' ');
     case 'hovered':
-      return `${base} border-frame-accent/30`;
+      return `${base} border-scope-accent/30`;
     case 'focused':
-      return `${base} border-frame-border ring-2 ring-frame-accent ring-offset-2 ring-offset-frame-bg`;
+      return `${base} border-scope-border ring-2 ring-scope-accent ring-offset-2 ring-offset-scope-bg`;
     case 'parent-of-selected':
-      return `${base} border-dashed border-frame-accent/60`;
+      return `${base} border-dashed border-scope-accent/60`;
     case 'idle':
     default:
-      return `${base} border-frame-border hover:border-frame-borderLight`;
+      return `${base} border-scope-border hover:border-scope-borderLight`;
   }
 }

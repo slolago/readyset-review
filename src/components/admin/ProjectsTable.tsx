@@ -52,18 +52,18 @@ export function ProjectsTable({ projects, loading, onChanged, onInspectPermissio
 
   if (loading) return <div className="flex items-center justify-center py-16"><Spinner /></div>;
   if (projects.length === 0) {
-    return <div className="py-16 text-center text-frame-textSecondary text-sm">No projects found.</div>;
+    return <div className="py-16 text-center text-scope-textSecondary text-sm">No projects found.</div>;
   }
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-frame-border">
-            <th className="text-left px-6 py-3 text-xs font-semibold text-frame-textMuted uppercase tracking-wider w-2/5">Project</th>
-            <th className="text-left px-6 py-3 text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Owner</th>
-            <th className="text-left px-6 py-3 text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Collaborators</th>
-            <th className="text-left px-6 py-3 text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Created</th>
+          <tr className="border-b border-scope-border">
+            <th className="text-left px-6 py-3 text-xs font-semibold text-scope-textMuted uppercase tracking-wider w-2/5">Project</th>
+            <th className="text-left px-6 py-3 text-xs font-semibold text-scope-textMuted uppercase tracking-wider">Owner</th>
+            <th className="text-left px-6 py-3 text-xs font-semibold text-scope-textMuted uppercase tracking-wider">Collaborators</th>
+            <th className="text-left px-6 py-3 text-xs font-semibold text-scope-textMuted uppercase tracking-wider">Created</th>
             <th className="px-6 py-3" />
           </tr>
         </thead>
@@ -80,7 +80,7 @@ export function ProjectsTable({ projects, loading, onChanged, onInspectPermissio
             return (
               <tr
                 key={project.id}
-                className="border-b border-frame-border/50 hover:bg-white/[0.02] transition-colors group"
+                className="border-b border-scope-border/50 hover:bg-white/[0.02] transition-colors group"
               >
                 <td className="px-6 py-4">
                   <div className="flex items-start gap-3">
@@ -90,7 +90,7 @@ export function ProjectsTable({ projects, loading, onChanged, onInspectPermissio
                         <button
                           type="button"
                           onClick={() => onInspectPermissions(project.id)}
-                          className="text-sm font-medium text-white hover:text-frame-accent transition-colors text-left"
+                          className="text-sm font-medium text-white hover:text-scope-accent transition-colors text-left"
                         >
                           {project.name}
                         </button>
@@ -98,7 +98,7 @@ export function ProjectsTable({ projects, loading, onChanged, onInspectPermissio
                         <p className="text-sm font-medium text-white">{project.name}</p>
                       )}
                       {descriptionSnippet && (
-                        <p className="text-xs text-frame-textMuted mt-0.5">{descriptionSnippet}</p>
+                        <p className="text-xs text-scope-textMuted mt-0.5">{descriptionSnippet}</p>
                       )}
                     </div>
                   </div>
@@ -106,15 +106,15 @@ export function ProjectsTable({ projects, loading, onChanged, onInspectPermissio
 
                 <td className="px-6 py-4">
                   <p className="text-sm text-white">{project.ownerName}</p>
-                  <p className="text-xs text-frame-textMuted mt-0.5">{project.ownerEmail}</p>
+                  <p className="text-xs text-scope-textMuted mt-0.5">{project.ownerEmail}</p>
                 </td>
 
                 <td className="px-6 py-4">
-                  <span className="text-sm text-frame-textSecondary">{project.collaboratorCount}</span>
+                  <span className="text-sm text-scope-textSecondary">{project.collaboratorCount}</span>
                 </td>
 
                 <td className="px-6 py-4">
-                  <span className="text-sm text-frame-textSecondary">{formatRelativeTime(createdAt)}</span>
+                  <span className="text-sm text-scope-textSecondary">{formatRelativeTime(createdAt)}</span>
                 </td>
 
                 {/* Actions */}
@@ -131,7 +131,7 @@ export function ProjectsTable({ projects, loading, onChanged, onInspectPermissio
                       </button>
                       <button
                         onClick={() => setConfirmDelete(null)}
-                        className="text-xs text-frame-textMuted hover:text-white"
+                        className="text-xs text-scope-textMuted hover:text-white"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -148,14 +148,14 @@ export function ProjectsTable({ projects, loading, onChanged, onInspectPermissio
                       <button
                         onClick={() => setTransferring(project.id)}
                         title="Transfer ownership"
-                        className="p-1.5 rounded text-frame-textMuted hover:text-white hover:bg-frame-border"
+                        className="p-1.5 rounded text-scope-textMuted hover:text-white hover:bg-scope-border"
                       >
                         <ArrowRightLeft className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setConfirmDelete(project.id)}
                         title="Delete project"
-                        className="p-1.5 rounded text-frame-textMuted hover:text-red-400 hover:bg-red-500/10"
+                        className="p-1.5 rounded text-scope-textMuted hover:text-red-400 hover:bg-red-500/10"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -217,16 +217,16 @@ function TransferOwnerForm({
         onChange={(e) => setEmail(e.target.value)}
         autoFocus
         onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-        className="bg-frame-bg border border-frame-border rounded px-2 py-1 text-xs text-white w-44 focus:outline-none focus:border-frame-accent"
+        className="bg-scope-bg border border-scope-border rounded px-2 py-1 text-xs text-white w-44 focus:outline-none focus:border-scope-accent"
       />
       <button
         onClick={handleSubmit}
         disabled={saving || !email.trim()}
-        className="p-1 rounded text-frame-accent hover:bg-frame-accent/10 disabled:opacity-50"
+        className="p-1 rounded text-scope-accent hover:bg-scope-accent/10 disabled:opacity-50"
       >
         <Check className="w-3.5 h-3.5" />
       </button>
-      <button onClick={onCancel} className="p-1 rounded text-frame-textMuted hover:text-white">
+      <button onClick={onCancel} className="p-1 rounded text-scope-textMuted hover:text-white">
         <X className="w-3.5 h-3.5" />
       </button>
     </div>

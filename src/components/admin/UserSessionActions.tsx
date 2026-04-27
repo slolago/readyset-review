@@ -43,8 +43,8 @@ export function UserSessionActions({ user, isSelf, onSuspendToggle, onRevoke }: 
         disabled={suspendLoading}
         className={`inline-flex items-center gap-1 text-xs transition-colors disabled:opacity-50 ${
           disabled
-            ? 'text-frame-accent hover:text-frame-accentHover'
-            : 'text-frame-textMuted hover:text-yellow-400'
+            ? 'text-scope-accent hover:text-scope-accentHover'
+            : 'text-scope-textMuted hover:text-yellow-400'
         }`}
       >
         {suspendLoading ? (
@@ -60,7 +60,7 @@ export function UserSessionActions({ user, isSelf, onSuspendToggle, onRevoke }: 
       {/* Revoke sessions */}
       {confirmRevoke ? (
         <span className="inline-flex items-center gap-2 text-xs">
-          <span className="text-frame-textSecondary">Sure?</span>
+          <span className="text-scope-textSecondary">Sure?</span>
           <button
             onClick={handleRevoke}
             disabled={revokeLoading}
@@ -70,7 +70,7 @@ export function UserSessionActions({ user, isSelf, onSuspendToggle, onRevoke }: 
           </button>
           <button
             onClick={() => setConfirmRevoke(false)}
-            className="text-frame-textMuted hover:text-white"
+            className="text-scope-textMuted hover:text-white"
           >
             Cancel
           </button>
@@ -78,7 +78,7 @@ export function UserSessionActions({ user, isSelf, onSuspendToggle, onRevoke }: 
       ) : (
         <button
           onClick={handleRevoke}
-          className="inline-flex items-center gap-1 text-xs text-frame-textMuted hover:text-yellow-400 transition-colors"
+          className="inline-flex items-center gap-1 text-xs text-scope-textMuted hover:text-yellow-400 transition-colors"
           title="Invalidate the user's active Firebase refresh tokens"
         >
           <RefreshCw className="w-3.5 h-3.5" />

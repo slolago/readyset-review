@@ -119,19 +119,19 @@ export function CollaboratorsPanel({ project, onClose, onUpdated }: Collaborator
       <div className="space-y-5">
         {/* Current collaborators */}
         <div>
-          <h3 className="text-sm font-medium text-frame-textSecondary mb-3">
+          <h3 className="text-sm font-medium text-scope-textSecondary mb-3">
             Members ({project.collaborators?.length || 0})
           </h3>
           <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
             {project.collaborators?.map((collab: Collaborator) => (
               <div
                 key={collab.userId}
-                className="flex items-center gap-3 px-3 py-2.5 bg-frame-bg rounded-lg border border-frame-border"
+                className="flex items-center gap-3 px-3 py-2.5 bg-scope-bg rounded-lg border border-scope-border"
               >
                 <Avatar name={collab.name} size="sm" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white font-medium truncate">{collab.name}</p>
-                  <p className="text-xs text-frame-textMuted truncate">{collab.email}</p>
+                  <p className="text-xs text-scope-textMuted truncate">{collab.email}</p>
                 </div>
                 <Badge variant={ROLE_COLORS[collab.role] || 'info'}>
                   {collab.role}
@@ -139,7 +139,7 @@ export function CollaboratorsPanel({ project, onClose, onUpdated }: Collaborator
                 {isOwner && collab.role !== 'owner' && (
                   <button
                     onClick={() => handleRemove(collab.userId)}
-                    className="text-frame-textMuted hover:text-red-400 transition-colors p-1"
+                    className="text-scope-textMuted hover:text-red-400 transition-colors p-1"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -154,9 +154,9 @@ export function CollaboratorsPanel({ project, onClose, onUpdated }: Collaborator
           <form
             onSubmit={handleAdd}
             onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-            className="border-t border-frame-border pt-5"
+            className="border-t border-scope-border pt-5"
           >
-            <h3 className="text-sm font-medium text-frame-textSecondary mb-3">
+            <h3 className="text-sm font-medium text-scope-textSecondary mb-3">
               Invite member
             </h3>
             <div className="flex gap-2 mb-3">
@@ -171,7 +171,7 @@ export function CollaboratorsPanel({ project, onClose, onUpdated }: Collaborator
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as 'editor' | 'reviewer')}
-                className="bg-frame-bg border border-frame-border rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-frame-accent"
+                className="bg-scope-bg border border-scope-border rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-scope-accent"
               >
                 <option value="reviewer">Reviewer</option>
                 <option value="editor">Editor</option>
@@ -183,14 +183,14 @@ export function CollaboratorsPanel({ project, onClose, onUpdated }: Collaborator
                 {pending.map((u) => (
                   <span
                     key={u.id}
-                    className="inline-flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-full bg-frame-bg border border-frame-border text-xs text-white"
+                    className="inline-flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-full bg-scope-bg border border-scope-border text-xs text-white"
                   >
                     <Avatar name={u.name} size="xs" />
                     <span className="max-w-[140px] truncate">{u.name}</span>
                     <button
                       type="button"
                       onClick={() => removePending(u.id)}
-                      className="p-0.5 text-frame-textMuted hover:text-red-400 transition-colors"
+                      className="p-0.5 text-scope-textMuted hover:text-red-400 transition-colors"
                       aria-label={`Remove ${u.name}`}
                     >
                       <X className="w-3 h-3" />

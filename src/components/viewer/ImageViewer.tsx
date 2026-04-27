@@ -190,7 +190,7 @@ export const ImageViewer = forwardRef<ImageViewerHandle, ImageViewerProps>(funct
           <div className="flex gap-2">
             <button
               onClick={handleCapture}
-              className="px-5 py-2 bg-frame-accent hover:bg-frame-accentHover text-white text-sm font-medium rounded-lg transition-colors shadow-lg"
+              className="px-5 py-2 bg-scope-accent hover:bg-scope-accentHover text-white text-sm font-medium rounded-lg transition-colors shadow-lg"
             >
               Attach to comment
             </button>
@@ -206,7 +206,7 @@ export const ImageViewer = forwardRef<ImageViewerHandle, ImageViewerProps>(funct
 
       {/* Read-only annotation indicator */}
       {!isAnnotationMode && displayShapes && displayShapes !== '[]' && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-frame-accent/80 backdrop-blur-sm text-white text-xs rounded-full">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-scope-accent/80 backdrop-blur-sm text-white text-xs rounded-full">
           Showing annotation — click another comment to switch
         </div>
       )}

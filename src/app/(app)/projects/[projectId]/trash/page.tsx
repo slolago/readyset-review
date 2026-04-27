@@ -159,9 +159,9 @@ export default function TrashPage() {
         </button>
       </div>
 
-      {loading && <p className="text-frame-textMuted">Loading…</p>}
+      {loading && <p className="text-scope-textMuted">Loading…</p>}
       {!loading && isEmpty && (
-        <p className="text-frame-textMuted">Trash is empty.</p>
+        <p className="text-scope-textMuted">Trash is empty.</p>
       )}
 
       {folders.length > 0 && (
@@ -175,7 +175,7 @@ export default function TrashPage() {
               >
                 <div className="min-w-0 pr-3">
                   <div className="text-white truncate">{f.name}</div>
-                  <div className="text-xs text-frame-textMuted">
+                  <div className="text-xs text-scope-textMuted">
                     Deleted {formatDeletedAt((f as unknown as { deletedAt?: unknown }).deletedAt)}
                   </div>
                 </div>
@@ -212,7 +212,7 @@ export default function TrashPage() {
               >
                 <div className="min-w-0 pr-3">
                   <div className="text-white truncate">{a.name}</div>
-                  <div className="text-xs text-frame-textMuted">
+                  <div className="text-xs text-scope-textMuted">
                     Deleted {formatDeletedAt((a as unknown as { deletedAt?: unknown }).deletedAt)}
                   </div>
                 </div>

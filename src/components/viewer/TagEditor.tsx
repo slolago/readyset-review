@@ -99,19 +99,19 @@ export function TagEditor({ assetId, tags, onTagsChange }: TagEditorProps) {
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-2">
-        <Tag className="w-3 h-3 text-frame-textMuted" />
-        <span className="text-[10px] font-semibold text-frame-textMuted uppercase tracking-wider">
+        <Tag className="w-3 h-3 text-scope-textMuted" />
+        <span className="text-[10px] font-semibold text-scope-textMuted uppercase tracking-wider">
           Tags
         </span>
       </div>
       <div
-        className="flex flex-wrap items-center gap-1.5 min-h-[28px] px-2 py-1 bg-frame-bg border border-frame-border rounded-lg focus-within:border-frame-accent transition-colors cursor-text"
+        className="flex flex-wrap items-center gap-1.5 min-h-[28px] px-2 py-1 bg-scope-bg border border-scope-border rounded-lg focus-within:border-scope-accent transition-colors cursor-text"
         onClick={() => inputRef.current?.focus()}
       >
         {tags.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 px-2 py-0.5 bg-frame-accent/15 text-frame-accent text-xs font-medium rounded-md"
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-scope-accent/15 text-scope-accent text-xs font-medium rounded-md"
           >
             {tag}
             <button
@@ -138,7 +138,7 @@ export function TagEditor({ assetId, tags, onTagsChange }: TagEditorProps) {
           disabled={pending}
           placeholder={tags.length === 0 ? 'Add tag…' : ''}
           aria-label="Add tag"
-          className="flex-1 min-w-[80px] bg-transparent text-xs text-white placeholder-frame-textMuted focus:outline-none py-1"
+          className="flex-1 min-w-[80px] bg-transparent text-xs text-white placeholder-scope-textMuted focus:outline-none py-1"
         />
         {input && (
           <button
@@ -146,7 +146,7 @@ export function TagEditor({ assetId, tags, onTagsChange }: TagEditorProps) {
             onClick={commit}
             disabled={pending}
             aria-label="Add tag"
-            className="text-frame-accent hover:text-frame-accentHover transition-colors disabled:opacity-50"
+            className="text-scope-accent hover:text-scope-accentHover transition-colors disabled:opacity-50"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>

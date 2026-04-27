@@ -66,28 +66,28 @@ export function FileTypeCard({ asset }: Props) {
 
   return (
     <div className="w-full h-full flex items-center justify-center p-8">
-      <div className="bg-frame-card border border-frame-border rounded-xl p-8 max-w-md w-full flex flex-col items-center gap-4">
-        <Icon className="w-20 h-20 text-frame-accent" />
+      <div className="bg-scope-card border border-scope-border rounded-xl p-8 max-w-md w-full flex flex-col items-center gap-4">
+        <Icon className="w-20 h-20 text-scope-accent" />
 
         <div className="w-full text-center">
           <p className="text-base font-semibold text-white truncate" title={asset.name}>
             {asset.name}
           </p>
           {asset.subtype && (
-            <span className="inline-block mt-2 px-2 py-0.5 bg-frame-bg rounded text-[10px] font-mono uppercase text-frame-textSecondary tracking-wide">
+            <span className="inline-block mt-2 px-2 py-0.5 bg-scope-bg rounded text-[10px] font-mono uppercase text-scope-textSecondary tracking-wide">
               .{asset.subtype}
             </span>
           )}
         </div>
 
-        <div className="w-full space-y-1.5 text-sm text-frame-textSecondary">
+        <div className="w-full space-y-1.5 text-sm text-scope-textSecondary">
           <div className="flex items-center justify-between">
-            <span className="text-frame-textMuted">Size</span>
+            <span className="text-scope-textMuted">Size</span>
             <span>{formatBytes(asset.size)}</span>
           </div>
           {uploaderName && (
             <div className="flex items-center justify-between">
-              <span className="text-frame-textMuted flex items-center gap-1.5">
+              <span className="text-scope-textMuted flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5" />
                 Uploaded by
               </span>
@@ -96,7 +96,7 @@ export function FileTypeCard({ asset }: Props) {
           )}
           {uploadDateLabel && (
             <div className="flex items-center justify-between">
-              <span className="text-frame-textMuted flex items-center gap-1.5">
+              <span className="text-scope-textMuted flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5" />
                 Uploaded
               </span>
@@ -108,7 +108,7 @@ export function FileTypeCard({ asset }: Props) {
         <button
           onClick={handleDownload}
           disabled={!downloadUrl && !signedUrl}
-          className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2 bg-frame-accent hover:bg-frame-accentHover disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
+          className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2 bg-scope-accent hover:bg-scope-accentHover disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
         >
           <Download className="w-4 h-4" />
           Download

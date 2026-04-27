@@ -43,19 +43,19 @@ export function CreateUserModal({ onClose, onCreated, getIdToken }: CreateUserMo
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-frame-card border border-frame-border rounded-xl shadow-2xl w-full max-w-md">
+      <div className="relative bg-scope-card border border-scope-border rounded-xl shadow-2xl w-full max-w-md">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-frame-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-scope-border">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-frame-accent/10 rounded-lg flex items-center justify-center">
-              <UserPlus className="w-4 h-4 text-frame-accent" />
+            <div className="w-8 h-8 bg-scope-accent/10 rounded-lg flex items-center justify-center">
+              <UserPlus className="w-4 h-4 text-scope-accent" />
             </div>
             <div>
               <h2 className="text-base font-semibold text-white">Invite user</h2>
-              <p className="text-xs text-frame-textMuted">They&apos;ll sign in with Google using this email</p>
+              <p className="text-xs text-scope-textMuted">They&apos;ll sign in with Google using this email</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-frame-textMuted hover:text-white transition-colors">
+          <button onClick={onClose} className="text-scope-textMuted hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -63,7 +63,7 @@ export function CreateUserModal({ onClose, onCreated, getIdToken }: CreateUserMo
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-frame-textSecondary mb-1.5">Full name</label>
+            <label className="block text-xs font-medium text-scope-textSecondary mb-1.5">Full name</label>
             <input
               type="text"
               value={name}
@@ -71,24 +71,24 @@ export function CreateUserModal({ onClose, onCreated, getIdToken }: CreateUserMo
               placeholder="Jane Smith"
               required
               autoFocus
-              className="w-full bg-frame-bg border border-frame-border rounded-lg px-3 py-2 text-sm text-white placeholder-frame-textMuted focus:outline-none focus:border-frame-accent transition-colors"
+              className="w-full bg-scope-bg border border-scope-border rounded-lg px-3 py-2 text-sm text-white placeholder-scope-textMuted focus:outline-none focus:border-scope-accent transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-frame-textSecondary mb-1.5">Email</label>
+            <label className="block text-xs font-medium text-scope-textSecondary mb-1.5">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="jane@company.com"
               required
-              className="w-full bg-frame-bg border border-frame-border rounded-lg px-3 py-2 text-sm text-white placeholder-frame-textMuted focus:outline-none focus:border-frame-accent transition-colors"
+              className="w-full bg-scope-bg border border-scope-border rounded-lg px-3 py-2 text-sm text-white placeholder-scope-textMuted focus:outline-none focus:border-scope-accent transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-frame-textSecondary mb-1.5">Role</label>
+            <label className="block text-xs font-medium text-scope-textSecondary mb-1.5">Role</label>
             <div className="flex gap-2">
               {(['viewer', 'editor', 'manager', 'admin'] as const).map((r) => (
                 <button
@@ -97,8 +97,8 @@ export function CreateUserModal({ onClose, onCreated, getIdToken }: CreateUserMo
                   onClick={() => setRole(r)}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
                     role === r
-                      ? 'bg-frame-accent/15 border-frame-accent text-frame-accent'
-                      : 'bg-frame-bg border-frame-border text-frame-textSecondary hover:text-white hover:border-frame-borderLight'
+                      ? 'bg-scope-accent/15 border-scope-accent text-scope-accent'
+                      : 'bg-scope-bg border-scope-border text-scope-textSecondary hover:text-white hover:border-scope-borderLight'
                   }`}
                 >
                   {r}

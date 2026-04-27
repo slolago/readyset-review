@@ -85,20 +85,20 @@ export function ReviewLinkFolderBrowser({ projectId, token }: ReviewLinkFolderBr
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-8 py-4 border-b border-frame-border flex items-center justify-between gap-4">
+      <div className="px-8 py-4 border-b border-scope-border flex items-center justify-between gap-4">
         <nav className="flex items-center gap-1 text-sm overflow-x-auto min-w-0">
           <Link
             href={`/projects/${projectId}/review-links`}
-            className="text-frame-textSecondary hover:text-white transition-colors flex-shrink-0"
+            className="text-scope-textSecondary hover:text-white transition-colors flex-shrink-0"
           >
             Review Links
           </Link>
-          <ChevronRight className="w-4 h-4 text-frame-textMuted flex-shrink-0" />
+          <ChevronRight className="w-4 h-4 text-scope-textMuted flex-shrink-0" />
           <span className="text-white font-medium flex-shrink-0 truncate max-w-[20ch]">
             {reviewLink?.name ?? token}
           </span>
           {reviewLink && (
-            <span className="ml-2 text-xs text-frame-textMuted flex-shrink-0">
+            <span className="ml-2 text-xs text-scope-textMuted flex-shrink-0">
               ({scopeLabel})
             </span>
           )}
@@ -110,7 +110,7 @@ export function ReviewLinkFolderBrowser({ projectId, token }: ReviewLinkFolderBr
             title="Grid view"
             className={cn(
               'p-1.5 rounded transition-colors',
-              viewMode === 'grid' ? 'text-white bg-frame-border' : 'text-frame-textMuted hover:text-white'
+              viewMode === 'grid' ? 'text-white bg-scope-border' : 'text-scope-textMuted hover:text-white'
             )}
           >
             <LayoutGrid className="w-4 h-4" />
@@ -120,7 +120,7 @@ export function ReviewLinkFolderBrowser({ projectId, token }: ReviewLinkFolderBr
             title="List view"
             className={cn(
               'p-1.5 rounded transition-colors',
-              viewMode === 'list' ? 'text-white bg-frame-border' : 'text-frame-textMuted hover:text-white'
+              viewMode === 'list' ? 'text-white bg-scope-border' : 'text-scope-textMuted hover:text-white'
             )}
           >
             <LayoutList className="w-4 h-4" />
@@ -130,7 +130,7 @@ export function ReviewLinkFolderBrowser({ projectId, token }: ReviewLinkFolderBr
 
       {/* Folder breadcrumbs (when navigated into a folder) */}
       {crumbs.length > 1 && (
-        <div className="px-8 py-2 border-b border-frame-border flex items-center gap-1 text-sm flex-wrap">
+        <div className="px-8 py-2 border-b border-scope-border flex items-center gap-1 text-sm flex-wrap">
           {crumbs.map((crumb, i) => (
             <div key={`${crumb.id ?? 'root'}-${i}`} className="flex items-center gap-1">
               <button
@@ -138,13 +138,13 @@ export function ReviewLinkFolderBrowser({ projectId, token }: ReviewLinkFolderBr
                 className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
                   i === crumbs.length - 1
                     ? 'text-white font-medium'
-                    : 'text-frame-textSecondary hover:text-white hover:bg-frame-cardHover'
+                    : 'text-scope-textSecondary hover:text-white hover:bg-scope-cardHover'
                 }`}
               >
                 {i === 0 && <Home className="w-3.5 h-3.5" />}
                 {crumb.name}
               </button>
-              {i < crumbs.length - 1 && <ChevronRight className="w-3 h-3 text-frame-textMuted" />}
+              {i < crumbs.length - 1 && <ChevronRight className="w-3 h-3 text-scope-textMuted" />}
             </div>
           ))}
         </div>
@@ -158,11 +158,11 @@ export function ReviewLinkFolderBrowser({ projectId, token }: ReviewLinkFolderBr
           </div>
         ) : error ? (
           <div className="flex items-center justify-center py-20">
-            <p className="text-frame-textMuted text-sm">{error}</p>
+            <p className="text-scope-textMuted text-sm">{error}</p>
           </div>
         ) : assets.length === 0 && folders.length === 0 ? (
           <div className="flex items-center justify-center py-20">
-            <p className="text-frame-textMuted text-sm">
+            <p className="text-scope-textMuted text-sm">
               {currentFolderId ? 'This folder is empty' : 'No assets in this review link'}
             </p>
           </div>
@@ -171,7 +171,7 @@ export function ReviewLinkFolderBrowser({ projectId, token }: ReviewLinkFolderBr
             {/* Folders */}
             {folders.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider mb-3">
+                <h3 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider mb-3">
                   Folders ({folders.length})
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -179,9 +179,9 @@ export function ReviewLinkFolderBrowser({ projectId, token }: ReviewLinkFolderBr
                     <button
                       key={folder.id}
                       onClick={() => enterFolder(folder)}
-                      className="group bg-frame-card hover:bg-frame-cardHover border border-frame-border hover:border-frame-borderLight rounded-xl p-4 transition-all text-left"
+                      className="group bg-scope-card hover:bg-scope-cardHover border border-scope-border hover:border-scope-borderLight rounded-xl p-4 transition-all text-left"
                     >
-                      <FolderIcon className="w-8 h-8 text-frame-accent mb-2" />
+                      <FolderIcon className="w-8 h-8 text-scope-accent mb-2" />
                       <p className="text-sm font-medium text-white truncate">{folder.name}</p>
                     </button>
                   ))}
@@ -194,7 +194,7 @@ export function ReviewLinkFolderBrowser({ projectId, token }: ReviewLinkFolderBr
               viewMode === 'grid' ? (
                 <div>
                   {folders.length > 0 && (
-                    <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider mb-3">
+                    <h3 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider mb-3">
                       Assets ({assets.filter((a: any) => !a._deleted).length})
                     </h3>
                   )}
@@ -203,9 +203,9 @@ export function ReviewLinkFolderBrowser({ projectId, token }: ReviewLinkFolderBr
                       asset._deleted ? (
                         <div
                           key={asset.id}
-                          className="aspect-video bg-frame-card border border-dashed border-frame-border/50 rounded-xl flex flex-col items-center justify-center gap-2 opacity-40"
+                          className="aspect-video bg-scope-card border border-dashed border-scope-border/50 rounded-xl flex flex-col items-center justify-center gap-2 opacity-40"
                         >
-                          <p className="text-xs text-frame-textMuted">Asset removed</p>
+                          <p className="text-xs text-scope-textMuted">Asset removed</p>
                         </div>
                       ) : (
                         <AssetCard

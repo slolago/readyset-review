@@ -21,10 +21,10 @@ interface UserTableProps {
 }
 
 const ROLE_STYLES: Record<string, string> = {
-  admin: 'bg-frame-accent/15 text-frame-accent',
+  admin: 'bg-scope-accent/15 text-scope-accent',
   manager: 'bg-purple-500/15 text-purple-400',
   editor: 'bg-blue-500/15 text-blue-400',
-  viewer: 'bg-white/5 text-frame-textSecondary',
+  viewer: 'bg-white/5 text-scope-textSecondary',
 };
 
 function RoleBadge({ role }: { role: 'admin' | 'manager' | 'editor' | 'viewer' }) {
@@ -84,7 +84,7 @@ function UserRow({
   return (
     <tr
       onClick={() => onInspect?.(u.id)}
-      className={`border-b border-frame-border/50 hover:bg-white/[0.02] transition-colors group ${onInspect ? 'cursor-pointer' : ''}`}
+      className={`border-b border-scope-border/50 hover:bg-white/[0.02] transition-colors group ${onInspect ? 'cursor-pointer' : ''}`}
     >
       {/* User */}
       <td className="px-6 py-4">
@@ -94,7 +94,7 @@ function UserRow({
             <p className="text-sm font-medium text-white flex items-center gap-2 flex-wrap">
               {u.name}
               {isSelf && (
-                <span className="text-[10px] bg-frame-accent/15 text-frame-accent px-1.5 py-0.5 rounded-full font-normal">
+                <span className="text-[10px] bg-scope-accent/15 text-scope-accent px-1.5 py-0.5 rounded-full font-normal">
                   You
                 </span>
               )}
@@ -109,7 +109,7 @@ function UserRow({
                 </span>
               )}
             </p>
-            <p className="text-xs text-frame-textMuted">{u.email}</p>
+            <p className="text-xs text-scope-textMuted">{u.email}</p>
           </div>
         </div>
       </td>
@@ -124,16 +124,16 @@ function UserRow({
               value={u.role}
               onChange={(e) => handleRoleChange(e.target.value as 'admin' | 'manager' | 'editor' | 'viewer')}
               disabled={roleLoading}
-              className={`appearance-none pl-2 pr-7 py-1 rounded-lg text-xs font-medium border transition-colors focus:outline-none focus:border-frame-accent cursor-pointer disabled:opacity-50 ${ROLE_STYLES[u.role]} border-current/30`}
+              className={`appearance-none pl-2 pr-7 py-1 rounded-lg text-xs font-medium border transition-colors focus:outline-none focus:border-scope-accent cursor-pointer disabled:opacity-50 ${ROLE_STYLES[u.role]} border-current/30`}
             >
-              <option value="viewer" className="bg-frame-bg text-white">Viewer</option>
-              <option value="editor" className="bg-frame-bg text-white">Editor</option>
-              <option value="manager" className="bg-frame-bg text-white">Manager</option>
-              <option value="admin" className="bg-frame-bg text-white">Admin</option>
+              <option value="viewer" className="bg-scope-bg text-white">Viewer</option>
+              <option value="editor" className="bg-scope-bg text-white">Editor</option>
+              <option value="manager" className="bg-scope-bg text-white">Manager</option>
+              <option value="admin" className="bg-scope-bg text-white">Admin</option>
             </select>
             {roleLoading
               ? <Spinner size="sm" className="absolute right-1.5 top-1/2 -translate-y-1/2" />
-              : <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-frame-textMuted" />
+              : <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-scope-textMuted" />
             }
           </div>
         )}
@@ -141,8 +141,8 @@ function UserRow({
 
       {/* Joined */}
       <td className="px-6 py-4">
-        <span className="text-sm text-frame-textSecondary" title={createdAt?.toLocaleDateString() ?? ''}>
-          {createdAt ? formatRelativeTime(createdAt) : <span className="text-frame-textMuted">—</span>}
+        <span className="text-sm text-scope-textSecondary" title={createdAt?.toLocaleDateString() ?? ''}>
+          {createdAt ? formatRelativeTime(createdAt) : <span className="text-scope-textMuted">—</span>}
         </span>
       </td>
 
@@ -161,7 +161,7 @@ function UserRow({
             <button
               onClick={handleDelete}
               disabled={deleteLoading}
-              className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-xs text-frame-textMuted hover:text-red-400 transition-colors disabled:opacity-50"
+              className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-xs text-scope-textMuted hover:text-red-400 transition-colors disabled:opacity-50"
             >
               <Trash2 className="w-3.5 h-3.5" />
               {deleteLoading ? 'Deleting…' : 'Delete'}
@@ -186,7 +186,7 @@ export function UserTable({ users, loading, onRoleChange, onDelete, onInspect, o
 
   if (users.length === 0) {
     return (
-      <div className="py-16 text-center text-frame-textSecondary text-sm">
+      <div className="py-16 text-center text-scope-textSecondary text-sm">
         No users found.
       </div>
     );
@@ -196,10 +196,10 @@ export function UserTable({ users, loading, onRoleChange, onDelete, onInspect, o
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-frame-border">
-            <th className="text-left px-6 py-3 text-xs font-semibold text-frame-textMuted uppercase tracking-wider w-1/2">User</th>
-            <th className="text-left px-6 py-3 text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Role</th>
-            <th className="text-left px-6 py-3 text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Joined</th>
+          <tr className="border-b border-scope-border">
+            <th className="text-left px-6 py-3 text-xs font-semibold text-scope-textMuted uppercase tracking-wider w-1/2">User</th>
+            <th className="text-left px-6 py-3 text-xs font-semibold text-scope-textMuted uppercase tracking-wider">Role</th>
+            <th className="text-left px-6 py-3 text-xs font-semibold text-scope-textMuted uppercase tracking-wider">Joined</th>
             <th className="px-6 py-3" />
           </tr>
         </thead>

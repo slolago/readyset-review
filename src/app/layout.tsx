@@ -32,7 +32,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://firestore.googleapis.com" crossOrigin="" />
         <link rel="preconnect" href="https://storage.googleapis.com" crossOrigin="" />
       </head>
-      <body className={`${inter.className} bg-frame-bg text-frame-textPrimary min-h-screen`}>
+      <body className={`${inter.className} bg-scope-bg text-scope-textPrimary min-h-screen`}>
         <AuthProvider>
           <ConfirmProvider>
           {children}

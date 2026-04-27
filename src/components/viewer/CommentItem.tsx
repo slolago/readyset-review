@@ -16,7 +16,7 @@ function renderCommentText(text: string): React.ReactNode {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
     parts.push(
       <a key={match.index} href={match[0]} target="_blank" rel="noopener noreferrer"
-         className="text-frame-accent underline hover:text-frame-accentHover break-all"
+         className="text-scope-accent underline hover:text-scope-accentHover break-all"
          onClick={(e) => e.stopPropagation()}>
         {match[0]}
       </a>
@@ -100,7 +100,7 @@ export function CommentItem({
       className={`group rounded-lg transition-colors px-2 py-2 ${
         comment.resolved ? 'opacity-65' : ''
       } ${hasTimestamp ? 'cursor-pointer hover:bg-white/5' : ''} ${
-        isSelected ? 'bg-frame-accent/10 ring-1 ring-frame-accent/40' : ''
+        isSelected ? 'bg-scope-accent/10 ring-1 ring-scope-accent/40' : ''
       }`}
       onClick={handleClick}
     >
@@ -111,7 +111,7 @@ export function CommentItem({
             <div className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-medium whitespace-nowrap border ${
               comment.resolved
                 ? 'bg-green-500/15 border-green-500/30 text-green-400'
-                : 'bg-frame-accent/15 border-frame-accent/30 text-frame-accent'
+                : 'bg-scope-accent/15 border-scope-accent/30 text-scope-accent'
             }`}>
               {hasRange
                 ? `${formatDuration(comment.inPoint!)} - ${formatDuration(comment.outPoint!)}`
@@ -133,7 +133,7 @@ export function CommentItem({
                 Completed
               </span>
             )}
-            <span className="text-[10px] text-frame-textMuted ml-auto">{formatRelativeTime(createdAt)}</span>
+            <span className="text-[10px] text-scope-textMuted ml-auto">{formatRelativeTime(createdAt)}</span>
           </div>
 
           {/* Text */}
@@ -147,17 +147,17 @@ export function CommentItem({
                   if (e.key === 'Escape') setIsEditing(false);
                 }}
                 rows={3}
-                className="w-full bg-frame-bg border border-frame-border rounded-lg px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-frame-accent"
+                className="w-full bg-scope-bg border border-scope-border rounded-lg px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-scope-accent"
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               />
               <div className="flex gap-2 mt-1.5">
-                <button onClick={(e) => { e.stopPropagation(); handleSaveEdit(); }} className="px-3 py-1 bg-frame-accent text-white text-xs rounded-lg hover:bg-frame-accentHover">Save</button>
-                <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); }} className="px-3 py-1 text-frame-textMuted text-xs hover:text-white">Cancel</button>
+                <button onClick={(e) => { e.stopPropagation(); handleSaveEdit(); }} className="px-3 py-1 bg-scope-accent text-white text-xs rounded-lg hover:bg-scope-accentHover">Save</button>
+                <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); }} className="px-3 py-1 text-scope-textMuted text-xs hover:text-white">Cancel</button>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-frame-textSecondary leading-relaxed whitespace-pre-wrap break-words">
+            <p className="text-sm text-scope-textSecondary leading-relaxed whitespace-pre-wrap break-words">
               {renderCommentText(comment.text)}
             </p>
           )}
@@ -168,8 +168,8 @@ export function CommentItem({
               onClick={(e) => { e.stopPropagation(); onAnnotationClick?.(comment); }}
               className={`mt-1.5 flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium transition-all ${
                 isAnnotationActive
-                  ? 'bg-frame-accent text-white'
-                  : 'bg-frame-accent/15 text-frame-accent hover:bg-frame-accent/30'
+                  ? 'bg-scope-accent text-white'
+                  : 'bg-scope-accent/15 text-scope-accent hover:bg-scope-accent/30'
               }`}
             >
               <Pencil className="w-3 h-3" />
@@ -188,8 +188,8 @@ export function CommentItem({
                   onClick={() => onResolve(comment.id, !comment.resolved)}
                   className={`flex items-center gap-1 text-xs transition-colors ${
                     comment.resolved
-                      ? 'text-frame-green hover:text-frame-green/70'
-                      : 'text-frame-textMuted hover:text-frame-green'
+                      ? 'text-scope-green hover:text-scope-green/70'
+                      : 'text-scope-textMuted hover:text-scope-green'
                   }`}
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
@@ -199,7 +199,7 @@ export function CommentItem({
               {onEdit && !comment.resolved && user?.id === comment.authorId && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsEditing(true); setEditText(comment.text); }}
-                  className="flex items-center gap-1 text-xs text-frame-textMuted hover:text-white transition-colors"
+                  className="flex items-center gap-1 text-xs text-scope-textMuted hover:text-white transition-colors"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                   Edit
@@ -208,7 +208,7 @@ export function CommentItem({
               {onReply && !comment.parentId && !comment.resolved && (
                 <button
                   onClick={() => onReply(comment.id)}
-                  className="flex items-center gap-1 text-xs text-frame-textMuted hover:text-white transition-colors"
+                  className="flex items-center gap-1 text-xs text-scope-textMuted hover:text-white transition-colors"
                 >
                   <Reply className="w-3.5 h-3.5" />
                   Reply
@@ -217,7 +217,7 @@ export function CommentItem({
               {canDelete && onDelete && !comment.resolved && (
                 <button
                   onClick={() => onDelete(comment.id)}
-                  className="flex items-center gap-1 text-xs text-frame-textMuted hover:text-red-400 transition-colors ml-auto"
+                  className="flex items-center gap-1 text-xs text-scope-textMuted hover:text-red-400 transition-colors ml-auto"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -232,14 +232,14 @@ export function CommentItem({
         <div className="ml-2 mt-2 space-y-1" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => setShowReplies((v) => !v)}
-            className="text-xs text-frame-accent hover:text-frame-accentHover transition-colors flex items-center gap-1 ml-1"
+            className="text-xs text-scope-accent hover:text-scope-accentHover transition-colors flex items-center gap-1 ml-1"
           >
             <CornerDownRight className="w-3 h-3" />
             {showReplies ? 'Hide' : 'Show'} {replies.length} {replies.length !== 1 ? 'replies' : 'reply'}
           </button>
           {showReplies &&
             replies.map((reply) => (
-              <div key={reply.id} className="pl-3 border-l border-frame-border">
+              <div key={reply.id} className="pl-3 border-l border-scope-border">
                 <CommentItem
                   comment={reply}
                   onResolve={onResolve}

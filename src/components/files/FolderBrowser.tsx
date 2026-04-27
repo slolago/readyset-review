@@ -464,9 +464,9 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
   const handleItemDragStart = useCallback((itemId: string, e: React.DragEvent) => {
     // Carry all selected IDs when dragging a selected item; otherwise just this item
     const ids = selectedIds.has(itemId) ? Array.from(selectedIds) : [itemId];
-    e.dataTransfer.setData('application/x-frame-move', JSON.stringify({ ids }));
+    e.dataTransfer.setData('application/x-scope-move', JSON.stringify({ ids }));
     // Also advertise as version-stack draggable (single asset only — multi-select stack not supported)
-    e.dataTransfer.setData('application/x-frame-version-stack', JSON.stringify({ id: itemId }));
+    e.dataTransfer.setData('application/x-scope-version-stack', JSON.stringify({ id: itemId }));
     e.dataTransfer.effectAllowed = 'move';
   }, [selectedIds]);
 
@@ -822,14 +822,14 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     // Don't activate OS-drop overlay for internal item drags
-    if (e.dataTransfer.types.includes('application/x-frame-move')) return;
+    if (e.dataTransfer.types.includes('application/x-scope-move')) return;
     dropDragCounter.current++;
     setIsDragActive(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    if (e.dataTransfer.types.includes('application/x-frame-move')) return;
+    if (e.dataTransfer.types.includes('application/x-scope-move')) return;
     dropDragCounter.current--;
     if (dropDragCounter.current === 0) setIsDragActive(false);
   };
@@ -845,8 +845,8 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
     setIsDragActive(false);
 
     // Internal item drags set this custom type — ignore here, they have their own handlers
-    if (e.dataTransfer.types.includes('application/x-frame-move')) return;
-    if (e.dataTransfer.types.includes('application/x-frame-version-stack')) return;
+    if (e.dataTransfer.types.includes('application/x-scope-move')) return;
+    if (e.dataTransfer.types.includes('application/x-scope-version-stack')) return;
 
     // Capture BOTH items and files synchronously. DataTransfer becomes invalid
     // after any await; some browsers populate only .files for regular file drops.
@@ -1028,7 +1028,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
   // ── Drag-to-move: folder drop target handlers ────────────────────────────
   const handleFolderDragOver = useCallback((folderId: string, e: React.DragEvent) => {
     // Only accept our custom move payload
-    if (!e.dataTransfer.types.includes('application/x-frame-move')) return;
+    if (!e.dataTransfer.types.includes('application/x-scope-move')) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverFolderId(folderId);
@@ -1042,7 +1042,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
     e.preventDefault();
     setDragOverFolderId(null);
 
-    const raw = e.dataTransfer.getData('application/x-frame-move');
+    const raw = e.dataTransfer.getData('application/x-scope-move');
     if (!raw) return;
 
     let payload: { ids: string[] };
@@ -1094,7 +1094,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
   // ── Drag-to-version-stack: asset drop target handlers ────────────────────
   const handleAssetDragOver = useCallback((targetAssetId: string, e: React.DragEvent) => {
     // Only accept version-stack payloads
-    if (!e.dataTransfer.types.includes('application/x-frame-version-stack')) return;
+    if (!e.dataTransfer.types.includes('application/x-scope-version-stack')) return;
     // Block dropping onto uploading/pending assets (P28-14) — belt-and-suspenders guard
     const targetAsset = assets.find((a) => a.id === targetAssetId);
     if (!targetAsset || targetAsset.status !== 'ready') return;
@@ -1112,7 +1112,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
     e.stopPropagation(); // Prevent event bubbling to the container handleDrop (OS upload handler)
     setDragOverAssetId(null);
 
-    const raw = e.dataTransfer.getData('application/x-frame-version-stack');
+    const raw = e.dataTransfer.getData('application/x-scope-version-stack');
     if (!raw) return;
 
     let payload: { id: string };
@@ -1177,7 +1177,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-8 py-4 border-b border-frame-border flex items-center justify-between bg-frame-sidebar">
+      <div className="px-8 py-4 border-b border-scope-border flex items-center justify-between bg-scope-sidebar">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 min-w-0">
           <Breadcrumb items={breadcrumbs} projectId={projectId} projectColor={color} />
@@ -1186,14 +1186,14 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
         {/* Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* View mode toggle */}
-          <div className="flex items-center rounded-lg border border-frame-border overflow-hidden">
+          <div className="flex items-center rounded-lg border border-scope-border overflow-hidden">
             <button
               onClick={() => setViewMode('grid')}
               title="Grid view"
               className={`p-1.5 transition-colors ${
                 viewMode === 'grid'
-                  ? 'bg-frame-accent text-white'
-                  : 'text-frame-textMuted hover:text-white hover:bg-frame-border'
+                  ? 'bg-scope-accent text-white'
+                  : 'text-scope-textMuted hover:text-white hover:bg-scope-border'
               }`}
             >
               <LayoutGrid className="w-4 h-4" />
@@ -1203,8 +1203,8 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
               title="List view"
               className={`p-1.5 transition-colors ${
                 viewMode === 'list'
-                  ? 'bg-frame-accent text-white'
-                  : 'text-frame-textMuted hover:text-white hover:bg-frame-border'
+                  ? 'bg-scope-accent text-white'
+                  : 'text-scope-textMuted hover:text-white hover:bg-scope-border'
               }`}
             >
               <LayoutList className="w-4 h-4" />
@@ -1214,7 +1214,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
           <Dropdown
             trigger={
               <button
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-frame-border text-frame-textSecondary hover:text-white hover:border-frame-borderLight transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-scope-border text-scope-textSecondary hover:text-white hover:border-scope-borderLight transition-colors"
                 title="Sort files"
               >
                 <ArrowUpDown className="w-3.5 h-3.5" />
@@ -1286,11 +1286,11 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
       >
         {/* File drop overlay */}
         {isDragActive && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-frame-accent/10 border-2 border-dashed border-frame-accent rounded-xl m-2 pointer-events-none">
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-scope-accent/10 border-2 border-dashed border-scope-accent rounded-xl m-2 pointer-events-none">
             <div className="text-center">
-              <FolderOpen className="w-12 h-12 text-frame-accent mx-auto mb-3" />
-              <p className="text-frame-accent font-semibold text-lg">Drop files or folders</p>
-              <p className="text-frame-accent/70 text-sm mt-1">Folder structure will be preserved</p>
+              <FolderOpen className="w-12 h-12 text-scope-accent mx-auto mb-3" />
+              <p className="text-scope-accent font-semibold text-lg">Drop files or folders</p>
+              <p className="text-scope-accent/70 text-sm mt-1">Folder structure will be preserved</p>
             </div>
           </div>
         )}
@@ -1298,7 +1298,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
         {/* Rubber band selection rect */}
         {rubberBand && (
           <div
-            className="pointer-events-none fixed z-40 border border-frame-accent bg-frame-accent/10"
+            className="pointer-events-none fixed z-40 border border-scope-accent bg-scope-accent/10"
             style={{
               left: Math.min(rubberBand.x1, rubberBand.x2),
               top: Math.min(rubberBand.y1, rubberBand.y2),
@@ -1311,7 +1311,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
         {/* Folders */}
         {folders.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider mb-3">
               Folders ({folders.length})
             </h3>
             {viewMode === 'grid' ? (
@@ -1412,11 +1412,11 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
         {/* Empty state */}
         {!assetsLoading && assets.length === 0 && folders.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 bg-frame-card border border-frame-border rounded-2xl flex items-center justify-center mb-4">
-              <Upload className="w-8 h-8 text-frame-textMuted" />
+            <div className="w-16 h-16 bg-scope-card border border-scope-border rounded-2xl flex items-center justify-center mb-4">
+              <Upload className="w-8 h-8 text-scope-textMuted" />
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">No files yet</h3>
-            <p className="text-frame-textSecondary text-sm max-w-xs mb-6">
+            <p className="text-scope-textSecondary text-sm max-w-xs mb-6">
               Drag files or folders here, or click Upload to get started.
             </p>
             <Button onClick={() => fileInputRef.current?.click()} icon={<Upload className="w-4 h-4" />}>
@@ -1429,7 +1429,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
 
       {/* Multi-select action bar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 bg-frame-card border border-frame-border rounded-2xl shadow-2xl">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 bg-scope-card border border-scope-border rounded-2xl shadow-2xl">
           <span className="text-sm text-white font-medium mr-1">{selectedIds.size} selected</span>
           {(() => {
             const selectedAssets = assets.filter((a) => selectedIds.has(a.id));
@@ -1441,8 +1441,8 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
                 title={canCompare ? 'Compare assets' : 'Select exactly 2 assets to compare'}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                   canCompare
-                    ? 'text-white bg-frame-accent hover:bg-frame-accent/80'
-                    : 'text-white/30 bg-frame-border cursor-not-allowed'
+                    ? 'text-white bg-scope-accent hover:bg-scope-accent/80'
+                    : 'text-white/30 bg-scope-border cursor-not-allowed'
                 }`}
               >
                 <GitCompare className="w-3.5 h-3.5" />
@@ -1468,8 +1468,8 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
                 title={overCap ? 'Select 50 or fewer assets' : 'Create review link from selection'}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                   overCap
-                    ? 'text-white/30 bg-frame-border cursor-not-allowed'
-                    : 'text-white bg-frame-accent hover:bg-frame-accent/80'
+                    ? 'text-white/30 bg-scope-border cursor-not-allowed'
+                    : 'text-white bg-scope-accent hover:bg-scope-accent/80'
                 }`}
               >
                 <LinkIcon className="w-3.5 h-3.5" />
@@ -1485,7 +1485,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
               setAddToLinkTarget({ assetIds: assetOnlyIds, folderIds: folderOnlyIds });
             }}
             title="Add selection to an existing review link"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-frame-border hover:bg-frame-borderLight rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-scope-border hover:bg-scope-borderLight rounded-lg transition-colors"
           >
             <LinkIcon className="w-3.5 h-3.5" />
             Add to link
@@ -1504,32 +1504,32 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
               <div className="relative" ref={statusMenuRef}>
                 <button
                   onClick={() => setShowStatusMenu(v => !v)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-frame-border hover:bg-frame-borderLight rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-scope-border hover:bg-scope-borderLight rounded-lg transition-colors"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
                   Status
                 </button>
                 {showStatusMenu && (
-                  <div className="absolute bottom-full mb-2 left-0 z-50 bg-frame-card border border-frame-border rounded-xl shadow-2xl py-1 min-w-[170px]">
+                  <div className="absolute bottom-full mb-2 left-0 z-50 bg-scope-card border border-scope-border rounded-xl shadow-2xl py-1 min-w-[170px]">
                     {STATUS_OPTIONS.map(opt => (
                       <button
                         key={opt.value}
                         onClick={() => { handleBulkSetStatus(opt.value); setShowStatusMenu(false); }}
                         className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors text-left ${
                           sharedStatus === opt.value
-                            ? 'text-white bg-frame-cardHover'
-                            : 'text-frame-textSecondary hover:text-white hover:bg-frame-cardHover'
+                            ? 'text-white bg-scope-cardHover'
+                            : 'text-scope-textSecondary hover:text-white hover:bg-scope-cardHover'
                         }`}
                       >
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.color}`} />
                         {opt.label}
-                        {sharedStatus === opt.value && <Check className="w-3 h-3 ml-auto text-frame-accent" />}
+                        {sharedStatus === opt.value && <Check className="w-3 h-3 ml-auto text-scope-accent" />}
                       </button>
                     ))}
-                    <div className="my-1 border-t border-frame-border" />
+                    <div className="my-1 border-t border-scope-border" />
                     <button
                       onClick={() => { handleBulkSetStatus(null); setShowStatusMenu(false); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-frame-textMuted hover:text-white hover:bg-frame-cardHover transition-colors text-left"
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-scope-textMuted hover:text-white hover:bg-scope-cardHover transition-colors text-left"
                     >
                       <span className="w-2 h-2 rounded-full flex-shrink-0 bg-white/20" />
                       Clear status
@@ -1541,21 +1541,21 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
           })()}
           <button
             onClick={handleOpenMoveModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-frame-border hover:bg-frame-borderLight rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-scope-border hover:bg-scope-borderLight rounded-lg transition-colors"
           >
             <Move className="w-3.5 h-3.5" />
             Move
           </button>
           <button
             onClick={handleOpenCopyModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-frame-border hover:bg-frame-borderLight rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-scope-border hover:bg-scope-borderLight rounded-lg transition-colors"
           >
             <Copy className="w-3.5 h-3.5" />
             Copy
           </button>
           <button
             onClick={handleDownloadSelected}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-frame-border hover:bg-frame-borderLight rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-scope-border hover:bg-scope-borderLight rounded-lg transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
             Download
@@ -1569,7 +1569,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="ml-1 text-frame-textMuted hover:text-white transition-colors"
+            className="ml-1 text-scope-textMuted hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -1578,16 +1578,16 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
 
       {/* Upload progress panel */}
       {uploads.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-50 w-72 bg-frame-card border border-frame-border rounded-xl shadow-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-frame-border">
-            <p className="text-xs font-semibold text-frame-textSecondary uppercase tracking-wider">
+        <div className="fixed bottom-4 right-4 z-50 w-72 bg-scope-card border border-scope-border rounded-xl shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-scope-border">
+            <p className="text-xs font-semibold text-scope-textSecondary uppercase tracking-wider">
               Uploads ({uploads.length})
             </p>
-            <button onClick={clearCompleted} className="text-xs text-frame-textMuted hover:text-white transition-colors">
+            <button onClick={clearCompleted} className="text-xs text-scope-textMuted hover:text-white transition-colors">
               Clear completed
             </button>
           </div>
-          <div className="divide-y divide-frame-border max-h-52 overflow-y-auto">
+          <div className="divide-y divide-scope-border max-h-52 overflow-y-auto">
             {uploads.map((upload) => (
               <UploadProgressItem key={upload.id} item={upload} onCancel={cancelUpload} />
             ))}
@@ -1689,7 +1689,7 @@ function FolderBrowserInner({ projectId, folderId, ancestorPath = '' }: FolderBr
 
       {/* Folder size overlay */}
       {!folderSizeLoading && folderSize !== null && folderSize > 0 && (
-        <div className="fixed bottom-6 right-6 z-10 bg-frame-card border border-frame-border rounded-lg px-3 py-1.5 text-xs text-frame-textMuted shadow-lg pointer-events-none">
+        <div className="fixed bottom-6 right-6 z-10 bg-scope-card border border-scope-border rounded-lg px-3 py-1.5 text-xs text-scope-textMuted shadow-lg pointer-events-none">
           {formatBytes(folderSize)}
         </div>
       )}
@@ -1841,9 +1841,9 @@ const FolderCard = React.memo(function FolderCard({
       draggable
       onDragStart={onDragStart}
       className={[
-        'group relative bg-frame-card rounded-xl overflow-hidden cursor-pointer transition-all hover:bg-frame-cardHover',
+        'group relative bg-scope-card rounded-xl overflow-hidden cursor-pointer transition-all hover:bg-scope-cardHover',
         selectionStyle('folder', (isDropTarget || isSelected) ? 'selected' : 'idle'),
-        isDropTarget ? 'ring-2 ring-frame-accent bg-frame-accent/10' : '',
+        isDropTarget ? 'ring-2 ring-scope-accent bg-scope-accent/10' : '',
       ].filter(Boolean).join(' ')}
       onMouseDown={(e) => {
         // Prevent any default mousedown-initiated activation on right-click
@@ -1882,12 +1882,12 @@ const FolderCard = React.memo(function FolderCard({
           Empty folders fall back to a centered Folder icon. */}
       <div className="relative aspect-video bg-black overflow-hidden">
         {preview.length === 0 ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-frame-bg">
-            <Folder className="w-12 h-12 text-frame-accent/70" />
+          <div className="absolute inset-0 flex items-center justify-center bg-scope-bg">
+            <Folder className="w-12 h-12 text-scope-accent/70" />
           </div>
         ) : (
           <div
-            className={`absolute inset-0 grid gap-[2px] bg-frame-border ${
+            className={`absolute inset-0 grid gap-[2px] bg-scope-border ${
               preview.length === 1
                 ? 'grid-cols-1 grid-rows-1'
                 : preview.length === 2
@@ -1910,16 +1910,16 @@ const FolderCard = React.memo(function FolderCard({
               }
               const Icon = a.type === 'video' ? Film : a.type === 'image' ? ImageIcon : FileText;
               return (
-                <div key={a.id} className="w-full h-full flex items-center justify-center bg-frame-bg">
-                  <Icon className="w-6 h-6 text-frame-textMuted" />
+                <div key={a.id} className="w-full h-full flex items-center justify-center bg-scope-bg">
+                  <Icon className="w-6 h-6 text-scope-textMuted" />
                 </div>
               );
             })}
             {/* Fill the 4th cell when preview.length === 3 so the 2×2 grid
                 stays visually balanced (otherwise the last cell collapses). */}
             {preview.length === 3 && (
-              <div className="w-full h-full bg-frame-bg flex items-center justify-center">
-                <Folder className="w-5 h-5 text-frame-textMuted/50" />
+              <div className="w-full h-full bg-scope-bg flex items-center justify-center">
+                <Folder className="w-5 h-5 text-scope-textMuted/50" />
               </div>
             )}
           </div>
@@ -1932,7 +1932,7 @@ const FolderCard = React.memo(function FolderCard({
             onClick={(e) => { e.stopPropagation(); onToggleSelect(e); }}
           >
             <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-              isSelected ? 'bg-frame-accent border-frame-accent' : 'bg-black/60 border-white/60 backdrop-blur-sm'
+              isSelected ? 'bg-scope-accent border-scope-accent' : 'bg-black/60 border-white/60 backdrop-blur-sm'
             }`}>
               {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
             </div>
@@ -2042,11 +2042,11 @@ const FolderListView = React.memo(function FolderListView({
   onDragLeave,
   onDrop,
 }: FolderListViewProps) {
-  const headerCellClass = 'py-2 px-3 text-xs font-medium text-frame-textMuted uppercase tracking-wider';
+  const headerCellClass = 'py-2 px-3 text-xs font-medium text-scope-textMuted uppercase tracking-wider';
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="border-b border-frame-border text-left">
+        <tr className="border-b border-scope-border text-left">
           <th className={headerCellClass} style={{ width: '2.5rem' }} />
           <th className={`${headerCellClass} w-12`} />
           <th className={headerCellClass}>Name</th>
@@ -2232,9 +2232,9 @@ function FolderListRow({
           setTimeout(() => { suppressNextClickRef.current = false; }, 300);
           ctxMenu.open(`folder-${folder.id}`, { x: e.clientX, y: e.clientY }, folderActions);
         }}
-        className={`cursor-pointer hover:bg-frame-card/50 transition-colors border-b border-frame-border/40 ${
-          isSelected ? 'bg-frame-accent/10' : ''
-        } ${isDropTarget ? 'ring-2 ring-inset ring-frame-accent bg-frame-accent/10' : ''}`}
+        className={`cursor-pointer hover:bg-scope-card/50 transition-colors border-b border-scope-border/40 ${
+          isSelected ? 'bg-scope-accent/10' : ''
+        } ${isDropTarget ? 'ring-2 ring-inset ring-scope-accent bg-scope-accent/10' : ''}`}
       >
         {/* Checkbox */}
         <td
@@ -2242,7 +2242,7 @@ function FolderListRow({
           onClick={(e) => { e.stopPropagation(); onToggleSelect(e); }}
         >
           <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors pointer-events-none ${
-            isSelected ? 'bg-frame-accent border-frame-accent' : 'bg-transparent border-white/30'
+            isSelected ? 'bg-scope-accent border-scope-accent' : 'bg-transparent border-white/30'
           }`}>
             {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
           </div>
@@ -2250,8 +2250,8 @@ function FolderListRow({
 
         {/* Folder icon */}
         <td className="px-3 py-2 w-12">
-          <div className="w-10 h-10 rounded bg-frame-bg flex items-center justify-center">
-            <Folder className="w-5 h-5 text-frame-accent/70" />
+          <div className="w-10 h-10 rounded bg-scope-bg flex items-center justify-center">
+            <Folder className="w-5 h-5 text-scope-accent/70" />
           </div>
         </td>
 
@@ -2273,7 +2273,7 @@ function FolderListRow({
 
         {/* Date created */}
         <td className="px-3 py-2" title={date.toLocaleDateString()}>
-          <span className="text-frame-textSecondary">{formatRelativeTime(date)}</span>
+          <span className="text-scope-textSecondary">{formatRelativeTime(date)}</span>
         </td>
 
         {/* Three-dots */}
@@ -2346,12 +2346,12 @@ function MoveModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-frame-card border border-frame-border rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
+        className="bg-scope-card border border-scope-border rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-frame-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-scope-border">
           <h3 className="text-sm font-semibold text-white">{title ?? `Move ${selectedCount} item(s)`}</h3>
-          <button onClick={onClose} className="text-frame-textMuted hover:text-white transition-colors">
+          <button onClick={onClose} className="text-scope-textMuted hover:text-white transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -2360,7 +2360,7 @@ function MoveModal({
           {/* Root option */}
           <button
             onClick={() => onMove(null)}
-            className="w-full flex items-center gap-2 px-5 py-2.5 text-sm text-frame-textSecondary hover:text-white hover:bg-frame-border/50 transition-colors text-left"
+            className="w-full flex items-center gap-2 px-5 py-2.5 text-sm text-scope-textSecondary hover:text-white hover:bg-scope-border/50 transition-colors text-left"
           >
             <Home className="w-4 h-4 flex-shrink-0" />
             <span>Project root</span>
@@ -2371,10 +2371,10 @@ function MoveModal({
               key={folder.id}
               onClick={() => onMove(folder.id)}
               disabled={folder.id === currentFolderId}
-              className="w-full flex items-center gap-2 px-5 py-2.5 text-sm text-frame-textSecondary hover:text-white hover:bg-frame-border/50 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-full flex items-center gap-2 px-5 py-2.5 text-sm text-scope-textSecondary hover:text-white hover:bg-scope-border/50 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
               style={{ paddingLeft: `${20 + depth * 16}px` }}
             >
-              <Folder className="w-4 h-4 flex-shrink-0 text-frame-accent" />
+              <Folder className="w-4 h-4 flex-shrink-0 text-scope-accent" />
               <span className="truncate">{folder.name}</span>
             </button>
           ))}
@@ -2391,33 +2391,33 @@ function UploadProgressItem({ item, onCancel }: { item: UploadItem; onCancel?: (
     <div className="px-4 py-3 flex items-center gap-3">
       <div className="flex-1 min-w-0">
         <p className="text-sm text-white truncate" title={item.file.name}>{item.file.name}</p>
-        <p className="text-xs text-frame-textMuted">{formatBytes(item.file.size)}</p>
+        <p className="text-xs text-scope-textMuted">{formatBytes(item.file.size)}</p>
         {item.status === 'uploading' && (
-          <div className="mt-1.5 bg-frame-bg rounded-full h-1">
-            <div className="bg-frame-accent h-1 rounded-full transition-all" style={{ width: `${item.progress}%` }} />
+          <div className="mt-1.5 bg-scope-bg rounded-full h-1">
+            <div className="bg-scope-accent h-1 rounded-full transition-all" style={{ width: `${item.progress}%` }} />
           </div>
         )}
         {item.status === 'error' && <p className="text-xs text-red-400 mt-0.5">{item.error}</p>}
-        {item.status === 'cancelled' && <p className="text-xs text-frame-textMuted mt-0.5">Cancelled</p>}
+        {item.status === 'cancelled' && <p className="text-xs text-scope-textMuted mt-0.5">Cancelled</p>}
       </div>
       <div className="flex-shrink-0 flex items-center gap-1">
         {(item.status === 'uploading' || item.status === 'pending') && (
           <>
-            <span className="text-xs text-frame-textSecondary tabular-nums">{item.progress}%</span>
+            <span className="text-xs text-scope-textSecondary tabular-nums">{item.progress}%</span>
             {onCancel && (
               <button
                 onClick={() => onCancel(item.id)}
                 title="Cancel upload"
-                className="text-frame-textMuted hover:text-red-400 transition-colors p-1"
+                className="text-scope-textMuted hover:text-red-400 transition-colors p-1"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </>
         )}
-        {item.status === 'complete' && <CheckCircle className="w-4 h-4 text-frame-green" />}
+        {item.status === 'complete' && <CheckCircle className="w-4 h-4 text-scope-green" />}
         {item.status === 'error' && <AlertCircle className="w-4 h-4 text-red-400" />}
-        {item.status === 'cancelled' && <X className="w-4 h-4 text-frame-textMuted" />}
+        {item.status === 'cancelled' && <X className="w-4 h-4 text-scope-textMuted" />}
       </div>
     </div>
   );

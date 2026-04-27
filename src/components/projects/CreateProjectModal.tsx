@@ -70,7 +70,7 @@ export function CreateProjectModal({ onClose, onCreated }: CreateProjectModalPro
         />
 
         <div>
-          <label className="block text-sm font-medium text-frame-textSecondary mb-1.5">
+          <label className="block text-sm font-medium text-scope-textSecondary mb-1.5">
             Description
           </label>
           <textarea
@@ -78,13 +78,13 @@ export function CreateProjectModal({ onClose, onCreated }: CreateProjectModalPro
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            className="w-full bg-frame-bg border border-frame-border rounded-lg px-4 py-2.5 text-sm text-white placeholder-frame-textMuted resize-none focus:outline-none focus:border-frame-accent transition-colors"
+            className="w-full bg-scope-bg border border-scope-border rounded-lg px-4 py-2.5 text-sm text-white placeholder-scope-textMuted resize-none focus:outline-none focus:border-scope-accent transition-colors"
           />
         </div>
 
         {/* Color picker */}
         <div>
-          <label className="block text-sm font-medium text-frame-textSecondary mb-2">
+          <label className="block text-sm font-medium text-scope-textSecondary mb-2">
             Color
           </label>
           <div className="flex gap-2 flex-wrap">
@@ -94,7 +94,7 @@ export function CreateProjectModal({ onClose, onCreated }: CreateProjectModalPro
                 type="button"
                 onClick={() => setColor(c)}
                 className={`w-7 h-7 rounded-full transition-all ${
-                  color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-frame-card scale-110' : 'hover:scale-110'
+                  color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-scope-card scale-110' : 'hover:scale-110'
                 }`}
                 style={{ backgroundColor: getProjectColor(c) }}
                 title={c}

@@ -130,27 +130,27 @@ export function AddFromProjectModal({
             <div key={`${crumb.id ?? 'root'}-${i}`} className="flex items-center gap-1">
               <button
                 onClick={() => jumpToCrumb(i)}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded hover:bg-frame-cardHover transition-colors ${
-                  i === breadcrumbs.length - 1 ? 'text-white font-medium' : 'text-frame-textSecondary'
+                className={`flex items-center gap-1 px-2 py-0.5 rounded hover:bg-scope-cardHover transition-colors ${
+                  i === breadcrumbs.length - 1 ? 'text-white font-medium' : 'text-scope-textSecondary'
                 }`}
               >
                 {i === 0 ? <Home className="w-3.5 h-3.5" /> : null}
                 {crumb.name}
               </button>
-              {i < breadcrumbs.length - 1 && <ChevronRight className="w-3 h-3 text-frame-textMuted" />}
+              {i < breadcrumbs.length - 1 && <ChevronRight className="w-3 h-3 text-scope-textMuted" />}
             </div>
           ))}
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-frame-textMuted" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-scope-textMuted" />
           <input
             type="text"
             placeholder="Search this folder..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-frame-bg border border-frame-border rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-frame-textMuted focus:outline-none focus:border-frame-accent transition-colors"
+            className="w-full bg-scope-bg border border-scope-border rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-scope-textMuted focus:outline-none focus:border-scope-accent transition-colors"
           />
         </div>
 
@@ -161,7 +161,7 @@ export function AddFromProjectModal({
               <Spinner size="sm" />
             </div>
           ) : filteredFolders.length === 0 && filteredAssets.length === 0 ? (
-            <div className="text-center py-10 text-xs text-frame-textMuted">
+            <div className="text-center py-10 text-xs text-scope-textMuted">
               {search ? 'Nothing matches your search' : 'This folder is empty'}
             </div>
           ) : (
@@ -177,8 +177,8 @@ export function AddFromProjectModal({
                       alreadyAdded
                         ? 'opacity-50'
                         : isPending
-                        ? 'bg-frame-accent/10'
-                        : 'hover:bg-frame-cardHover'
+                        ? 'bg-scope-accent/10'
+                        : 'hover:bg-scope-cardHover'
                     }`}
                   >
                     <button
@@ -186,10 +186,10 @@ export function AddFromProjectModal({
                       disabled={alreadyAdded}
                       className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                         alreadyAdded
-                          ? 'bg-frame-border border-frame-border'
+                          ? 'bg-scope-border border-scope-border'
                           : isPending
-                          ? 'bg-frame-accent border-frame-accent'
-                          : 'border-frame-borderLight hover:border-frame-accent'
+                          ? 'bg-scope-accent border-scope-accent'
+                          : 'border-scope-borderLight hover:border-scope-accent'
                       }`}
                     >
                       {(alreadyAdded || isPending) && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
@@ -198,10 +198,10 @@ export function AddFromProjectModal({
                       onClick={() => enterFolder(f)}
                       className="flex items-center gap-2 min-w-0 flex-1 text-left"
                     >
-                      <FolderIcon className="w-4 h-4 text-frame-accent flex-shrink-0" />
+                      <FolderIcon className="w-4 h-4 text-scope-accent flex-shrink-0" />
                       <span className="text-sm text-white truncate">{f.name}</span>
-                      {alreadyAdded && <span className="text-[10px] uppercase text-frame-textMuted ml-1">Already added</span>}
-                      <ChevronRight className="w-3.5 h-3.5 text-frame-textMuted ml-auto" />
+                      {alreadyAdded && <span className="text-[10px] uppercase text-scope-textMuted ml-1">Already added</span>}
+                      <ChevronRight className="w-3.5 h-3.5 text-scope-textMuted ml-auto" />
                     </button>
                   </div>
                 );
@@ -221,33 +221,33 @@ export function AddFromProjectModal({
                       alreadyAdded
                         ? 'opacity-50 cursor-not-allowed'
                         : isPending
-                        ? 'bg-frame-accent/10'
-                        : 'hover:bg-frame-cardHover'
+                        ? 'bg-scope-accent/10'
+                        : 'hover:bg-scope-cardHover'
                     }`}
                   >
                     <div
                       className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                         alreadyAdded
-                          ? 'bg-frame-border border-frame-border'
+                          ? 'bg-scope-border border-scope-border'
                           : isPending
-                          ? 'bg-frame-accent border-frame-accent'
-                          : 'border-frame-borderLight'
+                          ? 'bg-scope-accent border-scope-accent'
+                          : 'border-scope-borderLight'
                       }`}
                     >
                       {(alreadyAdded || isPending) && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                     </div>
-                    <div className="w-10 h-7 rounded overflow-hidden bg-frame-bg flex-shrink-0 flex items-center justify-center">
+                    <div className="w-10 h-7 rounded overflow-hidden bg-scope-bg flex-shrink-0 flex items-center justify-center">
                       {thumb ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={thumb} alt="" className="w-full h-full object-cover" />
                       ) : a.type === 'video' ? (
-                        <Film className="w-3.5 h-3.5 text-frame-textMuted" />
+                        <Film className="w-3.5 h-3.5 text-scope-textMuted" />
                       ) : (
-                        <ImageIcon className="w-3.5 h-3.5 text-frame-textMuted" />
+                        <ImageIcon className="w-3.5 h-3.5 text-scope-textMuted" />
                       )}
                     </div>
                     <span className="text-sm text-white truncate flex-1">{a.name}</span>
-                    {alreadyAdded && <span className="text-[10px] uppercase text-frame-textMuted ml-1">Already added</span>}
+                    {alreadyAdded && <span className="text-[10px] uppercase text-scope-textMuted ml-1">Already added</span>}
                   </button>
                 );
               })}
@@ -256,8 +256,8 @@ export function AddFromProjectModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-2 border-t border-frame-border">
-          <p className="text-xs text-frame-textMuted">
+        <div className="flex items-center justify-between pt-2 border-t border-scope-border">
+          <p className="text-xs text-scope-textMuted">
             {totalPending > 0 ? `${totalPending} item${totalPending !== 1 ? 's' : ''} selected` : 'Select items to add'}
           </p>
           <div className="flex gap-2">

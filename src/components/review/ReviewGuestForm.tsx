@@ -33,18 +33,18 @@ export function ReviewGuestForm({ projectName, onSubmit }: ReviewGuestFormProps)
   return (
     <div className="w-full max-w-sm mx-auto">
       <div className="text-center mb-8">
-        <div className="w-12 h-12 bg-frame-accent/10 border border-frame-accent/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <MessageSquare className="w-6 h-6 text-frame-accent" />
+        <div className="w-12 h-12 bg-scope-accent/10 border border-scope-accent/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <MessageSquare className="w-6 h-6 text-scope-accent" />
         </div>
         <h1 className="text-xl font-bold text-white">Review: {projectName}</h1>
-        <p className="text-frame-textSecondary text-sm mt-2">
+        <p className="text-scope-textSecondary text-sm mt-2">
           Enter your details to leave comments on this review.
         </p>
       </div>
 
-      <div className="bg-frame-card border border-frame-border rounded-2xl p-6">
+      <div className="bg-scope-card border border-scope-border rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-5">
-          <MessageSquare className="w-4 h-4 text-frame-accent" />
+          <MessageSquare className="w-4 h-4 text-scope-accent" />
           <h2 className="text-sm font-semibold text-white">Who are you?</h2>
         </div>
 
@@ -71,7 +71,7 @@ export function ReviewGuestForm({ projectName, onSubmit }: ReviewGuestFormProps)
             }}
             error={errors.email}
           />
-          <p className="text-[11px] text-frame-textMuted -mt-2">
+          <p className="text-[11px] text-scope-textMuted -mt-2">
             Used only to attribute comments — leave empty to comment anonymously.
           </p>
           <Button type="submit" className="w-full">

@@ -60,7 +60,7 @@ function ZoneCard({ zone, onRename, onDeleteRequest, onImageReplace, uploading }
   };
 
   return (
-    <div className="group relative flex flex-col bg-frame-card border border-frame-border rounded-xl overflow-hidden hover:border-white/20 transition-colors">
+    <div className="group relative flex flex-col bg-scope-card border border-scope-border rounded-xl overflow-hidden hover:border-white/20 transition-colors">
       {/* Image preview */}
       <div className="relative bg-[#0d0d0d] aspect-video flex items-center justify-center overflow-hidden">
         {zone.imageUrl ? (
@@ -129,9 +129,9 @@ function ZoneCard({ zone, onRename, onDeleteRequest, onImageReplace, uploading }
                   if (e.key === 'Enter') commitRename();
                   if (e.key === 'Escape') { setDraft(zone.name); setEditing(false); }
                 }}
-                className="flex-1 bg-white/8 border border-white/20 rounded px-1.5 py-0.5 text-xs text-white outline-none focus:border-frame-accent min-w-0"
+                className="flex-1 bg-white/8 border border-white/20 rounded px-1.5 py-0.5 text-xs text-white outline-none focus:border-scope-accent min-w-0"
               />
-              <button onClick={commitRename} className="text-frame-accent hover:text-white transition-colors">
+              <button onClick={commitRename} className="text-scope-accent hover:text-white transition-colors">
                 <Check className="w-3.5 h-3.5" />
               </button>
               <button onClick={() => { setDraft(zone.name); setEditing(false); }} className="text-white/40 hover:text-white transition-colors">
@@ -277,13 +277,13 @@ export function SafeZonesManager({ getIdToken }: SafeZonesManagerProps) {
       {/* Section header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <p className="text-frame-textSecondary text-sm">
+          <p className="text-scope-textSecondary text-sm">
             {zones.length} zone{zones.length !== 1 ? 's' : ''} · Built-in zones can have their image replaced. Custom zones can be fully managed.
           </p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-3.5 py-2 bg-frame-accent hover:bg-frame-accent/90 text-white text-sm font-medium rounded-lg transition-colors"
+          className="flex items-center gap-2 px-3.5 py-2 bg-scope-accent hover:bg-scope-accent/90 text-white text-sm font-medium rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add custom zone
@@ -296,7 +296,7 @@ export function SafeZonesManager({ getIdToken }: SafeZonesManagerProps) {
           <div key={ratio}>
             <div className="flex items-center gap-3 mb-3">
               <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">{ratio}</span>
-              <div className="flex-1 h-px bg-frame-border" />
+              <div className="flex-1 h-px bg-scope-border" />
               <span className="text-xs text-white/30">{group.length}</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -349,14 +349,14 @@ function DeleteConfirmDialog({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-frame-card border border-frame-border rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+      <div className="bg-scope-card border border-scope-border rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
             <AlertTriangle className="w-4.5 h-4.5 text-red-400" />
           </div>
           <div>
             <h3 className="font-semibold text-white">Delete safe zone?</h3>
-            <p className="text-sm text-frame-textSecondary mt-1">
+            <p className="text-sm text-scope-textSecondary mt-1">
               <span className="text-white font-medium">&ldquo;{zone.name}&rdquo;</span> will be permanently removed and no longer available in the player.
             </p>
           </div>
@@ -364,7 +364,7 @@ function DeleteConfirmDialog({
         <div className="flex gap-2 justify-end">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm text-white/70 hover:text-white border border-frame-border rounded-lg transition-colors"
+            className="px-4 py-2 text-sm text-white/70 hover:text-white border border-scope-border rounded-lg transition-colors"
           >
             Cancel
           </button>
@@ -449,9 +449,9 @@ function AddZoneModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-frame-card border border-frame-border rounded-2xl w-full max-w-md mx-4 shadow-2xl">
+      <div className="bg-scope-card border border-scope-border rounded-2xl w-full max-w-md mx-4 shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-frame-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-scope-border">
           <h3 className="font-semibold text-white">Add custom safe zone</h3>
           <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
             <X className="w-4 h-4" />
@@ -468,7 +468,7 @@ function AddZoneModal({
               placeholder="e.g. Pinterest 2:3"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-frame-accent transition-colors"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-scope-accent transition-colors"
             />
           </div>
 
@@ -482,7 +482,7 @@ function AddZoneModal({
                   onClick={() => setRatio(r)}
                   className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                     ratio === r
-                      ? 'border-frame-accent bg-frame-accent/10 text-white'
+                      ? 'border-scope-accent bg-scope-accent/10 text-white'
                       : 'border-white/10 text-white/50 hover:text-white hover:border-white/30'
                   }`}
                 >
@@ -493,7 +493,7 @@ function AddZoneModal({
                 onClick={() => setRatio('custom')}
                 className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                   ratio === 'custom'
-                    ? 'border-frame-accent bg-frame-accent/10 text-white'
+                    ? 'border-scope-accent bg-scope-accent/10 text-white'
                     : 'border-white/10 text-white/50 hover:text-white hover:border-white/30'
                 }`}
               >
@@ -506,7 +506,7 @@ function AddZoneModal({
                 placeholder="e.g. 3:4"
                 value={customRatio}
                 onChange={(e) => setCustomRatio(e.target.value)}
-                className="mt-2 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-frame-accent transition-colors"
+                className="mt-2 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-scope-accent transition-colors"
               />
             )}
           </div>
@@ -527,7 +527,7 @@ function AddZoneModal({
             ) : (
               <button
                 onClick={() => fileRef.current?.click()}
-                className="w-full h-32 border border-dashed border-white/15 hover:border-frame-accent/60 rounded-xl flex flex-col items-center justify-center gap-2 text-white/40 hover:text-white/70 transition-colors"
+                className="w-full h-32 border border-dashed border-white/15 hover:border-scope-accent/60 rounded-xl flex flex-col items-center justify-center gap-2 text-white/40 hover:text-white/70 transition-colors"
               >
                 <Upload className="w-5 h-5" />
                 <span className="text-xs">Click to upload image</span>
@@ -545,18 +545,18 @@ function AddZoneModal({
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2 justify-end px-6 py-4 border-t border-frame-border">
+        <div className="flex gap-2 justify-end px-6 py-4 border-t border-scope-border">
           <button
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 text-sm text-white/70 hover:text-white border border-frame-border rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm text-white/70 hover:text-white border border-scope-border rounded-lg transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={saving || !name.trim() || !effectiveRatio}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-frame-accent hover:bg-frame-accent/90 text-white rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-scope-accent hover:bg-scope-accent/90 text-white rounded-lg transition-colors disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
             Create

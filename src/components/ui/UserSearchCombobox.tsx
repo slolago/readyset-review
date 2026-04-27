@@ -133,30 +133,30 @@ export function UserSearchCombobox({
 
       {/* Hint text for single-character queries */}
       {query.length === 1 && (
-        <p className="mt-1 text-xs text-frame-textMuted">
+        <p className="mt-1 text-xs text-scope-textMuted">
           Type at least 2 characters
         </p>
       )}
 
       {/* Dropdown */}
       {showDropdown && (
-        <ul className="absolute z-50 mt-1 w-full bg-frame-card border border-frame-border rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+        <ul className="absolute z-50 mt-1 w-full bg-scope-card border border-scope-border rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
           {results.length > 0
             ? results.map((u) => (
                 <li
                   key={u.id}
                   onMouseDown={() => handleSelect(u)}
-                  className="px-4 py-2.5 cursor-pointer hover:bg-frame-cardHover flex items-center gap-3"
+                  className="px-4 py-2.5 cursor-pointer hover:bg-scope-cardHover flex items-center gap-3"
                 >
                   <Avatar name={u.name} size="sm" />
                   <div className="min-w-0">
                     <p className="text-sm text-white truncate">{u.name}</p>
-                    <p className="text-xs text-frame-textMuted truncate">{u.email}</p>
+                    <p className="text-xs text-scope-textMuted truncate">{u.email}</p>
                   </div>
                 </li>
               ))
             : showNoResults && (
-                <li className="px-4 py-3 text-sm text-frame-textMuted">
+                <li className="px-4 py-3 text-sm text-scope-textMuted">
                   No users found
                 </li>
               )}

@@ -27,7 +27,7 @@ export function UploadPlaceholderRow({ item, hasCheckboxColumn }: UploadPlacehol
 
   return (
     <tr
-      className="border-b border-frame-border opacity-80 cursor-wait select-none"
+      className="border-b border-scope-border opacity-80 cursor-wait select-none"
       data-testid="upload-placeholder-row"
     >
       {hasCheckboxColumn && <td className="px-3 py-2 w-10" />}
@@ -36,7 +36,7 @@ export function UploadPlaceholderRow({ item, hasCheckboxColumn }: UploadPlacehol
           {isError ? (
             <AlertCircle className="w-5 h-5 text-red-400" />
           ) : (
-            <Loader2 className="w-5 h-5 text-frame-accent animate-spin" />
+            <Loader2 className="w-5 h-5 text-scope-accent animate-spin" />
           )}
         </div>
       </td>
@@ -47,18 +47,18 @@ export function UploadPlaceholderRow({ item, hasCheckboxColumn }: UploadPlacehol
             <p className="text-sm font-medium text-white truncate" title={item.file.name}>
               {item.file.name}
             </p>
-            <p className="text-xs text-frame-textMuted">
+            <p className="text-xs text-scope-textMuted">
               {formatBytes(item.file.size)} · {timeLabel}
             </p>
           </div>
           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-            <span className="text-[10px] font-semibold text-frame-accent uppercase tracking-wider">
+            <span className="text-[10px] font-semibold text-scope-accent uppercase tracking-wider">
               {isError ? 'Failed' : isComplete ? 'Finalizing' : `Uploading ${item.progress}%`}
             </span>
             {!isError && (
               <div className="w-24 h-1 bg-black/60 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-frame-accent transition-[width] duration-150 ease-out"
+                  className="h-full bg-scope-accent transition-[width] duration-150 ease-out"
                   style={{ width: `${isComplete ? 100 : item.progress}%` }}
                 />
               </div>

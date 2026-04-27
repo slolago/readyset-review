@@ -16,10 +16,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [sidebarOpen]);
 
   return (
-    <div className="flex h-screen bg-frame-bg overflow-hidden">
+    <div className="flex h-screen bg-scope-bg overflow-hidden">
       {/* Sidebar + toggle — a single flex column that shrinks but never disappears */}
       <div
-        className={`relative flex-shrink-0 transition-all duration-200 border-r border-frame-border ${
+        className={`relative flex-shrink-0 transition-all duration-200 border-r border-scope-border ${
           sidebarOpen ? 'w-60' : 'w-10'
         }`}
       >
@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <button
           onClick={() => setSidebarOpen((v) => !v)}
           title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-          className={`absolute top-3 z-10 w-7 h-7 flex items-center justify-center rounded-md text-frame-textMuted hover:text-white hover:bg-frame-cardHover transition-colors ${
+          className={`absolute top-3 z-10 w-7 h-7 flex items-center justify-center rounded-md text-scope-textMuted hover:text-white hover:bg-scope-cardHover transition-colors ${
             sidebarOpen ? 'right-1.5' : 'left-1.5'
           }`}
         >

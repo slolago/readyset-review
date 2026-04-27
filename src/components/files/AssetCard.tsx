@@ -423,7 +423,7 @@ export const AssetCard = memo(function AssetCard({
       approved: <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
       needsRevision: <AlertCircle className="w-4 h-4 text-yellow-400" />,
       inReview: <Clock className="w-4 h-4 text-blue-400" />,
-      clearStatus: <X className="w-4 h-4 text-frame-textMuted" />,
+      clearStatus: <X className="w-4 h-4 text-scope-textMuted" />,
       delete: <Trash2 className="w-4 h-4" />,
     },
   });
@@ -445,14 +445,14 @@ export const AssetCard = memo(function AssetCard({
         ctxMenu.open(`asset-${asset.id}`, { x: e.clientX, y: e.clientY }, assetActions);
       }}
       className={[
-        'group bg-frame-card rounded-xl overflow-hidden transition-all',
-        isUploading ? 'opacity-70 cursor-wait' : 'cursor-pointer hover:bg-frame-cardHover',
+        'group bg-scope-card rounded-xl overflow-hidden transition-all',
+        isUploading ? 'opacity-70 cursor-wait' : 'cursor-pointer hover:bg-scope-cardHover',
         selectionStyle(
           'asset',
           (isDropTarget || isSelected ? 'selected' : 'idle') as SelectionState
         ),
         // Preserve drop-target ring-2 emphasis so it dominates plain selection.
-        isDropTarget ? 'ring-2 ring-frame-accent bg-frame-accent/10' : '',
+        isDropTarget ? 'ring-2 ring-scope-accent bg-scope-accent/10' : '',
       ].filter(Boolean).join(' ')}
     >
       {/* Thumbnail */}
@@ -506,23 +506,23 @@ export const AssetCard = memo(function AssetCard({
             onLoadedMetadata={handleVideoMetadata}
           />
         ) : asset.type !== 'video' && asset.type !== 'image' ? (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-frame-bg gap-2">
+          <div className="w-full h-full flex flex-col items-center justify-center bg-scope-bg gap-2">
             {(() => {
               const Icon = ICON_COMPONENTS[TYPE_META[asset.type].iconName];
-              return <Icon className="w-12 h-12 text-frame-textMuted" />;
+              return <Icon className="w-12 h-12 text-scope-textMuted" />;
             })()}
             {asset.subtype && (
-              <span className="px-2 py-0.5 bg-frame-card rounded text-[10px] font-mono uppercase text-frame-textSecondary tracking-wide">
+              <span className="px-2 py-0.5 bg-scope-card rounded text-[10px] font-mono uppercase text-scope-textSecondary tracking-wide">
                 .{asset.subtype}
               </span>
             )}
           </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-frame-bg">
+          <div className="w-full h-full flex items-center justify-center bg-scope-bg">
             {asset.type === 'video' ? (
-              <Film className="w-10 h-10 text-frame-textMuted" />
+              <Film className="w-10 h-10 text-scope-textMuted" />
             ) : (
-              <ImageIcon className="w-10 h-10 text-frame-textMuted" />
+              <ImageIcon className="w-10 h-10 text-scope-textMuted" />
             )}
           </div>
         )}
@@ -569,7 +569,7 @@ export const AssetCard = memo(function AssetCard({
         {asset.type === 'video' && isHovering && spriteLoaded && (
           <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-black/40 z-[2] pointer-events-none">
             <div
-              className="h-full bg-frame-accent"
+              className="h-full bg-scope-accent"
               style={{ width: `${scrubPct * 100}%` }}
             />
           </div>
@@ -578,7 +578,7 @@ export const AssetCard = memo(function AssetCard({
         {/* Loading indicator while sprite is generating */}
         {asset.type === 'video' && isHovering && generatingSprite && !spriteLoaded && (
           <div className="absolute bottom-1 right-1 z-[2] bg-black/70 backdrop-blur-sm rounded-full p-1 pointer-events-none">
-            <div className="w-3 h-3 border-2 border-frame-accent border-t-transparent rounded-full animate-spin" />
+            <div className="w-3 h-3 border-2 border-scope-accent border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
@@ -589,7 +589,7 @@ export const AssetCard = memo(function AssetCard({
             onClick={(e) => { e.stopPropagation(); onToggleSelect(e); }}
           >
             <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-              isSelected ? 'bg-frame-accent border-frame-accent' : 'bg-black/60 border-white/60 backdrop-blur-sm'
+              isSelected ? 'bg-scope-accent border-scope-accent' : 'bg-black/60 border-white/60 backdrop-blur-sm'
             }`}>
               {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
             </div>
@@ -615,7 +615,7 @@ export const AssetCard = memo(function AssetCard({
             {TYPE_META[asset.type].label.toLowerCase()}
           </div>
           <div className={`px-1.5 py-0.5 backdrop-blur-sm rounded text-xs text-white flex items-center gap-1 font-medium ${
-            versionCount > 1 ? 'bg-frame-accent/80' : 'bg-black/60'
+            versionCount > 1 ? 'bg-scope-accent/80' : 'bg-black/60'
           }`}>
             <Layers className="w-3 h-3" />
             V{versionCount}
@@ -687,13 +687,13 @@ export const AssetCard = memo(function AssetCard({
           </p>
         )}
         <div className="flex items-center justify-between mt-0.5">
-          <p className="text-xs text-frame-textMuted">{formatBytes(asset.size)}</p>
+          <p className="text-xs text-scope-textMuted">{formatBytes(asset.size)}</p>
           <div className="flex items-center gap-2">
             {asset.rating && asset.rating > 0 && (
               <RatingStars value={asset.rating} readOnly size="sm" />
             )}
             {commentCount > 0 && (
-              <span className="flex items-center gap-0.5 text-xs text-frame-textMuted">
+              <span className="flex items-center gap-0.5 text-xs text-scope-textMuted">
                 <MessageSquare className="w-3 h-3" />
                 {commentCount > 99 ? '99+' : commentCount}
               </span>
@@ -702,8 +702,8 @@ export const AssetCard = memo(function AssetCard({
         </div>
         {uploadDateLabel && (
           <div className="flex items-center gap-1 mt-0.5">
-            <Clock className="w-3 h-3 text-frame-textMuted flex-shrink-0" />
-            <p className="text-xs text-frame-textMuted">{uploadDateLabel}</p>
+            <Clock className="w-3 h-3 text-scope-textMuted flex-shrink-0" />
+            <p className="text-xs text-scope-textMuted">{uploadDateLabel}</p>
           </div>
         )}
       </div>

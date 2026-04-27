@@ -60,7 +60,7 @@ export function Breadcrumb({ items, projectId, projectColor = '#7a00df' }: Bread
       <Link
         href={href}
         title={item.name}
-        className="flex items-center gap-1.5 text-frame-textSecondary hover:text-white transition-colors max-w-[200px] truncate"
+        className="flex items-center gap-1.5 text-scope-textSecondary hover:text-white transition-colors max-w-[200px] truncate"
       >
         {homeIcon}
         <span className="truncate">{item.name}</span>
@@ -80,7 +80,7 @@ export function Breadcrumb({ items, projectId, projectColor = '#7a00df' }: Bread
 
         return (
           <span key={`${item.id ?? 'root'}-${visibleIdx}`} className="flex items-center gap-1 flex-shrink-0">
-            {visibleIdx > 0 && <ChevronRight className="w-4 h-4 text-frame-textMuted" />}
+            {visibleIdx > 0 && <ChevronRight className="w-4 h-4 text-scope-textMuted" />}
 
             {/* Collapsed dropdown sits between root and the last two items */}
             {showCollapsedDropdown && collapsedItems.length > 0 && (
@@ -89,19 +89,19 @@ export function Breadcrumb({ items, projectId, projectColor = '#7a00df' }: Bread
                   <button
                     onClick={() => setOpen((v) => !v)}
                     title={`${collapsedItems.length} hidden folders`}
-                    className="flex items-center justify-center w-6 h-6 rounded hover:bg-frame-border text-frame-textMuted hover:text-white transition-colors"
+                    className="flex items-center justify-center w-6 h-6 rounded hover:bg-scope-border text-scope-textMuted hover:text-white transition-colors"
                   >
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                   {open && (
-                    <div className="absolute top-full left-0 mt-1 min-w-[180px] max-w-[280px] bg-frame-card border border-frame-border rounded-lg shadow-xl overflow-hidden z-30">
+                    <div className="absolute top-full left-0 mt-1 min-w-[180px] max-w-[280px] bg-scope-card border border-scope-border rounded-lg shadow-xl overflow-hidden z-30">
                       {collapsedItems.map((c) => (
                         <Link
                           key={c.id ?? 'hidden-root'}
                           href={c.id ? `/projects/${projectId}/folders/${c.id}` : `/projects/${projectId}`}
                           onClick={() => setOpen(false)}
                           title={c.name}
-                          className="block px-3 py-2 text-xs text-frame-textSecondary hover:text-white hover:bg-frame-cardHover transition-colors truncate"
+                          className="block px-3 py-2 text-xs text-scope-textSecondary hover:text-white hover:bg-scope-cardHover transition-colors truncate"
                         >
                           {c.name}
                         </Link>
@@ -109,7 +109,7 @@ export function Breadcrumb({ items, projectId, projectColor = '#7a00df' }: Bread
                     </div>
                   )}
                 </div>
-                <ChevronRight className="w-4 h-4 text-frame-textMuted" />
+                <ChevronRight className="w-4 h-4 text-scope-textMuted" />
               </>
             )}
 

@@ -14,12 +14,12 @@ export function Badge({
   className,
 }: BadgeProps) {
   const variants = {
-    default: 'bg-frame-card text-frame-textSecondary border border-frame-border',
-    success: 'bg-frame-green/10 text-frame-green',
+    default: 'bg-scope-card text-scope-textSecondary border border-scope-border',
+    success: 'bg-scope-green/10 text-scope-green',
     warning: 'bg-yellow-500/10 text-yellow-400',
     error: 'bg-red-500/10 text-red-400',
     info: 'bg-blue-500/10 text-blue-400',
-    purple: 'bg-frame-accent/10 text-frame-accent',
+    purple: 'bg-scope-accent/10 text-scope-accent',
   };
 
   const sizes = {

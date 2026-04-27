@@ -68,15 +68,15 @@ export function RenameProjectModal({ project, onClose, onRenamed }: Props) {
     <Modal isOpen onClose={onClose} title="Rename project" size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs text-frame-textSecondary mb-1.5">Name</label>
+          <label className="block text-xs text-scope-textSecondary mb-1.5">Name</label>
           <input
             ref={inputRef}
             type="text"
             value={name}
             onChange={(e) => { setName(e.target.value); if (error) setError(null); }}
             disabled={saving}
-            className={`w-full bg-frame-bg border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-frame-accent ${
-              error ? 'border-red-400/60' : 'border-frame-border'
+            className={`w-full bg-scope-bg border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-scope-accent ${
+              error ? 'border-red-400/60' : 'border-scope-border'
             }`}
           />
           {error && <p className="text-xs text-red-400 mt-1.5">{error}</p>}

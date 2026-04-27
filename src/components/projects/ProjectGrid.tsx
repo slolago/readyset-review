@@ -23,7 +23,7 @@ export function ProjectGrid({
         {[1, 2, 3, 4, 5, 6].map((i) => (
           <div
             key={i}
-            className="h-32 bg-frame-card rounded-xl animate-pulse border border-frame-border"
+            className="h-32 bg-scope-card rounded-xl animate-pulse border border-scope-border"
           />
         ))}
       </div>
@@ -33,17 +33,17 @@ export function ProjectGrid({
   if (projects.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-16 h-16 bg-frame-card border border-frame-border rounded-2xl flex items-center justify-center mb-4">
-          <FolderOpen className="w-8 h-8 text-frame-textMuted" />
+        <div className="w-16 h-16 bg-scope-card border border-scope-border rounded-2xl flex items-center justify-center mb-4">
+          <FolderOpen className="w-8 h-8 text-scope-textMuted" />
         </div>
         <h3 className="text-lg font-semibold text-white mb-2">No projects yet</h3>
-        <p className="text-frame-textSecondary text-sm max-w-sm mb-6">
+        <p className="text-scope-textSecondary text-sm max-w-sm mb-6">
           Create your first project to start uploading and reviewing media with your team.
         </p>
         {onCreateNew && (
           <button
             onClick={onCreateNew}
-            className="flex items-center gap-2 bg-frame-accent hover:bg-frame-accentHover text-white font-medium px-5 py-2.5 rounded-xl text-sm transition-colors"
+            className="flex items-center gap-2 bg-scope-accent hover:bg-scope-accentHover text-white font-medium px-5 py-2.5 rounded-xl text-sm transition-colors"
           >
             <Plus className="w-4 h-4" />
             Create first project

@@ -60,30 +60,30 @@ export function VersionSwitcher({
       <div ref={ref} className="relative">
         <button
           onClick={() => setOpen((v) => !v)}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 bg-frame-card border rounded-lg text-xs font-medium transition-colors ${
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 bg-scope-card border rounded-lg text-xs font-medium transition-colors ${
             compareMode
-              ? 'border-frame-border text-frame-textSecondary'
-              : 'border-frame-border text-white hover:border-frame-borderLight'
+              ? 'border-scope-border text-scope-textSecondary'
+              : 'border-scope-border text-white hover:border-scope-borderLight'
           }`}
         >
-          <Layers className="w-3.5 h-3.5 text-frame-textMuted" />
+          <Layers className="w-3.5 h-3.5 text-scope-textMuted" />
           <span>V{active?.version}</span>
-          <ChevronDown className={`w-3 h-3 text-frame-textMuted transition-transform ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-3 h-3 text-scope-textMuted transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
 
         {open && (
-          <div className="absolute right-0 top-full mt-1 bg-frame-card border border-frame-border rounded-lg shadow-xl overflow-hidden z-50 min-w-[180px]">
+          <div className="absolute right-0 top-full mt-1 bg-scope-card border border-scope-border rounded-lg shadow-xl overflow-hidden z-50 min-w-[180px]">
             {versions.map((v) => (
               <button
                 key={v.id}
                 onClick={() => { onSelectVersion(v); setOpen(false); }}
-                className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-xs hover:bg-frame-cardHover transition-colors ${
-                  v.id === activeVersionId && !compareMode ? 'text-frame-accent font-semibold' : 'text-white'
+                className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-xs hover:bg-scope-cardHover transition-colors ${
+                  v.id === activeVersionId && !compareMode ? 'text-scope-accent font-semibold' : 'text-white'
                 }`}
               >
                 <div className="flex flex-col items-start min-w-0">
                   <span className="truncate font-medium">V{v.version} — {v.name}</span>
-                  <span className="text-frame-textMuted text-[10px]">
+                  <span className="text-scope-textMuted text-[10px]">
                     {[formatVersionDate(v.createdAt), (v as any).fileSize ? formatBytes((v as any).fileSize) : null]
                       .filter(Boolean)
                       .join(' · ')}
@@ -104,8 +104,8 @@ export function VersionSwitcher({
         title="Compare versions"
         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
           compareMode
-            ? 'bg-frame-accent/15 border-frame-accent text-frame-accent'
-            : 'border-frame-border text-frame-textSecondary hover:text-white hover:border-frame-borderLight'
+            ? 'bg-scope-accent/15 border-scope-accent text-scope-accent'
+            : 'border-scope-border text-scope-textSecondary hover:text-white hover:border-scope-borderLight'
         }`}
       >
         <GitCompare className="w-3.5 h-3.5" />

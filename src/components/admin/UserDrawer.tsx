@@ -36,10 +36,10 @@ interface UserDrawerProps {
 }
 
 const ROLE_STYLES: Record<string, string> = {
-  admin: 'bg-frame-accent/15 text-frame-accent',
+  admin: 'bg-scope-accent/15 text-scope-accent',
   manager: 'bg-purple-500/15 text-purple-400',
   editor: 'bg-blue-500/15 text-blue-400',
-  viewer: 'bg-white/5 text-frame-textSecondary',
+  viewer: 'bg-white/5 text-scope-textSecondary',
 };
 
 export function UserDrawer({ userId, onClose, onChanged, getIdToken }: UserDrawerProps) {
@@ -130,12 +130,12 @@ export function UserDrawer({ userId, onClose, onChanged, getIdToken }: UserDrawe
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="absolute top-0 right-0 bottom-0 w-[440px] bg-frame-sidebar border-l border-frame-border shadow-2xl pointer-events-auto flex flex-col"
+        className="absolute top-0 right-0 bottom-0 w-[440px] bg-scope-sidebar border-l border-scope-border shadow-2xl pointer-events-auto flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-frame-border flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-scope-border flex-shrink-0">
           <h2 id={titleId} className="text-sm font-semibold text-white">User details</h2>
-          <button onClick={onClose} className="text-frame-textMuted hover:text-white transition-colors">
+          <button onClick={onClose} className="text-scope-textMuted hover:text-white transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -147,7 +147,7 @@ export function UserDrawer({ userId, onClose, onChanged, getIdToken }: UserDrawe
         ) : (
           <div className="flex-1 overflow-y-auto">
             {/* Profile */}
-            <div className="px-5 py-4 border-b border-frame-border">
+            <div className="px-5 py-4 border-b border-scope-border">
               <div className="flex items-center gap-3">
                 <Avatar src={data.user.avatar} name={data.user.name} size="lg" />
                 <div className="min-w-0 flex-1">
@@ -159,8 +159,8 @@ export function UserDrawer({ userId, onClose, onChanged, getIdToken }: UserDrawe
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-frame-textMuted truncate">{data.user.email}</p>
-                  <p className="text-[11px] text-frame-textMuted mt-0.5">
+                  <p className="text-xs text-scope-textMuted truncate">{data.user.email}</p>
+                  <p className="text-[11px] text-scope-textMuted mt-0.5">
                     Joined {data.user.createdAt ? formatRelativeTime((data.user.createdAt as any).toDate?.() ?? new Date((data.user.createdAt as any)?._seconds * 1000 || 0)) : '—'}
                   </p>
                 </div>
@@ -168,8 +168,8 @@ export function UserDrawer({ userId, onClose, onChanged, getIdToken }: UserDrawe
             </div>
 
             {/* Role */}
-            <div className="px-5 py-4 border-b border-frame-border space-y-2">
-              <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Platform role</h3>
+            <div className="px-5 py-4 border-b border-scope-border space-y-2">
+              <h3 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider">Platform role</h3>
               <div className="grid grid-cols-4 gap-1.5">
                 {(['viewer', 'editor', 'manager', 'admin'] as Role[]).map((r) => (
                   <button
@@ -179,7 +179,7 @@ export function UserDrawer({ userId, onClose, onChanged, getIdToken }: UserDrawe
                     className={`px-2 py-1.5 text-xs rounded-lg border font-medium transition-colors capitalize ${
                       data.user.role === r
                         ? `${ROLE_STYLES[r]} border-current/30`
-                        : 'border-frame-border text-frame-textSecondary hover:text-white hover:border-frame-borderLight'
+                        : 'border-scope-border text-scope-textSecondary hover:text-white hover:border-scope-borderLight'
                     } disabled:opacity-70`}
                   >
                     {r === 'admin' && <Shield className="w-3 h-3 inline mr-1" />}
@@ -187,47 +187,47 @@ export function UserDrawer({ userId, onClose, onChanged, getIdToken }: UserDrawe
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-frame-textMuted">
+              <p className="text-[11px] text-scope-textMuted">
                 <strong>Admin</strong>: full control. <strong>Manager</strong>: create review links, delete.{' '}
                 <strong>Editor</strong>: upload, comment. <strong>Viewer</strong>: read + comment only.
               </p>
             </div>
 
             {/* Stats */}
-            <div className="px-5 py-4 border-b border-frame-border">
-              <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider mb-2">Activity</h3>
+            <div className="px-5 py-4 border-b border-scope-border">
+              <h3 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider mb-2">Activity</h3>
               <div className="grid grid-cols-2 gap-2">
-                <div className="bg-frame-card rounded-lg px-3 py-2.5 flex items-center gap-2">
-                  <Upload className="w-3.5 h-3.5 text-frame-textMuted" />
+                <div className="bg-scope-card rounded-lg px-3 py-2.5 flex items-center gap-2">
+                  <Upload className="w-3.5 h-3.5 text-scope-textMuted" />
                   <div>
                     <p className="text-lg font-semibold text-white leading-none">{data.stats.assetsUploaded}</p>
-                    <p className="text-[10px] text-frame-textMuted mt-0.5">Assets uploaded</p>
+                    <p className="text-[10px] text-scope-textMuted mt-0.5">Assets uploaded</p>
                   </div>
                 </div>
-                <div className="bg-frame-card rounded-lg px-3 py-2.5 flex items-center gap-2">
-                  <MessageSquare className="w-3.5 h-3.5 text-frame-textMuted" />
+                <div className="bg-scope-card rounded-lg px-3 py-2.5 flex items-center gap-2">
+                  <MessageSquare className="w-3.5 h-3.5 text-scope-textMuted" />
                   <div>
                     <p className="text-lg font-semibold text-white leading-none">{data.stats.commentsAuthored}</p>
-                    <p className="text-[10px] text-frame-textMuted mt-0.5">Comments</p>
+                    <p className="text-[10px] text-scope-textMuted mt-0.5">Comments</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Owned projects */}
-            <div className="px-5 py-4 border-b border-frame-border">
-              <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider mb-2">
+            <div className="px-5 py-4 border-b border-scope-border">
+              <h3 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider mb-2">
                 Owns {data.ownedProjects.length} project{data.ownedProjects.length !== 1 ? 's' : ''}
               </h3>
               {data.ownedProjects.length === 0 ? (
-                <p className="text-xs text-frame-textMuted">Not an owner of any project.</p>
+                <p className="text-xs text-scope-textMuted">Not an owner of any project.</p>
               ) : (
                 <div className="space-y-1">
                   {data.ownedProjects.map((p) => (
-                    <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-frame-cardHover text-xs">
+                    <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-scope-cardHover text-xs">
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color ?? '#888' }} />
                       <span className="text-white truncate flex-1">{p.name}</span>
-                      <span className="text-frame-textMuted text-[10px]">
+                      <span className="text-scope-textMuted text-[10px]">
                         {p.collaboratorCount ?? 0} collab{p.collaboratorCount === 1 ? '' : 's'}
                       </span>
                     </div>
@@ -237,25 +237,25 @@ export function UserDrawer({ userId, onClose, onChanged, getIdToken }: UserDrawe
             </div>
 
             {/* Collaborating */}
-            <div className="px-5 py-4 border-b border-frame-border">
+            <div className="px-5 py-4 border-b border-scope-border">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider">
+                <h3 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider">
                   Collaborates on {data.collaboratingProjects.length}
                 </h3>
                 <button
                   onClick={() => setShowProjectPicker(true)}
-                  className="text-xs text-frame-accent hover:text-frame-accentHover font-medium flex items-center gap-1"
+                  className="text-xs text-scope-accent hover:text-scope-accentHover font-medium flex items-center gap-1"
                 >
                   <Plus className="w-3 h-3" />
                   Add project
                 </button>
               </div>
               {data.collaboratingProjects.length === 0 ? (
-                <p className="text-xs text-frame-textMuted">Not a collaborator on any project.</p>
+                <p className="text-xs text-scope-textMuted">Not a collaborator on any project.</p>
               ) : (
                 <div className="space-y-1">
                   {data.collaboratingProjects.map((p) => (
-                    <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-frame-cardHover group text-xs">
+                    <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-scope-cardHover group text-xs">
                       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.color ?? '#888' }} />
                       <span className="text-white truncate flex-1">{p.name}</span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${ROLE_STYLES[p.role ?? 'viewer']}`}>
@@ -265,7 +265,7 @@ export function UserDrawer({ userId, onClose, onChanged, getIdToken }: UserDrawe
                         onClick={() => removeFromProject(p.id)}
                         disabled={saving}
                         title="Remove from project"
-                        className="opacity-0 group-hover:opacity-100 text-frame-textMuted hover:text-red-400 p-0.5 transition-all disabled:opacity-50"
+                        className="opacity-0 group-hover:opacity-100 text-scope-textMuted hover:text-red-400 p-0.5 transition-all disabled:opacity-50"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -277,7 +277,7 @@ export function UserDrawer({ userId, onClose, onChanged, getIdToken }: UserDrawe
 
             {/* Danger / status */}
             <div className="px-5 py-4 space-y-2">
-              <h3 className="text-xs font-semibold text-frame-textMuted uppercase tracking-wider">Account status</h3>
+              <h3 className="text-xs font-semibold text-scope-textMuted uppercase tracking-wider">Account status</h3>
               <button
                 onClick={toggleSuspended}
                 disabled={saving}
@@ -290,7 +290,7 @@ export function UserDrawer({ userId, onClose, onChanged, getIdToken }: UserDrawe
                 {data.user.disabled ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
                 {data.user.disabled ? 'Reactivate account' : 'Suspend account'}
               </button>
-              <p className="text-[11px] text-frame-textMuted">
+              <p className="text-[11px] text-scope-textMuted">
                 {data.user.disabled
                   ? 'Account is suspended. The user cannot log in or use the app.'
                   : 'Suspending blocks the user from logging in. Projects and comments are preserved.'}
@@ -370,34 +370,34 @@ function ProjectPicker({
   );
 
   return (
-    <div className="absolute inset-0 bg-frame-sidebar flex flex-col z-10">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-frame-border">
+    <div className="absolute inset-0 bg-scope-sidebar flex flex-col z-10">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-scope-border">
         <h3 className="text-sm font-semibold text-white">Add to project</h3>
-        <button onClick={onClose} className="text-frame-textMuted hover:text-white">
+        <button onClick={onClose} className="text-scope-textMuted hover:text-white">
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="px-5 py-3 border-b border-frame-border space-y-2">
+      <div className="px-5 py-3 border-b border-scope-border space-y-2">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-frame-textMuted" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-scope-textMuted" />
           <input
             autoFocus
             type="text"
             placeholder="Search projects..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-frame-bg border border-frame-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-frame-textMuted focus:outline-none focus:border-frame-accent"
+            className="w-full bg-scope-bg border border-scope-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-scope-textMuted focus:outline-none focus:border-scope-accent"
           />
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-[11px] text-frame-textMuted">Role:</span>
+          <span className="text-[11px] text-scope-textMuted">Role:</span>
           {(['viewer', 'editor', 'manager'] as ProjectRole[]).map((r) => (
             <button
               key={r}
               onClick={() => setRole(r)}
               className={`px-2 py-0.5 text-xs rounded capitalize ${
-                role === r ? `${ROLE_STYLES[r]} border border-current/30` : 'text-frame-textSecondary hover:text-white'
+                role === r ? `${ROLE_STYLES[r]} border border-current/30` : 'text-scope-textSecondary hover:text-white'
               }`}
             >
               {r}
@@ -410,7 +410,7 @@ function ProjectPicker({
         {loading ? (
           <div className="flex justify-center py-8"><Spinner size="sm" /></div>
         ) : filtered.length === 0 ? (
-          <p className="text-xs text-frame-textMuted text-center py-8">
+          <p className="text-xs text-scope-textMuted text-center py-8">
             {search ? 'No matches.' : 'User already has access to every project.'}
           </p>
         ) : (
@@ -419,11 +419,11 @@ function ProjectPicker({
               key={p.id}
               disabled={saving}
               onClick={() => addToProject(p.id)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-frame-cardHover transition-colors text-left disabled:opacity-50"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-scope-cardHover transition-colors text-left disabled:opacity-50"
             >
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color ?? '#888' }} />
               <span className="text-sm text-white truncate flex-1">{p.name}</span>
-              <span className="text-[10px] text-frame-textMuted">{p.ownerName}</span>
+              <span className="text-[10px] text-scope-textMuted">{p.ownerName}</span>
             </button>
           ))
         )}

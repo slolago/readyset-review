@@ -206,12 +206,12 @@ export function Dropdown({ trigger, items, align = 'right', className }: Dropdow
               zIndex: 9999,
               visibility: measured ? 'visible' : 'hidden',
             }}
-            className="bg-frame-card border border-frame-border rounded-xl shadow-2xl py-1 min-w-[160px] animate-fade-in"
+            className="bg-scope-card border border-scope-border rounded-xl shadow-2xl py-1 min-w-[160px] animate-fade-in"
           >
             {items.map((item, i) => (
               <React.Fragment key={i}>
                 {item.divider && i > 0 && (
-                  <div className="my-1 border-t border-frame-border" />
+                  <div className="my-1 border-t border-scope-border" />
                 )}
                 <button
                   ref={(el) => {
@@ -228,7 +228,7 @@ export function Dropdown({ trigger, items, align = 'right', className }: Dropdow
                     'w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors text-left outline-none',
                     item.danger
                       ? 'text-red-400 hover:bg-red-500/10 focus:bg-red-500/10'
-                      : 'text-frame-textSecondary hover:text-white hover:bg-frame-cardHover focus:text-white focus:bg-frame-cardHover'
+                      : 'text-scope-textSecondary hover:text-white hover:bg-scope-cardHover focus:text-white focus:bg-scope-cardHover'
                   )}
                 >
                   {item.icon && <span className="flex-shrink-0">{item.icon}</span>}

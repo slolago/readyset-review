@@ -106,7 +106,7 @@ export function ReviewLinksTab({ projectId }: ReviewLinksTabProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">Review Links</h2>
-        <p className="text-sm text-frame-textMuted">
+        <p className="text-sm text-scope-textMuted">
           {links.length} link{links.length !== 1 ? 's' : ''}
         </p>
       </div>
@@ -116,7 +116,7 @@ export function ReviewLinksTab({ projectId }: ReviewLinksTabProps) {
 
       {/* Empty state */}
       {!loading && links.length === 0 && (
-        <div className="text-center py-16 text-frame-textMuted">
+        <div className="text-center py-16 text-scope-textMuted">
           <Link className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="text-sm">No review links yet</p>
           <p className="text-xs mt-1">Create one from the Share button or a folder menu</p>
@@ -129,14 +129,14 @@ export function ReviewLinksTab({ projectId }: ReviewLinksTabProps) {
           {links.map((link) => (
             <div
               key={link.id}
-              className="flex items-center gap-3 p-3 bg-frame-card border border-frame-border rounded-xl hover:bg-frame-cardHover transition-colors"
+              className="flex items-center gap-3 p-3 bg-scope-card border border-scope-border rounded-xl hover:bg-scope-cardHover transition-colors"
             >
               {/* Name — inline rename */}
               <div className="flex-1 min-w-0">
                 {renamingId === link.id ? (
                   <input
                     autoFocus
-                    className="w-full bg-frame-bg border border-frame-accent rounded px-2 py-0.5 text-sm text-white outline-none focus:ring-1 focus:ring-frame-accent"
+                    className="w-full bg-scope-bg border border-scope-accent rounded px-2 py-0.5 text-sm text-white outline-none focus:ring-1 focus:ring-scope-accent"
                     value={renameValue}
                     onChange={(e) => setRenameValue(e.target.value)}
                     onKeyDown={(e) => {
@@ -148,7 +148,7 @@ export function ReviewLinksTab({ projectId }: ReviewLinksTabProps) {
                 ) : (
                   <p className="text-sm font-medium text-white truncate">{link.name}</p>
                 )}
-                <p className="text-xs text-frame-textMuted truncate mt-0.5">
+                <p className="text-xs text-scope-textMuted truncate mt-0.5">
                   {linkUrl(link.token)}
                 </p>
               </div>
@@ -159,7 +159,7 @@ export function ReviewLinksTab({ projectId }: ReviewLinksTabProps) {
                 <button
                   title="Copy link"
                   onClick={() => handleCopy(link.token)}
-                  className="w-8 h-8 flex items-center justify-center rounded text-frame-textMuted hover:text-white hover:bg-frame-border transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded text-scope-textMuted hover:text-white hover:bg-scope-border transition-colors"
                 >
                   <Copy className="w-4 h-4" />
                 </button>
@@ -170,7 +170,7 @@ export function ReviewLinksTab({ projectId }: ReviewLinksTabProps) {
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Open review link"
-                  className="w-8 h-8 flex items-center justify-center rounded text-frame-textMuted hover:text-white hover:bg-frame-border transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded text-scope-textMuted hover:text-white hover:bg-scope-border transition-colors"
                 >
                   <ExternalLink className="w-4 h-4" />
                 </a>
@@ -179,7 +179,7 @@ export function ReviewLinksTab({ projectId }: ReviewLinksTabProps) {
                 <button
                   title="Rename"
                   onClick={() => startRename(link)}
-                  className="w-8 h-8 flex items-center justify-center rounded text-frame-textMuted hover:text-white hover:bg-frame-border transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded text-scope-textMuted hover:text-white hover:bg-scope-border transition-colors"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
@@ -188,7 +188,7 @@ export function ReviewLinksTab({ projectId }: ReviewLinksTabProps) {
                 <button
                   title="Delete"
                   onClick={() => handleDelete(link)}
-                  className="w-8 h-8 flex items-center justify-center rounded text-frame-textMuted hover:text-red-400 hover:bg-frame-border transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded text-scope-textMuted hover:text-red-400 hover:bg-scope-border transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

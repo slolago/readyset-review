@@ -111,14 +111,14 @@ export function FilterPopover({
         className={cn(
           'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
           active
-            ? 'bg-frame-accent/15 text-frame-accent border border-frame-accent/40'
-            : 'bg-frame-card border border-frame-border text-frame-textSecondary hover:text-white hover:border-frame-borderLight',
+            ? 'bg-scope-accent/15 text-scope-accent border border-scope-accent/40'
+            : 'bg-scope-card border border-scope-border text-scope-textSecondary hover:text-white hover:border-scope-borderLight',
           className,
         )}
       >
         <span>{label}</span>
         {active && (
-          <span className="px-1.5 py-0.5 rounded-full bg-frame-accent text-white text-[10px] font-semibold leading-none">
+          <span className="px-1.5 py-0.5 rounded-full bg-scope-accent text-white text-[10px] font-semibold leading-none">
             {activeCount}
           </span>
         )}
@@ -141,7 +141,7 @@ export function FilterPopover({
               zIndex: 9999,
               visibility: measured ? 'visible' : 'hidden',
             }}
-            className="bg-frame-card border border-frame-border rounded-xl shadow-2xl overflow-hidden animate-fade-in"
+            className="bg-scope-card border border-scope-border rounded-xl shadow-2xl overflow-hidden animate-fade-in"
           >
             {children}
           </div>,

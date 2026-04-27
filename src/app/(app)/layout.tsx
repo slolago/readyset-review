@@ -18,8 +18,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-frame-bg flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-frame-accent border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-scope-bg flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-scope-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }

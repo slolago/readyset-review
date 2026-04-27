@@ -78,7 +78,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 {opts.title}
               </h2>
               {opts.message && (
-                <div className="text-sm text-frame-textSecondary leading-relaxed whitespace-pre-line break-words">
+                <div className="text-sm text-scope-textSecondary leading-relaxed whitespace-pre-line break-words">
                   {opts.message}
                 </div>
               )}

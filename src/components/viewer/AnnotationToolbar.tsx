@@ -58,7 +58,7 @@ export function AnnotationToolbar({
             className={cn(
               'w-8 h-8 rounded-lg flex items-center justify-center transition-all',
               tool === t.id
-                ? 'bg-frame-accent text-white'
+                ? 'bg-scope-accent text-white'
                 : 'text-white/70 hover:text-white hover:bg-white/10'
             )}
           >

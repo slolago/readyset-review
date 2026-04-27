@@ -9,7 +9,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        frame: {
+        scope: {
           bg: '#08080f',
           sidebar: '#0e0e18',
           card: '#13131f',

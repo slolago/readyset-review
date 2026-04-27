@@ -296,13 +296,13 @@ export function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: Ver
       onClick={handleClose}
     >
       <div
-        className="bg-frame-card border border-frame-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+        className="bg-scope-card border border-scope-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-frame-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-scope-border">
           <h3 className="text-sm font-semibold text-white">Version stack</h3>
-          <button onClick={handleClose} className="text-frame-textMuted hover:text-white transition-colors">
+          <button onClick={handleClose} className="text-scope-textMuted hover:text-white transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -311,10 +311,10 @@ export function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: Ver
         <div className="max-h-80 overflow-y-auto py-2 select-none">
           {loading ? (
             <div className="flex items-center justify-center py-10">
-              <div className="w-6 h-6 border-2 border-frame-accent border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-scope-accent border-t-transparent rounded-full animate-spin" />
             </div>
           ) : versions.length === 0 ? (
-            <p className="text-center text-sm text-frame-textMuted py-8">No versions found.</p>
+            <p className="text-center text-sm text-scope-textMuted py-8">No versions found.</p>
           ) : (
             <>
               {versions.map((version, idx) => {
@@ -329,7 +329,7 @@ export function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: Ver
                       }}
                       className={[
                         'flex items-center gap-3 px-5 py-3 transition-colors',
-                        isDragSource ? 'opacity-40' : 'hover:bg-frame-border/30',
+                        isDragSource ? 'opacity-40' : 'hover:bg-scope-border/30',
                       ].join(' ')}
                     >
                       {canReorder && (
@@ -344,8 +344,8 @@ export function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: Ver
                           aria-label={`Reorder V${idx + 1} — drag or use arrow keys`}
                           title="Drag to reorder, or focus and use ↑ ↓ / Home / End"
                           className={[
-                            'flex-shrink-0 p-1 -m-1 rounded text-frame-textMuted hover:text-white transition-colors',
-                            'focus:outline-none focus-visible:ring-2 focus-visible:ring-frame-accent',
+                            'flex-shrink-0 p-1 -m-1 rounded text-scope-textMuted hover:text-white transition-colors',
+                            'focus:outline-none focus-visible:ring-2 focus-visible:ring-scope-accent',
                             'disabled:opacity-30 disabled:cursor-not-allowed',
                             dragState ? 'cursor-grabbing' : 'cursor-grab',
                             // touch-action:none prevents the browser from
@@ -361,8 +361,8 @@ export function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: Ver
                       <span
                         className={`flex-shrink-0 text-xs px-2 py-0.5 rounded font-mono ${
                           version.id === asset.id
-                            ? 'bg-frame-accent text-white'
-                            : 'bg-frame-accent/20 text-frame-accent'
+                            ? 'bg-scope-accent text-white'
+                            : 'bg-scope-accent/20 text-scope-accent'
                         }`}
                       >
                         V{idx + 1}
@@ -371,12 +371,12 @@ export function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: Ver
                         <div className="flex items-center gap-2">
                           <p className="text-sm text-white truncate">{version.name}</p>
                           {version.id === asset.id && (
-                            <span className="flex-shrink-0 text-[10px] uppercase tracking-wide text-frame-accent font-semibold">
+                            <span className="flex-shrink-0 text-[10px] uppercase tracking-wide text-scope-accent font-semibold">
                               Current
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-frame-textMuted">
+                        <p className="text-xs text-scope-textMuted">
                           {formatDate(version.createdAt)} &middot; {version.uploadedBy}
                         </p>
                       </div>
@@ -385,7 +385,7 @@ export function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: Ver
                           <button
                             onClick={() => handleUnstack(version)}
                             disabled={!!dragState || reordering}
-                            className="flex-shrink-0 text-frame-textMuted hover:text-white transition-colors disabled:opacity-40"
+                            className="flex-shrink-0 text-scope-textMuted hover:text-white transition-colors disabled:opacity-40"
                             title={`Unstack V${idx + 1} — leaves comments and review links intact`}
                           >
                             <Unlink className="w-4 h-4" />
@@ -411,15 +411,15 @@ export function VersionStackModal({ asset, onClose, onDeleted, getIdToken }: Ver
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-frame-border">
+        <div className="px-5 py-3 border-t border-scope-border">
           {!loading && versions.length > 1 && (
-            <p className="text-[11px] text-frame-textMuted text-center leading-relaxed mb-1">
+            <p className="text-[11px] text-scope-textMuted text-center leading-relaxed mb-1">
               Drag the ⋮⋮ handle to reorder, or focus it and press ↑ / ↓.
             </p>
           )}
           <button
             onClick={handleClose}
-            className="w-full mt-1 py-2 text-sm text-frame-textMuted hover:text-white transition-colors"
+            className="w-full mt-1 py-2 text-sm text-scope-textMuted hover:text-white transition-colors"
           >
             Close
           </button>
@@ -439,7 +439,7 @@ function InsertionLine({ visible }: { visible: boolean }) {
       aria-hidden
       className={[
         'mx-5 rounded-full transition-all pointer-events-none',
-        visible ? 'h-0.5 my-1 bg-frame-accent' : 'h-0',
+        visible ? 'h-0.5 my-1 bg-scope-accent' : 'h-0',
       ].join(' ')}
     />
   );

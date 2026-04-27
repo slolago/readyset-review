@@ -137,9 +137,9 @@ export function RatingStars({
             onKeyDown={handleKeyDown}
             onMouseEnter={() => !readOnly && setHover(n)}
             className={cn(
-              'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-frame-accent focus-visible:ring-offset-1 focus-visible:ring-offset-frame-card rounded',
+              'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-scope-accent focus-visible:ring-offset-1 focus-visible:ring-offset-scope-card rounded',
               readOnly ? 'cursor-default' : 'cursor-pointer hover:scale-110 transition-transform',
-              filled ? 'text-amber-400' : 'text-frame-textMuted/40',
+              filled ? 'text-amber-400' : 'text-scope-textMuted/40',
               !readOnly && !filled && 'hover:text-amber-400/60',
             )}
             aria-label={readOnly ? undefined : `${n} star${n === 1 ? '' : 's'}`}
